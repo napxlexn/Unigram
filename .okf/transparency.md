@@ -33,3 +33,16 @@ UI: блок «Прозорість» у `Views/Settings/SettingsAppearancePage.
 Режим `--no-activate` (`Host/IslandWindow.cs`) з драйвером `Host/E2eDriver.cs`: команди через `LocalState\e2e\cmd.txt` — `nav`, `chat`, `slider`, `combo`, `check`, `show`, `probe x y`, `state`, `night`, `accent/sbt/extend`. UI Automation не використовувати: вона дає застосунку право забрати передній план. Тестовий exe перевести на GUI-підсистему (`editbin /SUBSYSTEM:WINDOWS`), бо консольний відкриває вікно терміналу.
 ## Стан
 2026-10-20: перевірено e2e на другому моніторі (Win32 Debug x64): усі 5 матеріалів, повзунки, вимикач шпалер, світла тема, збереження після перезапуску. Telegram.Modern (UWP) компілюється. Як зібрати: [[local-build]].
+
+## Додатково (2026-10-20, друга ітерація)
+- Win32: Mica і Mica Alt прибрано (`WindowMaterial` повертає `BlurBehind` замість них). Варіанти: «Немає», «Акрил», «Розмиття». За замовчуванням — «Розмиття».
+- `PaneMaterial` (Оригінал / Матове скло / Легке скло / Суцільний) для `SplitView` у `Views/Host/RootWindow.xaml.cs`. Скло — `SolidGaussianBrush`, тобто Composition backdrop blur, бо XAML `AcrylicBrush` в Islands не працює.
+- «Розташування папок» у блоці «Прозорість» дублює налаштування з «Папки для чатів» (`AppSettings.UseLeftTabsForChats` + `UpdateChatFoldersLayout`).
+- Експериментальний `HideSeparators` обнуляє `NavigationViewContentGridBorderBrush` (пишеться в `Theme.Update` зі значенням WinUI), `NavigationViewItemSeparatorForeground` і `PageHeaderBorderBrush`.
+- Нижня панель каналу (`ChatBottomButton`) використовує `ChatFooterBackgroundBrush` з альфою ≥ 0.9.
+- Тема з оригіналу (Night, акцент `#917BBD`, градієнт `258DE5~4272DF~8146D7~9F3EAA`, шпалери `LqK3YYoX2EnrCgAAJ63F4zvk4wg`) імпортується командою драйвера `import-original` як варіант Night.
+
+## Ресурси
+- Без жорсткого витоку: Event і Semaphore звільняються лише під час повного GC. `Host/HandleCollector.cs` запускає фоновий GC, коли кількість хендлів виростає на 300. У простої вона тримається в межах 1,9–2,1 тис.
+- Лог TDLib: за замовчуванням рівень 2, ліміт 10 МБ. Кеш `.tgfc` обмежено 256 МБ.
+- Не зроблено (ризиковано): один спільний екземпляр LibVLC і `--avcodec-threads`, автоочищення `temp` через `optimizeStorage`.
