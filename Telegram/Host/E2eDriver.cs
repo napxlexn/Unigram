@@ -165,6 +165,43 @@ namespace Telegram.Host
 
                     return navigation.Navigate(page) ? "ok" : "refused";
 
+                case "unread-group":
+                case "unread":
+                    {
+                        if (navigation is not TLNavigationService tl)
+                        {
+                            return "error: no client";
+                        }
+
+                        if (parts[0] == "unread")
+                        {
+                            return tl.ClientService.TryGetChat(long.Parse(parts[1]), out var single)
+                                ? $"ok {single.UnreadCount} read_inbox={single.LastReadInboxMessageId}"
+                                : "error: no chat";
+                        }
+
+                        // A group - not a channel, where reading is nobody's business - with
+                        // something unread, to watch the counter while it is viewed. The chat
+                        // list comes back asynchronously, so the answer is written when it does.
+                        async void FindGroup()
+                        {
+                            var list = await tl.ClientService.GetChatListAsync(new Telegram.Td.Api.ChatListMain(), 0, 200);
+                            foreach (var chat in tl.ClientService.GetChats(list?.ChatIds ?? Array.Empty<long>()))
+                            {
+                                if (chat.UnreadCount > 0 && chat.Type is Telegram.Td.Api.ChatTypeBasicGroup or Telegram.Td.Api.ChatTypeSupergroup { IsChannel: false })
+                                {
+                                    Write(line, $"ok {chat.Id} {chat.UnreadCount}");
+                                    return;
+                                }
+                            }
+
+                            Write(line, "error: none");
+                        }
+
+                        FindGroup();
+                        return "pending";
+                    }
+
                 case "gc":
                     {
                         // Separates a real handle leak from handles that are only waiting for
