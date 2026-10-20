@@ -46,3 +46,10 @@ UI: блок «Прозорість» у `Views/Settings/SettingsAppearancePage.
 - Без жорсткого витоку: Event і Semaphore звільняються лише під час повного GC. `Host/HandleCollector.cs` запускає фоновий GC, коли кількість хендлів виростає на 300. У простої вона тримається в межах 1,9–2,1 тис.
 - Лог TDLib: за замовчуванням рівень 2, ліміт 10 МБ. Кеш `.tgfc` обмежено 256 МБ.
 - Не зроблено (ризиковано): один спільний екземпляр LibVLC і `--avcodec-threads`, автоочищення `temp` через `optimizeStorage`.
+
+## Повідомлення, шапка, невидиме читання (2026-10-20, третя ітерація)
+- `Common/MessageStyle.cs`: стилі бульбашок (`BubbleStyle`: Original/Glass/Frosted/Glow + `BubbleOpacity`), реакцій (`ReactionStyle`), сервісних капсул (`ServiceStyle`) і тексту (`MessageTextStyle`). Кольори проходять через `MessageStyle.Adjust` у `MessageBrushes.Update` і змінюються одразу. Розмиття (`SolidGaussianBrush` на кожен колір) і обідок (`ContentPanel.BorderBrush`) застосовуються, коли бульбашки реалізуються (`MessageStyle.Version`). Градієнтні бульбашки отримують альфу в `MessageBubbleBackgroundBrush.ApplyColorStops`.
+- Обідок реакцій — накладений `Border` з `MessageReactionBorderBrush` у шаблоні `ReactionButton`, тож компонування він не змінює.
+- Сервісні капсули: `MessageServiceBackgroundBrush` з `Accent.xaml` перефарбовується на місці (`SolidGaussianBrush.TintColor` перебудовує ефект).
+- Скляна шапка: `FadingGlassBrush` (backdrop blur + тінт під маскою вертикального градієнта) на `DetailHeaderBackground` у `MasterDetailView`, висота +24, без нижньої лінії. Перемикається `IsGlassHeaderEnabled`.
+- Невидиме читання: `AppSettings.IsGhostReadEnabled`. `ClientService.ViewMessages` пропускає пасивні `forceRead: false` в особистих чатах і групах, канали не зачіпає. Перевірено: `read_inbox` групи з 45 тис. непрочитаних не змінився під час перегляду.
