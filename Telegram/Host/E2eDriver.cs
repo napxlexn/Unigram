@@ -256,6 +256,19 @@ namespace Telegram.Host
                         return "ok " + toggle.IsChecked;
                     }
 
+                case "color":
+                    {
+                        // An own message colour, as the appearance page's picker sets it.
+                        if (navigation.Content is not SettingsAppearancePage appearancePage)
+                        {
+                            return "error: appearance page not open";
+                        }
+
+                        var hex = Convert.ToUInt32(parts[2].TrimStart('#'), 16);
+                        appearancePage.ViewModel.SetCustomColor(parts[1], Windows.UI.Color.FromArgb(0xFF, (byte)(hex >> 16), (byte)(hex >> 8), (byte)hex));
+                        return "ok";
+                    }
+
                 case "scrollname":
                     {
                         // A ScrollViewer by x:Name, to a vertical offset: scrolls the playground
