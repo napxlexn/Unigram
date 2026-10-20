@@ -50,8 +50,9 @@ namespace Telegram.Host
         private readonly UISettings _settings = new();
         private readonly AccessibilitySettings _accessibility = new();
 
-        // The blur-behind tint, AABBGGRR: a near-black at ~11%, the same as AI Limits. The pages
-        // on top carry the real colour; this only keeps bright windows behind from glaring.
+        // The blur-behind tint, AABBGGRR: a near-black at ~11%, the same as AI Limits. The tint
+        // layer on the presenter carries the real colour; this only keeps bright windows behind
+        // from glaring.
         private const uint BlurTintDark = 0x1C121212;
         private const uint BlurTintLight = 0x1CF3F3F3;
 
@@ -61,6 +62,11 @@ namespace Telegram.Host
 
         private bool _active;
         private WindowMaterial _material = WindowMaterial.None;
+        private bool _blurDark;
+
+        // One brush for the life of the window, recoloured rather than replaced: the opacity slider
+        // moves it on every step.
+        private readonly SolidColorBrush _background = new();
 
         public WindowBackdrop(IntPtr hwnd, WindowPresenter presenter)
         {
@@ -70,7 +76,8 @@ namespace Telegram.Host
             _settings.AdvancedEffectsEnabledChanged += OnAdvancedEffectsEnabledChanged;
             _accessibility.HighContrastChanged += OnHighContrastChanged;
             _presenter.ActualThemeChanged += OnActualThemeChanged;
-            AppearanceSettings.TransparencyChanged += OnTransparencyChanged;
+            AppearanceSettings.MaterialChanged += OnMaterialChanged;
+            AppearanceSettings.BackgroundOpacityChanged += OnMaterialChanged;
 
             _windows[hwnd] = this;
 
@@ -82,7 +89,8 @@ namespace Telegram.Host
             _settings.AdvancedEffectsEnabledChanged -= OnAdvancedEffectsEnabledChanged;
             _accessibility.HighContrastChanged -= OnHighContrastChanged;
             _presenter.ActualThemeChanged -= OnActualThemeChanged;
-            AppearanceSettings.TransparencyChanged -= OnTransparencyChanged;
+            AppearanceSettings.MaterialChanged -= OnMaterialChanged;
+            AppearanceSettings.BackgroundOpacityChanged -= OnMaterialChanged;
 
             _windows.Remove(_hwnd);
 
@@ -105,7 +113,7 @@ namespace Telegram.Host
             }
         }
 
-        private void OnTransparencyChanged(object sender, EventArgs args)
+        private void OnMaterialChanged(object sender, EventArgs args)
         {
             Post();
         }
@@ -148,8 +156,9 @@ namespace Telegram.Host
                 material = WindowMaterial.None;
             }
 
-            // Blur-behind is re-applied even when unchanged, since its tint follows the theme.
-            if (material != _material || material == WindowMaterial.BlurBehind)
+            // Blur-behind is also re-applied when the theme flips, since its tint follows it.
+            var dark = _presenter.ActualTheme == ElementTheme.Dark;
+            if (material != _material || (material == WindowMaterial.BlurBehind && dark != _blurDark))
             {
                 // The XAML backstop only has to come off once per thread, and it never goes back
                 // on: turning it off is what lets the backdrop reach the client area at all.
@@ -167,9 +176,24 @@ namespace Telegram.Host
 
                 _active = Apply(material) && material != WindowMaterial.None;
                 _material = _active ? material : WindowMaterial.None;
+                _blurDark = dark;
             }
 
-            _presenter.Background = new SolidColorBrush(_active ? Colors.Transparent : Fallback());
+            // With the material on, the pages above are transparent (Theme.GetSurfaceOpacity) and this
+            // is the one layer that decides how dense the glass is - the AI Limits model: a clear
+            // backdrop, then the theme colour at the user's opacity.
+            var color = Fallback();
+            if (_active)
+            {
+                color.A = (byte)(255 * AppSettings.Appearance.BackgroundOpacity / 100);
+            }
+
+            _background.Color = color;
+
+            if (_presenter.Background != _background)
+            {
+                _presenter.Background = _background;
+            }
         }
 
         private static bool IsSupported(WindowMaterial material) => material switch

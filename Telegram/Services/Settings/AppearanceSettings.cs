@@ -302,14 +302,37 @@ namespace Telegram.Services.Settings
         public int CornerRadius => BubbleRadius > 0 ? BubbleRadius < 15 ? BubbleRadius : 24 : 0;
 
         /// <summary>
-        /// Raised when any of the window transparency settings change, so that every open window
-        /// can update its backdrop without a restart.
+        /// Raised when <see cref="WindowMaterial"/> changes, so that every open window can swap
+        /// its backdrop without a restart. Kept apart from the wallpaper event on purpose: a
+        /// blur-behind backdrop is restarted whenever it is applied, and a slider would make it
+        /// flicker on every step.
         /// </summary>
-        public static event EventHandler TransparencyChanged;
+        public static event EventHandler MaterialChanged;
 
-        public static void RaiseTransparencyChanged()
+        public static void RaiseMaterialChanged()
         {
-            TransparencyChanged?.Invoke(null, EventArgs.Empty);
+            MaterialChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Raised when <see cref="BackgroundOpacity"/> changes. On a host with window materials it
+        /// recolours a single tint layer, so it is cheap enough to raise on every slider step.
+        /// </summary>
+        public static event EventHandler BackgroundOpacityChanged;
+
+        public static void RaiseBackgroundOpacityChanged()
+        {
+            BackgroundOpacityChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Raised when <see cref="WallpaperOpacity"/> changes.
+        /// </summary>
+        public static event EventHandler WallpaperOpacityChanged;
+
+        public static void RaiseWallpaperOpacityChanged()
+        {
+            WallpaperOpacityChanged?.Invoke(null, EventArgs.Empty);
         }
 
         private static int? _windowMaterial;
@@ -319,12 +342,22 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _windowMaterial, "WindowMaterial", (int)value);
         }
 
-        // Percent, 10-100. 100 is stock Unigram: opaque pages over the material.
+        // Percent, 10-100, of the tint laid over the window material. 100 is fully opaque.
         private static int? _backgroundOpacity;
         public int BackgroundOpacity
         {
-            get => _backgroundOpacity ??= Math.Clamp(GetValueOrDefault("BackgroundOpacity", 100), 10, 100);
+            get => _backgroundOpacity ??= Math.Clamp(GetValueOrDefault("BackgroundOpacity", 70), 10, 100);
             set => AddOrUpdateValue(ref _backgroundOpacity, "BackgroundOpacity", Math.Clamp(value, 10, 100));
+        }
+
+        // Off draws no wallpaper at all, whatever its opacity: the chat sits on the same glass as
+        // the rest of the window. Kept apart from the opacity so that turning it back on returns
+        // to the opacity it had.
+        private static bool? _isWallpaperEnabled;
+        public bool IsWallpaperEnabled
+        {
+            get => _isWallpaperEnabled ??= GetValueOrDefault("IsWallpaperEnabled", true);
+            set => AddOrUpdateValue(ref _isWallpaperEnabled, "IsWallpaperEnabled", value);
         }
 
         // Percent, 0-100, of the chat wallpaper. 0 leaves only the material behind the messages.

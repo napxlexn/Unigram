@@ -292,7 +292,10 @@ namespace Telegram.Host
                 var accent = new ACCENT_POLICY
                 {
                     AccentState = state,
-                    AccentFlags = 2, // draw the gradient colour as the tint
+                    // No flags: with 2 (draw the gradient colour) Windows 11 paints the tint
+                    // opaque and the blur never shows. The tint layer on the presenter does that
+                    // job instead, at the user's opacity.
+                    AccentFlags = 0,
                     GradientColor = color
                 };
 

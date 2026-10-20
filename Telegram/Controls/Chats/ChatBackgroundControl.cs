@@ -87,17 +87,17 @@ namespace Telegram.Controls.Chats
         {
             _aggregator?.Subscribe<UpdateDefaultBackground>(this, Handle);
             ActualThemeChanged += OnActualThemeChanged;
-            AppearanceSettings.TransparencyChanged += OnTransparencyChanged;
+            AppearanceSettings.WallpaperOpacityChanged += OnWallpaperOpacityChanged;
         }
 
         protected override void OnUnloaded()
         {
             _aggregator?.Unsubscribe(this);
             ActualThemeChanged -= OnActualThemeChanged;
-            AppearanceSettings.TransparencyChanged -= OnTransparencyChanged;
+            AppearanceSettings.WallpaperOpacityChanged -= OnWallpaperOpacityChanged;
         }
 
-        private void OnTransparencyChanged(object sender, EventArgs args)
+        private void OnWallpaperOpacityChanged(object sender, EventArgs args)
         {
             this.BeginOnUIThread(UpdateOpacity);
         }
@@ -106,7 +106,18 @@ namespace Telegram.Controls.Chats
         // a solid black, and it has to fade with the wallpaper for the material to show through.
         private void UpdateOpacity()
         {
-            Opacity = AppSettings.Appearance.WallpaperOpacity / 100d;
+            var opacity = AppSettings.Appearance.IsWallpaperEnabled
+                ? AppSettings.Appearance.WallpaperOpacity / 100d
+                : 0;
+            Opacity = opacity;
+
+            // Zero is not just a very low opacity: XAML stops pushing an opacity of 0 down to the
+            // composition visuals the presenter draws into, and MasterDetailView keeps the
+            // handoff visual at 1, so the wallpaper stayed fully visible. Collapsed it is.
+            if (Presenter != null)
+            {
+                Presenter.Visibility = opacity > 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
         // NightModeService writes the window's RequestedTheme and publishes UpdateDefaultBackground

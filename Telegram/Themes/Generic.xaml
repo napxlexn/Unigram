@@ -2376,6 +2376,7 @@
                             </Grid.RowDefinitions>
                             <Border x:Name="MaterialPart"
                                     Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                    common:Theme.IsSurface="True"
                                     CornerRadius="{TemplateBinding CornerRadius}"
                                     Grid.RowSpan="3" />
 

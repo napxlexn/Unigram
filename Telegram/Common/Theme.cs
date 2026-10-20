@@ -186,6 +186,137 @@ namespace Telegram.Common
         /// alpha follows <see cref="AppearanceSettings.BackgroundOpacity"/>; everything else -
         /// bubbles, controls, cards, dialogs - keeps its own, so text stays readable.
         /// </summary>
+        // Surfaces App.xaml declares itself, which win over this dictionary and so never see the
+        // loop below. Their own colours are kept here the first time they are touched, so that the
+        // alpha is always taken from the original rather than compounded.
+        private static readonly string[] _applicationSurfaces =
+        {
+            "PageSubHeaderBackgroundBrush2",
+            "PageSubHeaderBackgroundSolidBrush",
+        };
+
+        private static readonly Dictionary<Brush, Color> _applicationSurfaceColors = new();
+
+        /// <summary>
+        /// Where a host can draw a window material, the page surfaces step aside entirely and a
+        /// single tint over the whole window carries the opacity - see Host\WindowBackdrop.cs.
+        /// Stacking it per surface instead made the glass denser wherever two of them overlap,
+        /// and left a slider that barely moved anything that was already see-through.
+        /// Elsewhere the surfaces themselves are the only thing there is to fade.
+        /// </summary>
+        #region IsSurface
+
+        /// <summary>
+        /// For the few layers that paint a framework brush of their own between the window and
+        /// the content - the detail pane's material, the folders rail - and so are out of reach
+        /// of the theme pass: their background steps aside with the page surfaces while a window
+        /// material is on, and comes back when it is not. Border only, which is all they are.
+        /// </summary>
+        public static readonly DependencyProperty IsSurfaceProperty =
+            DependencyProperty.RegisterAttached("IsSurface", typeof(bool), typeof(Theme), new PropertyMetadata(false, OnIsSurfaceChanged));
+
+        public static bool GetIsSurface(DependencyObject element) => (bool)element.GetValue(IsSurfaceProperty);
+
+        public static void SetIsSurface(DependencyObject element, bool value) => element.SetValue(IsSurfaceProperty, value);
+
+        // The brush each surface was given in markup, so that it can be put back.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Windows.UI.Xaml.Controls.Border, Brush> _surfaceBrushes = new();
+
+        private static void OnIsSurfaceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is not Windows.UI.Xaml.Controls.Border border || e.NewValue is not true)
+            {
+                return;
+            }
+
+            void Apply()
+            {
+                if (!_surfaceBrushes.TryGetValue(border, out var original))
+                {
+                    _surfaceBrushes.AddOrUpdate(border, original = border.Background);
+                }
+
+                border.Background = GetSurfaceOpacity() == 0 ? null : original;
+            }
+
+            void OnMaterialChanged(object sender, EventArgs args)
+            {
+                border.BeginOnUIThread(Apply);
+            }
+
+            border.Loaded += (s, args) =>
+            {
+                Apply();
+                AppearanceSettings.MaterialChanged += OnMaterialChanged;
+            };
+
+            border.Unloaded += (s, args) =>
+            {
+                AppearanceSettings.MaterialChanged -= OnMaterialChanged;
+            };
+
+            if (border.IsLoaded)
+            {
+                Apply();
+                AppearanceSettings.MaterialChanged += OnMaterialChanged;
+            }
+        }
+
+        #endregion
+
+        internal static double GetSurfaceOpacity()
+        {
+            if (WindowContext.SupportsWindowMaterials && AppSettings.Appearance.WindowMaterial != WindowMaterial.None)
+            {
+                return 0;
+            }
+
+            return AppSettings.Appearance.BackgroundOpacity / 100d;
+        }
+
+        /// <summary>
+        /// Recoloured in place, so that every ThemeResource already pointing at them repaints.
+        /// The acrylic one only ever draws its fallback in an island, which is why that is the
+        /// colour that carries the alpha.
+        /// </summary>
+        private static void UpdateApplicationSurfaces(TelegramTheme requested, double opacity)
+        {
+            var key = requested == TelegramTheme.Light ? "Light" : "Default";
+            if (!Application.Current.Resources.ThemeDictionaries.TryGetValue(key, out var value) || value is not ResourceDictionary dictionary)
+            {
+                return;
+            }
+
+            foreach (var name in _applicationSurfaces)
+            {
+                if (!dictionary.TryGetValue(name, out var resource))
+                {
+                    continue;
+                }
+
+                if (resource is Microsoft.UI.Xaml.Media.AcrylicBrush acrylic)
+                {
+                    if (!_applicationSurfaceColors.TryGetValue(acrylic, out var original))
+                    {
+                        _applicationSurfaceColors[acrylic] = original = acrylic.FallbackColor;
+                    }
+
+                    original.A = (byte)(original.A * opacity);
+                    acrylic.FallbackColor = original;
+                }
+                else if (resource is SolidColorBrush solid)
+                {
+                    if (!_applicationSurfaceColors.TryGetValue(solid, out var original))
+                    {
+                        _applicationSurfaceColors[solid] = original = solid.Color;
+                    }
+
+                    original.A = (byte)(original.A * opacity);
+                    solid.Color = original;
+                }
+            }
+        }
+
         private static readonly HashSet<string> _surfaces = new()
         {
             "ApplicationPageBackgroundThemeBrush",
@@ -370,7 +501,7 @@ namespace Telegram.Common
                     }
                 }
 
-                var surfaceOpacity = AppSettings.Appearance.BackgroundOpacity / 100d;
+                var surfaceOpacity = GetSurfaceOpacity();
 
                 foreach (var item in lookup)
                 {
@@ -453,6 +584,14 @@ namespace Telegram.Common
                             update.AlwaysUseFallback = !PowerSavingPolicy.AreMaterialsEnabled;
                         });
                     }
+                }
+
+                if (_isPrimary)
+                {
+                    // The header and composer bars keep a tint of their own even under a window
+                    // material, at the window's opacity: fully clear, the messages scrolling
+                    // beneath them showed straight through their text.
+                    UpdateApplicationSurfaces(requested, surfaceOpacity > 0 ? surfaceOpacity : AppSettings.Appearance.BackgroundOpacity / 100d);
                 }
 
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlElevationBorderFocusedBrush", create, GetShade);

@@ -562,7 +562,10 @@ namespace Telegram.ViewModels.Settings
                 if (value >= 0 && value < WindowMaterialOptions.Count && AppSettings.Appearance.WindowMaterial != WindowMaterialOptions[value].Value)
                 {
                     AppSettings.Appearance.WindowMaterial = WindowMaterialOptions[value].Value;
-                    AppearanceSettings.RaiseTransparencyChanged();
+                    AppearanceSettings.RaiseMaterialChanged();
+
+                    // Whether the page surfaces are transparent depends on the material being on.
+                    NightModeService.Current.Update(false, updateBackground: false);
                     RaisePropertyChanged();
                 }
             }
@@ -576,10 +579,12 @@ namespace Telegram.ViewModels.Settings
                 if (AppSettings.Appearance.BackgroundOpacity != (int)value)
                 {
                     AppSettings.Appearance.BackgroundOpacity = (int)value;
+                    AppearanceSettings.RaiseBackgroundOpacityChanged();
                     RaisePropertyChanged();
 
-                    // Every surface brush of every window is rewritten on a theme pass, so a drag
-                    // of the slider only triggers one once it settles.
+                    // The window tint follows at once, through the event above. The surfaces and
+                    // the header bars are rewritten by a theme pass, which touches every brush of
+                    // every window, so a drag of the slider only triggers one once it settles.
                     _backgroundOpacityDebouncer ??= new DebouncedProperty<int>(150, _ => NightModeService.Current.Update(false, updateBackground: false));
                     _backgroundOpacityDebouncer.Set((int)value);
                 }
@@ -587,6 +592,20 @@ namespace Telegram.ViewModels.Settings
         }
 
         private DebouncedProperty<int> _backgroundOpacityDebouncer;
+
+        public bool IsWallpaperEnabled
+        {
+            get => AppSettings.Appearance.IsWallpaperEnabled;
+            set
+            {
+                if (AppSettings.Appearance.IsWallpaperEnabled != value)
+                {
+                    AppSettings.Appearance.IsWallpaperEnabled = value;
+                    AppearanceSettings.RaiseWallpaperOpacityChanged();
+                    RaisePropertyChanged();
+                }
+            }
+        }
 
         public double WallpaperOpacity
         {
@@ -596,7 +615,7 @@ namespace Telegram.ViewModels.Settings
                 if (AppSettings.Appearance.WallpaperOpacity != (int)value)
                 {
                     AppSettings.Appearance.WallpaperOpacity = (int)value;
-                    AppearanceSettings.RaiseTransparencyChanged();
+                    AppearanceSettings.RaiseWallpaperOpacityChanged();
                     RaisePropertyChanged();
                 }
             }
