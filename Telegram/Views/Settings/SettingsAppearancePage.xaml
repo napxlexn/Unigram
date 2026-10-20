@@ -251,6 +251,10 @@
                               AutomationProperties.Name="Прибрати розділювачі"
                               Content="Прибрати лінії між частинами вікна (експериментально)"
                               Style="{StaticResource SettingsCheckBoxStyle}" />
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.IsGlassHeaderEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Скляна шапка"
+                              Content="Шапка сторінок як скло з плавним переходом"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
                     <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
@@ -329,6 +333,80 @@
                                 Margin="12,6,16,6"
                                 Grid.Column="2" />
                     </Grid>
+                </controls:HeaderedControl>
+
+                <controls:HeaderedControl Header="Повідомлення"
+                                          Footer="Кольори змінюються одразу. Матове скло й сяйво бульбашок з'являються на повідомленнях, щойно вони перемальовуються: прокрутіть або знову відкрийте чат.">
+                    <controls:SettingsButton Content="Бульбашки"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.BubbleStyleOptions}"
+                                                       AutomationProperties.Name="Бульбашки"
+                                                       SelectedIndex="{x:Bind ViewModel.BubbleStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Непрозорість бульбашок', ViewModel.BubbleOpacity), Mode=OneWay}"
+                                   Opacity="{x:Bind ConvertEnabledOpacity(ViewModel.IsBubbleGlass), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.BubbleOpacity, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsBubbleGlass, Mode=OneWay}"
+                                AutomationProperties.Name="Непрозорість бульбашок"
+                                Minimum="20"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <controls:SettingsButton Content="Капсули реакцій"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ReactionStyleOptions}"
+                                                       AutomationProperties.Name="Капсули реакцій"
+                                                       SelectedIndex="{x:Bind ViewModel.ReactionStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Дати й сервісні повідомлення"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ServiceStyleOptions}"
+                                                       AutomationProperties.Name="Сервісні капсули"
+                                                       SelectedIndex="{x:Bind ViewModel.ServiceStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Текст у повідомленнях"
+                                             Glyph="&#xE9EB;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.MessageTextStyleOptions}"
+                                                       AutomationProperties.Name="Текст у повідомленнях"
+                                                       SelectedIndex="{x:Bind ViewModel.MessageTextStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Footer="{CustomResource StickersNameInfo}">

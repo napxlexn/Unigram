@@ -592,6 +592,139 @@ namespace Telegram.ViewModels.Settings
 
         private DebouncedProperty<int> _backgroundOpacityDebouncer;
 
+        #region Message styles
+
+        public List<SettingsOptionItem<BubbleStyle>> BubbleStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Original, "Оригінал"),
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glass, "Скло"),
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Frosted, "Матове скло"),
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glow, "Скло з сяйвом"),
+        };
+
+        public int BubbleStyleIndex
+        {
+            get => Math.Max(0, BubbleStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.BubbleStyle));
+            set
+            {
+                if (value >= 0 && value < BubbleStyleOptions.Count && AppSettings.Appearance.BubbleStyle != BubbleStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.BubbleStyle = BubbleStyleOptions[value].Value;
+                    ApplyMessageStyle();
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(IsBubbleGlass));
+                }
+            }
+        }
+
+        public bool IsBubbleGlass => AppSettings.Appearance.BubbleStyle != BubbleStyle.Original;
+
+        public double BubbleOpacity
+        {
+            get => AppSettings.Appearance.BubbleOpacity;
+            set
+            {
+                if (AppSettings.Appearance.BubbleOpacity != (int)value)
+                {
+                    AppSettings.Appearance.BubbleOpacity = (int)value;
+                    RaisePropertyChanged();
+
+                    _bubbleOpacityDebouncer ??= new DebouncedProperty<int>(150, _ => ApplyMessageStyle());
+                    _bubbleOpacityDebouncer.Set((int)value);
+                }
+            }
+        }
+
+        private DebouncedProperty<int> _bubbleOpacityDebouncer;
+
+        public List<SettingsOptionItem<ReactionStyle>> ReactionStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Original, "Оригінал"),
+            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glass, "Скло"),
+            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glow, "Скло з сяйвом"),
+        };
+
+        public int ReactionStyleIndex
+        {
+            get => Math.Max(0, ReactionStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.ReactionStyle));
+            set
+            {
+                if (value >= 0 && value < ReactionStyleOptions.Count && AppSettings.Appearance.ReactionStyle != ReactionStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.ReactionStyle = ReactionStyleOptions[value].Value;
+                    ApplyMessageStyle();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public List<SettingsOptionItem<ServiceStyle>> ServiceStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<ServiceStyle>(ServiceStyle.Original, "Оригінал"),
+            new SettingsOptionItem<ServiceStyle>(ServiceStyle.DarkGlass, "Темне скло"),
+            new SettingsOptionItem<ServiceStyle>(ServiceStyle.LightGlass, "Світле скло"),
+            new SettingsOptionItem<ServiceStyle>(ServiceStyle.ClearGlass, "Прозоре скло"),
+        };
+
+        public int ServiceStyleIndex
+        {
+            get => Math.Max(0, ServiceStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.ServiceStyle));
+            set
+            {
+                if (value >= 0 && value < ServiceStyleOptions.Count && AppSettings.Appearance.ServiceStyle != ServiceStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.ServiceStyle = ServiceStyleOptions[value].Value;
+                    ApplyMessageStyle();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public List<SettingsOptionItem<MessageTextStyle>> MessageTextStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<MessageTextStyle>(MessageTextStyle.Theme, "Як у темі"),
+            new SettingsOptionItem<MessageTextStyle>(MessageTextStyle.Brighter, "Яскравіший"),
+            new SettingsOptionItem<MessageTextStyle>(MessageTextStyle.Softer, "Приглушений"),
+        };
+
+        public int MessageTextStyleIndex
+        {
+            get => Math.Max(0, MessageTextStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.MessageTextStyle));
+            set
+            {
+                if (value >= 0 && value < MessageTextStyleOptions.Count && AppSettings.Appearance.MessageTextStyle != MessageTextStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.MessageTextStyle = MessageTextStyleOptions[value].Value;
+                    ApplyMessageStyle();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        // Colours repaint at once through the theme pass; fills that are not a colour - the blur,
+        // the rim - follow as bubbles are realized.
+        private static void ApplyMessageStyle()
+        {
+            MessageStyle.Invalidate();
+            NightModeService.Current.Update(false, updateBackground: false);
+        }
+
+        public bool IsGlassHeaderEnabled
+        {
+            get => AppSettings.Appearance.IsGlassHeaderEnabled;
+            set
+            {
+                if (AppSettings.Appearance.IsGlassHeaderEnabled != value)
+                {
+                    AppSettings.Appearance.IsGlassHeaderEnabled = value;
+                    AppearanceSettings.RaiseGlassHeaderChanged();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        #endregion
+
         public List<SettingsOptionItem<PaneMaterial>> PaneMaterialOptions { get; } = new()
         {
             new SettingsOptionItem<PaneMaterial>(PaneMaterial.Original, "Оригінал"),

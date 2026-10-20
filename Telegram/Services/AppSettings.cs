@@ -114,6 +114,15 @@ namespace Telegram.Services
         }
 
         private static bool? _isAdaptiveWideEnabled;
+        // Opening and scrolling a chat no longer marks it read for the other side; see
+        // ClientService.ViewMessages. Needs no Premium: it is the client choosing not to report.
+        private static bool? _isGhostReadEnabled;
+        public static bool IsGhostReadEnabled
+        {
+            get => _isGhostReadEnabled ??= _local.GetValueOrDefault("IsGhostReadEnabled", false);
+            set => _local.AddOrUpdateValue(ref _isGhostReadEnabled, "IsGhostReadEnabled", value);
+        }
+
         public static bool IsAdaptiveWideEnabled
         {
             get => _isAdaptiveWideEnabled ??= _local.GetValueOrDefault("IsAdaptiveWideEnabled", false);

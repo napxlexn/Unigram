@@ -74,6 +74,22 @@ namespace Telegram.Controls.Media
 
         protected abstract CompositionBrush OnUpdateBrush();
 
+        /// <summary>
+        /// Throws the effect away and builds it again, for parameters that are baked into the
+        /// effect graph - the tint, typically - and so do nothing once it exists.
+        /// </summary>
+        protected void Rebuild()
+        {
+            if (!m_isConnected)
+            {
+                return;
+            }
+
+            m_brush?.Dispose();
+            m_brush = null;
+            UpdateBrushByDispatcher();
+        }
+
         protected override void OnConnected()
         {
             PowerSavingPolicy.Changed += PowerSavingPolicy_Changed;

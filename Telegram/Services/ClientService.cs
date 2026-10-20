@@ -474,8 +474,22 @@ namespace Telegram.Services
             Initialize(online);
         }
 
+        private bool IsChannel(long chatId)
+        {
+            return TryGetChat(chatId, out Chat chat) && chat.Type is ChatTypeSupergroup { IsChannel: true };
+        }
+
         public void ViewMessages(long chatId, MessageTopic topicId, Vector<long> messageIds, MessageSource source, bool forceRead)
         {
+            // Read without a read receipt. TDLib only marks messages read when the client reports
+            // them viewed, so the passive report scrolling a chat makes is simply not sent; an
+            // explicit "mark as read" comes with forceRead and still goes through. Channels are
+            // left alone: nobody sees who read a post, and skipping would only stop view counts.
+            if (!forceRead && AppSettings.IsGhostReadEnabled && !IsChannel(chatId))
+            {
+                return;
+            }
+
             Send(new ViewMessages(chatId, messageIds, source, forceRead));
 
             if (source is MessageSourceForumTopicHistory && topicId is MessageTopicForum forumTopic && _forums.TryGetValue(chatId, out ForumTopicService manager))

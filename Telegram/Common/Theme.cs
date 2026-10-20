@@ -658,6 +658,7 @@ namespace Telegram.Common
                     // material, at the window's opacity: fully clear, the messages scrolling
                     // beneath them showed straight through their text.
                     UpdateApplicationSurfaces(requested, surfaceOpacity > 0 ? surfaceOpacity : AppSettings.Appearance.BackgroundOpacity / 100d);
+                    MessageStyle.ApplyServiceStyle();
                 }
 
                 // Not in the lookup - it is WinUI's own, an alias of CardStrokeColorDefaultBrush - so
@@ -1042,9 +1043,13 @@ namespace Telegram.Common
                 // The tables are keyed on the neutral name; a theme spells out the direction.
                 var key = brush.Key[..^5] + _suffix;
 
-                brush.Value.Color = values != null && values.TryGetValue(key, out Color color)
-                    ? color
+                var color = values != null && values.TryGetValue(key, out Color themed)
+                    ? themed
                     : defaults[brush.Key];
+
+                // The glass styles ride on these brushes, so that a change repaints every
+                // visible bubble without touching any of them.
+                brush.Value.Color = MessageStyle.Adjust(brush.Key, color, parent);
             }
 
             UpdateBackground(parent);
@@ -1076,6 +1081,7 @@ namespace Telegram.Common
             { "MessageCallMissedForegroundBrush", Color.FromArgb(0xFF, 0xDD, 0x58, 0x49) },
             { "MessageReactionBackgroundBrush", Color.FromArgb(0xFF, 0xD5, 0xF1, 0xC9) },
             { "MessageReactionForegroundBrush", Color.FromArgb(0xFF, 0x45, 0xA3, 0x2D) },
+            { "MessageReactionBorderBrush", Color.FromArgb(0x00, 0x00, 0x00, 0x00) },
             { "MessageReactionChosenBackgroundBrush", Color.FromArgb(0xFF, 0x5F, 0xBE, 0x67) },
             { "MessageReactionChosenForegroundBrush", Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF) },
         };
@@ -1100,6 +1106,7 @@ namespace Telegram.Common
             { "MessageCallMissedForegroundBrush", Color.FromArgb(0xFF, 0xED, 0x50, 0x50) },
             { "MessageReactionBackgroundBrush", Color.FromArgb(0xFF, 0x2B, 0x41, 0x53) },
             { "MessageReactionForegroundBrush", Color.FromArgb(0xFF, 0x7A, 0xC3, 0xF4) },
+            { "MessageReactionBorderBrush", Color.FromArgb(0x00, 0x00, 0x00, 0x00) },
             { "MessageReactionChosenBackgroundBrush", Color.FromArgb(0xFF, 0x31, 0x8E, 0xE4) },
             { "MessageReactionChosenForegroundBrush", Color.FromArgb(0xFF, 0x33, 0x39, 0x3F) },
         };
@@ -1130,6 +1137,7 @@ namespace Telegram.Common
             { "MessageCallMissedForegroundBrush", Color.FromArgb(0xFF, 0xDD, 0x58, 0x49) },
             { "MessageReactionBackgroundBrush", Color.FromArgb(0xFF, 0xE8, 0xF5, 0xFC) },
             { "MessageReactionForegroundBrush", Color.FromArgb(0xFF, 0x16, 0x8D, 0xCD) },
+            { "MessageReactionBorderBrush", Color.FromArgb(0x00, 0x00, 0x00, 0x00) },
             { "MessageReactionChosenBackgroundBrush", Color.FromArgb(0xFF, 0x40, 0xA7, 0xE3) },
             { "MessageReactionChosenForegroundBrush", Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF) },
         };
@@ -1154,6 +1162,7 @@ namespace Telegram.Common
             { "MessageCallMissedForegroundBrush", Color.FromArgb(0xFF, 0xED, 0x50, 0x50) },
             { "MessageReactionBackgroundBrush", Color.FromArgb(0xFF, 0x3A, 0x47, 0x54) },
             { "MessageReactionForegroundBrush", Color.FromArgb(0xFF, 0x67, 0xBB, 0xF3) },
+            { "MessageReactionBorderBrush", Color.FromArgb(0x00, 0x00, 0x00, 0x00) },
             { "MessageReactionChosenBackgroundBrush", Color.FromArgb(0xFF, 0x6E, 0xB2, 0xEE) },
             { "MessageReactionChosenForegroundBrush", Color.FromArgb(0xFF, 0x33, 0x39, 0x3F) },
         };
