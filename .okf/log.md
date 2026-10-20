@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-10-21
+* **update**: transparency: header styles, own message colours, layered footer, RO_E_CLOSED fix
+
 ## 2026-10-20
 * **update**: Скляні стилі повідомлень, шапка з плавним переходом, читання без позначки
 * **update**: Матеріали: прибрано Mica, додано матеріал бічної панелі, папки, розділювачі, щільний футер; імпорт теми з оригіналу; HandleCollector, лог TDLib і кеш .tgfc
