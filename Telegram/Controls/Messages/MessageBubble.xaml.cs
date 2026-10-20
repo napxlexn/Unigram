@@ -283,6 +283,12 @@ namespace Telegram.Controls.Messages
                 return;
             }
 
+            // A recycled bubble picks up a style changed since it was last filled.
+            if (_styleVersion != MessageStyle.Version)
+            {
+                UpdateContentPanelState();
+            }
+
             if (message != null)
             {
                 Footer.UpdateMessage(message);
@@ -2441,19 +2447,47 @@ namespace Telegram.Controls.Messages
             }
         }
 
+        private int _styleVersion = -1;
+
         private void UpdateContentPanelState()
         {
-            if (_currentState is "LightState" or "LightStateOut")
+            if (ContentPanel == null)
             {
-                ContentPanel?.Background = null;
+                return;
+            }
+
+            _styleVersion = MessageStyle.Version;
+
+            var light = _currentState is "LightState" or "LightStateOut";
+            if (light)
+            {
+                ContentPanel.Background = null;
             }
             else if (_brush != null)
             {
-                ContentPanel?.Background = _brush;
+                ContentPanel.Background = _brush;
+            }
+            else if (MessageStyle.IsFrosted && GetBrush("MessageBackgroundBrush") is SolidColorBrush fill)
+            {
+                // The theme colour, already made translucent by the style, over a blur of what
+                // is behind the bubble.
+                ContentPanel.Background = MessageStyle.GetFrostedBrush(fill.Color);
             }
             else
             {
-                ContentPanel?.ClearValue(Grid.BackgroundProperty);
+                ContentPanel.ClearValue(Grid.BackgroundProperty);
+            }
+
+            // The rim only where there is a bubble to rim; media drawn without one has none.
+            if (MessageStyle.IsGlowing && !light)
+            {
+                ContentPanel.BorderBrush = MessageStyle.GetGlowBrush(ActualTheme != ElementTheme.Light);
+                ContentPanel.BorderThickness = new Thickness(1);
+            }
+            else if (ContentPanel.BorderBrush != null)
+            {
+                ContentPanel.BorderBrush = null;
+                ContentPanel.BorderThickness = default;
             }
         }
 

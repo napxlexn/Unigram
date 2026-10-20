@@ -13,6 +13,7 @@ using System.Numerics;
 using Telegram.Common;
 using Telegram.Composition;
 using Telegram.Controls.Chats;
+using Telegram.Controls.Media;
 using Telegram.Navigation;
 using Telegram.Navigation.Services;
 using Telegram.Services;
@@ -70,6 +71,7 @@ namespace Telegram.Controls
             DefaultStyleKey = typeof(MasterDetailView);
 
             Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
         }
 
         #region Initialize
@@ -192,6 +194,16 @@ namespace Telegram.Controls
             {
                 OnViewStateChanged();
             }
+
+            // -= first: Loaded comes again when the view is re-parented.
+            Services.Settings.AppearanceSettings.GlassHeaderChanged -= OnGlassHeaderChanged;
+            Services.Settings.AppearanceSettings.GlassHeaderChanged += OnGlassHeaderChanged;
+            UpdateHeaderMaterial();
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            Services.Settings.AppearanceSettings.GlassHeaderChanged -= OnGlassHeaderChanged;
         }
 
         private void UpdateMasterVisibility()
@@ -363,6 +375,11 @@ namespace Telegram.Controls
 
             var detailVisual2 = ElementComposition.GetElementVisual(DetailHeaderPresenter2);
             detailVisual2.Clip = detailVisual.Compositor.CreateInsetClip();
+
+            _headerBackground = DetailHeaderBackground.Background;
+            _headerBorder = DetailHeaderBackground.BorderThickness;
+            _headerHeight = DetailHeaderBackground.Height;
+            UpdateHeaderMaterial();
 
             var visual1 = ElementComposition.GetElementVisual(DetailHeaderBackground);
             var visual2 = ElementComposition.GetElementVisual(DetailHeaderPresenter);
@@ -591,6 +608,49 @@ namespace Telegram.Controls
 
             OnViewStateChanged();
         }
+
+        #region Glass header
+
+        // The header as the template has it, which is what turning the glass off puts back.
+        private Brush _headerBackground;
+        private Thickness _headerBorder;
+        private double _headerHeight;
+
+        private void OnGlassHeaderChanged(object sender, EventArgs args)
+        {
+            this.BeginOnUIThread(UpdateHeaderMaterial);
+        }
+
+        private void UpdateHeaderMaterial()
+        {
+            if (DetailHeaderBackground == null)
+            {
+                return;
+            }
+
+            if (AppSettings.Appearance.IsGlassHeaderEnabled)
+            {
+                // Taller than the bar, so that the fade happens below the title rather than
+                // through it, and no hairline: the edge is the gradient.
+                var tint = ActualTheme == ElementTheme.Light
+                    ? Windows.UI.Color.FromArgb(0, 0xF3, 0xF3, 0xF3)
+                    : Windows.UI.Color.FromArgb(0, 0x20, 0x20, 0x20);
+
+                tint.A = (byte)(255 * Math.Clamp(AppSettings.Appearance.BackgroundOpacity / 100d + 0.15, 0.3, 0.9));
+
+                DetailHeaderBackground.Background = new FadingGlassBrush { TintColor = tint };
+                DetailHeaderBackground.BorderThickness = new Thickness(0);
+                DetailHeaderBackground.Height = _headerHeight + 24;
+            }
+            else
+            {
+                DetailHeaderBackground.Background = _headerBackground;
+                DetailHeaderBackground.BorderThickness = _headerBorder;
+                DetailHeaderBackground.Height = _headerHeight;
+            }
+        }
+
+        #endregion
 
         private bool _showDetailHeader = true;
         private bool _showDetailHeaderBackground = true;

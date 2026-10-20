@@ -114,7 +114,14 @@ namespace Telegram.Controls.Media
         }
 
         public static readonly DependencyProperty TintColorProperty =
-            DependencyProperty.Register("TintColor", typeof(Color), typeof(SolidGaussianBrush), new PropertyMetadata(default(Color)));
+            DependencyProperty.Register("TintColor", typeof(Color), typeof(SolidGaussianBrush), new PropertyMetadata(default(Color), OnTintColorChanged));
+
+        // The tint is baked into the effect graph, so a change means a new graph - which is what
+        // lets the service pills switch style without reopening the chat.
+        private static void OnTintColorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            ((SolidGaussianBrush)d).Rebuild();
+        }
 
         #endregion
     }

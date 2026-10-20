@@ -144,6 +144,13 @@
                                              Glyph="&#xE716;" />
                 </controls:HeaderedControl>
 
+                <controls:HeaderedControl Footer="Повідомлення в особистих чатах і групах не позначаються прочитаними, коли ви їх переглядаєте: співрозмовник не бачить відмітки про прочитання. «Позначити як прочитане» в меню чату й відповідь зі сповіщення як і раніше позначають прочитаним. Підписка Premium не потрібна.">
+                    <CheckBox IsChecked="{x:Bind ViewModel.IsGhostReadEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Читати без позначки"
+                              Content="Читати без позначки про прочитання"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                </controls:HeaderedControl>
+
                 <controls:HeaderedControl>
                     <controls:SettingsButton Content="{CustomResource ArchiveSettings}"
                                              Click="{x:Bind ViewModel.ArchiveSettings}"

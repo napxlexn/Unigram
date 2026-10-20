@@ -909,6 +909,7 @@
     <Compile Include="Td\Api\TdExtensions.cs" />
     <Compile Include="Common\TextBlockHelper.cs" />
     <Compile Include="Common\ToggleHelper.cs" />
+    <Compile Include="Common\MessageStyle.cs" />
     <Compile Include="Common\Theme.cs" />
     <Compile Include="Common\TLNavigationService.cs" />
     <Compile Include="Common\TLRootNavigationService.cs" />
@@ -1084,6 +1085,7 @@
     <Compile Include="Controls\LoadingTextBlock.cs" />
     <Compile Include="Controls\LoopingPicker.cs" />
     <Compile Include="Controls\MasterDetailPanel.cs" />
+    <Compile Include="Controls\Media\FadingGlassBrush.cs" />
     <Compile Include="Controls\Media\SolidGaussianBrush.cs" />
     <Compile Include="Controls\Media\ChatBackgroundBrush.cs" />
     <Compile Include="Controls\MenuButton.cs" />

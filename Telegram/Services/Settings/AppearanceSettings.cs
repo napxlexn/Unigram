@@ -65,6 +65,44 @@ namespace Telegram.Services.Settings
         Solid
     }
 
+    /// <summary>
+    /// Message bubbles. Glass is the theme colour made translucent; Frosted also blurs what is
+    /// behind the bubble; Glow is Glass with a soft light rim.
+    /// </summary>
+    public enum BubbleStyle
+    {
+        Original,
+        Glass,
+        Frosted,
+        Glow
+    }
+
+    public enum ReactionStyle
+    {
+        Original,
+        Glass,
+        Glow
+    }
+
+    /// <summary>
+    /// The pills floating over the chat - dates and service notices. They are frosted already;
+    /// the options change how dark their tint is.
+    /// </summary>
+    public enum ServiceStyle
+    {
+        Original,
+        DarkGlass,
+        LightGlass,
+        ClearGlass
+    }
+
+    public enum MessageTextStyle
+    {
+        Theme,
+        Brighter,
+        Softer
+    }
+
     public enum AccentShade
     {
         Default,
@@ -388,6 +426,62 @@ namespace Telegram.Services.Settings
         {
             get => (PaneMaterial)(_paneMaterial ??= GetValueOrDefault("PaneMaterial", (int)PaneMaterial.Original));
             set => AddOrUpdateValue(ref _paneMaterial, "PaneMaterial", (int)value);
+        }
+
+        #region Message styles
+
+        private static int? _bubbleStyle;
+        public BubbleStyle BubbleStyle
+        {
+            get => (BubbleStyle)(_bubbleStyle ??= GetValueOrDefault("BubbleStyle", (int)BubbleStyle.Original));
+            set => AddOrUpdateValue(ref _bubbleStyle, "BubbleStyle", (int)value);
+        }
+
+        // Percent, 20-100, of a glass bubble's fill.
+        private static int? _bubbleOpacity;
+        public int BubbleOpacity
+        {
+            get => _bubbleOpacity ??= Math.Clamp(GetValueOrDefault("BubbleOpacity", 70), 20, 100);
+            set => AddOrUpdateValue(ref _bubbleOpacity, "BubbleOpacity", Math.Clamp(value, 20, 100));
+        }
+
+        private static int? _reactionStyle;
+        public ReactionStyle ReactionStyle
+        {
+            get => (ReactionStyle)(_reactionStyle ??= GetValueOrDefault("ReactionStyle", (int)ReactionStyle.Original));
+            set => AddOrUpdateValue(ref _reactionStyle, "ReactionStyle", (int)value);
+        }
+
+        private static int? _serviceStyle;
+        public ServiceStyle ServiceStyle
+        {
+            get => (ServiceStyle)(_serviceStyle ??= GetValueOrDefault("ServiceStyle", (int)ServiceStyle.Original));
+            set => AddOrUpdateValue(ref _serviceStyle, "ServiceStyle", (int)value);
+        }
+
+        private static int? _messageTextStyle;
+        public MessageTextStyle MessageTextStyle
+        {
+            get => (MessageTextStyle)(_messageTextStyle ??= GetValueOrDefault("MessageTextStyle", (int)MessageTextStyle.Theme));
+            set => AddOrUpdateValue(ref _messageTextStyle, "MessageTextStyle", (int)value);
+        }
+
+        #endregion
+
+        public static event EventHandler GlassHeaderChanged;
+
+        public static void RaiseGlassHeaderChanged()
+        {
+            GlassHeaderChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        // The header over a settings page: off is the original darker bar with a hairline, on is
+        // glass that fades out downwards, so the page scrolls under it gradually.
+        private static bool? _isGlassHeaderEnabled;
+        public bool IsGlassHeaderEnabled
+        {
+            get => _isGlassHeaderEnabled ??= GetValueOrDefault("IsGlassHeaderEnabled", false);
+            set => AddOrUpdateValue(ref _isGlassHeaderEnabled, "IsGlassHeaderEnabled", value);
         }
 
         // Experimental: the hairlines between the folders rail, the chat list, the detail pane

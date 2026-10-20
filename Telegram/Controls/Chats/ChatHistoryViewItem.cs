@@ -610,9 +610,17 @@ namespace Telegram.Controls.Chats
             var offset = 0f;
             var step = 1f / (count - 1);
 
+            // A glass bubble style makes the gradient as translucent as a solid fill would be.
+            var alpha = AppSettings.Appearance.BubbleStyle != Services.Settings.BubbleStyle.Original
+                ? (byte)(255 * AppSettings.Appearance.BubbleOpacity / 100)
+                : (byte)255;
+
             for (int i = 0; i < count; i++)
             {
-                _gradientBrush.ColorStops.Add(_gradientBrush.Compositor.CreateColorGradientStop(offset, sorted[i].ToColor()));
+                var color = sorted[i].ToColor();
+                color.A = alpha;
+
+                _gradientBrush.ColorStops.Add(_gradientBrush.Compositor.CreateColorGradientStop(offset, color));
                 offset += step;
             }
         }

@@ -287,6 +287,16 @@ namespace Telegram.ViewModels.Settings
             set => Set(ref _defaultTtl, value);
         }
 
+        public bool IsGhostReadEnabled
+        {
+            get => AppSettings.IsGhostReadEnabled;
+            set
+            {
+                AppSettings.IsGhostReadEnabled = value;
+                RaisePropertyChanged();
+            }
+        }
+
         public bool IsContactsSuggestEnabled
         {
             get => !ClientService.Options.DisableTopChats;

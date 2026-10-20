@@ -3069,6 +3069,13 @@
                                                  Margin="0,1,8,2"
                                                  Grid.Column="1" />
 
+                        <!-- The glass rim, drawn over both columns so it takes no room: transparent unless the reaction style glows. -->
+                        <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                IsHitTestVisible="False"
+                                Grid.ColumnSpan="2" />
+
                         <local:RecentUserHeads x:Name="RecentChoosers"
                                                x:Load="False"
                                                BorderBrush="{ThemeResource MessageReactionBackgroundBrush}"
