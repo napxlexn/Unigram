@@ -256,6 +256,26 @@ namespace Telegram.Host
                         return "ok " + toggle.IsChecked;
                     }
 
+                case "scrollname":
+                    {
+                        // A ScrollViewer by x:Name, to a vertical offset: scrolls the playground
+                        // under its header, for instance.
+                        ScrollViewer target = null;
+                        Walk(root, element =>
+                        {
+                            target = element.Name == parts[1] ? element as ScrollViewer : null;
+                            return target != null;
+                        });
+
+                        if (target == null)
+                        {
+                            return "error: no ScrollViewer " + parts[1];
+                        }
+
+                        target.ChangeView(null, double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture), null, true);
+                        return "ok " + target.ScrollableHeight;
+                    }
+
                 case "show":
                     {
                         // Brings a named element into view: the transparency block sits below the
