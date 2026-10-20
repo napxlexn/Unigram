@@ -738,6 +738,15 @@ namespace Telegram.Navigation
 
         private void ReleaseNative()
         {
+            // Twice is possible on the Win32 host, which also calls this after closing the island
+            // in case Unloaded never arrives for the torn-down tree.
+            if (_nativeReleased)
+            {
+                return;
+            }
+
+            _nativeReleased = true;
+
             FormattedTextBlock.ReleaseNative(_xamlRoot);
             FormattedTextBlockRecyclePool.Release(_xamlRoot);
 
@@ -944,6 +953,8 @@ namespace Telegram.Navigation
 
             ViewService.OnWindowLoaded();
         }
+
+        private bool _nativeReleased;
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {

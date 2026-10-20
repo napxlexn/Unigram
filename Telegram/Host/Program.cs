@@ -62,6 +62,8 @@ namespace Telegram.Host
             // own types in markup inside an island. Gate 1.3a.
             var app = new App();
 
+            HandleCollector.Start();
+
             WindowsXamlManager.InitializeForCurrentThread();
 
             // The real arguments rather than an invented launch: a packaged app gets them from

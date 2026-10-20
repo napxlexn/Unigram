@@ -78,7 +78,10 @@ namespace Telegram.Services
         private static int? _verbosityLevel;
         public static int VerbosityLevel
         {
-            get => _verbosityLevel ??= _local.GetValueOrDefault("VerbosityLevel", ApiInfo.IsPackagedRelease ? 4 : 2);
+            // Warning everywhere by default. Debug (4) for every non-Store build filled the 100 MB
+            // log and rotated it within minutes, at a steady disk and CPU cost; Diagnostics can
+            // still raise it when a log is actually wanted.
+            get => _verbosityLevel ??= _local.GetValueOrDefault("VerbosityLevel", 2);
             set => _local.AddOrUpdateValue(ref _verbosityLevel, "VerbosityLevel", value);
         }
 

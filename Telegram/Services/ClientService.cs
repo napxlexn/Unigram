@@ -564,7 +564,9 @@ namespace Telegram.Services
         {
             TdThroughput.Enabled = AppSettings.Diagnostics.MeasureDeserialization;
 
-            Client.Execute(new SetLogStream(new LogStreamFile(System.IO.Path.Combine(ApplicationData.Current.LocalFolder.Path, "tdlib_log.txt"), 100 * 1024 * 1024, false)));
+            // TDLib keeps one rotated copy beside the file, so this is twice the cap on disk. A
+            // Warning-level log stays far under it; a Debug one wraps quickly at either size.
+            Client.Execute(new SetLogStream(new LogStreamFile(System.IO.Path.Combine(ApplicationData.Current.LocalFolder.Path, "tdlib_log.txt"), 10 * 1024 * 1024, false)));
             Client.Execute(new SetLogVerbosityLevel(AppSettings.VerbosityLevel));
 
             var tags = Client.Execute(new GetLogTags()) as LogTags;
@@ -616,6 +618,22 @@ namespace Telegram.Services
         /// wasteful rather than wrong, and the alternative - touching every file as it is opened -
         /// costs a write per animation load.
         /// </remarks>
+        private const long MaxStickerFrameCacheSize = 256L * 1024 * 1024;
+
+        private static bool TryDelete(System.IO.FileInfo file)
+        {
+            try
+            {
+                file.Delete();
+                return true;
+            }
+            catch
+            {
+                // In use, or gone since the scan. Either way it is not ours to insist.
+                return false;
+            }
+        }
+
         private void FlushStickerCache()
         {
             var path = System.IO.Path.Combine(ApplicationData.Current.LocalFolder.Path, $"{_session.Id}", "stickers");
@@ -629,6 +647,8 @@ namespace Telegram.Services
                 }
 
                 var expiration = DateTime.Now.AddDays(-3);
+                var frames = new List<System.IO.FileInfo>();
+                long framesSize = 0;
 
                 // Enumerated as FileInfo rather than paths: the scan already carries the
                 // timestamps, where File.GetLastAccessTime on each name is a separate stat, and
@@ -647,13 +667,32 @@ namespace Telegram.Services
 
                     if (expired)
                     {
-                        try
+                        TryDelete(file);
+                    }
+                    else if (file.Extension == ".tgfc")
+                    {
+                        frames.Add(file);
+                        framesSize += file.Length;
+                    }
+                }
+
+                // The access time above is not reliably kept by Windows, so age alone let the
+                // frame cache grow without bound - hundreds of MB within days. Past the cap the
+                // oldest frames go first; they are rebuilt from the sticker itself when shown.
+                if (framesSize > MaxStickerFrameCacheSize)
+                {
+                    frames.Sort((x, y) => x.LastWriteTimeUtc.CompareTo(y.LastWriteTimeUtc));
+
+                    foreach (var file in frames)
+                    {
+                        if (framesSize <= MaxStickerFrameCacheSize * 3 / 4)
                         {
-                            file.Delete();
+                            break;
                         }
-                        catch
+
+                        if (TryDelete(file))
                         {
-                            // In use, or gone since the scan. Either way it is not ours to insist.
+                            framesSize -= file.Length;
                         }
                     }
                 }
