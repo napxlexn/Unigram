@@ -189,21 +189,19 @@ namespace Telegram.Common
         // Surfaces App.xaml declares itself, which win over this dictionary and so never see the
         // loop below. Their own colours are kept here the first time they are touched, so that the
         // alpha is always taken from the original rather than compounded.
-        private static readonly string[] _applicationSurfaces =
+        private static readonly string[] _barSurfaces =
         {
             "PageSubHeaderBackgroundBrush2",
             "PageSubHeaderBackgroundSolidBrush",
         };
 
+        // The channel footer - Mute/Unmute with the gift button on top of it - floats over the
+        // messages, and at the bars' opacity they showed straight through its label.
+        private const string FooterSurface = "ChatFooterBackgroundBrush";
+        private const double FooterMinimumOpacity = 0.9;
+
         private static readonly Dictionary<Brush, Color> _applicationSurfaceColors = new();
 
-        /// <summary>
-        /// Where a host can draw a window material, the page surfaces step aside entirely and a
-        /// single tint over the whole window carries the opacity - see Host\WindowBackdrop.cs.
-        /// Stacking it per surface instead made the glass denser wherever two of them overlap,
-        /// and left a slider that barely moved anything that was already see-through.
-        /// Elsewhere the surfaces themselves are the only thing there is to fade.
-        /// </summary>
         #region IsSurface
 
         /// <summary>
@@ -219,51 +217,95 @@ namespace Telegram.Common
 
         public static void SetIsSurface(DependencyObject element, bool value) => element.SetValue(IsSurfaceProperty, value);
 
-        // The brush each surface was given in markup, so that it can be put back.
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Windows.UI.Xaml.Controls.Border, Brush> _surfaceBrushes = new();
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Windows.UI.Xaml.Controls.Border, SurfaceState> _surfaceStates = new();
+
+        /// <summary>
+        /// One per surface: the brush it was given in markup, so that it can be put back, and
+        /// whether it is subscribed. The flag is what keeps a second Loaded - XAML raises it again
+        /// when an element is re-parented - from adding a second handler to a static event that
+        /// would then root the element for the life of the process.
+        /// </summary>
+        private sealed class SurfaceState
+        {
+            private readonly WeakReference<Windows.UI.Xaml.Controls.Border> _border;
+            private readonly Brush _original;
+            private bool _subscribed;
+
+            public SurfaceState(Windows.UI.Xaml.Controls.Border border)
+            {
+                _border = new WeakReference<Windows.UI.Xaml.Controls.Border>(border);
+                _original = border.Background;
+            }
+
+            public void Apply()
+            {
+                if (_border.TryGetTarget(out var border))
+                {
+                    border.Background = GetSurfaceOpacity() == 0 ? null : _original;
+                }
+            }
+
+            public void Subscribe()
+            {
+                Apply();
+
+                if (!_subscribed)
+                {
+                    _subscribed = true;
+                    AppearanceSettings.MaterialChanged += OnMaterialChanged;
+                }
+            }
+
+            public void Unsubscribe()
+            {
+                if (_subscribed)
+                {
+                    _subscribed = false;
+                    AppearanceSettings.MaterialChanged -= OnMaterialChanged;
+                }
+            }
+
+            private void OnMaterialChanged(object sender, EventArgs args)
+            {
+                if (_border.TryGetTarget(out var border))
+                {
+                    border.BeginOnUIThread(Apply);
+                }
+                else
+                {
+                    Unsubscribe();
+                }
+            }
+        }
 
         private static void OnIsSurfaceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is not Windows.UI.Xaml.Controls.Border border || e.NewValue is not true)
+            if (d is not Windows.UI.Xaml.Controls.Border border || e.NewValue is not true || _surfaceStates.TryGetValue(border, out _))
             {
                 return;
             }
 
-            void Apply()
-            {
-                if (!_surfaceBrushes.TryGetValue(border, out var original))
-                {
-                    _surfaceBrushes.AddOrUpdate(border, original = border.Background);
-                }
+            var state = new SurfaceState(border);
+            _surfaceStates.Add(border, state);
 
-                border.Background = GetSurfaceOpacity() == 0 ? null : original;
-            }
-
-            void OnMaterialChanged(object sender, EventArgs args)
-            {
-                border.BeginOnUIThread(Apply);
-            }
-
-            border.Loaded += (s, args) =>
-            {
-                Apply();
-                AppearanceSettings.MaterialChanged += OnMaterialChanged;
-            };
-
-            border.Unloaded += (s, args) =>
-            {
-                AppearanceSettings.MaterialChanged -= OnMaterialChanged;
-            };
+            border.Loaded += (s, args) => state.Subscribe();
+            border.Unloaded += (s, args) => state.Unsubscribe();
 
             if (border.IsLoaded)
             {
-                Apply();
-                AppearanceSettings.MaterialChanged += OnMaterialChanged;
+                state.Subscribe();
             }
         }
 
         #endregion
 
+        /// <summary>
+        /// Where a host can draw a window material, the page surfaces step aside entirely and a
+        /// single tint over the whole window carries the opacity - see Host\WindowBackdrop.cs.
+        /// Stacking it per surface instead made the glass denser wherever two of them overlap,
+        /// and left a slider that barely moved anything that was already see-through.
+        /// Elsewhere the surfaces themselves are the only thing there is to fade.
+        /// </summary>
         internal static double GetSurfaceOpacity()
         {
             if (WindowContext.SupportsWindowMaterials && AppSettings.Appearance.WindowMaterial != WindowMaterial.None)
@@ -279,7 +321,7 @@ namespace Telegram.Common
         /// The acrylic one only ever draws its fallback in an island, which is why that is the
         /// colour that carries the alpha.
         /// </summary>
-        private static void UpdateApplicationSurfaces(TelegramTheme requested, double opacity)
+        private static void UpdateApplicationSurfaces(TelegramTheme requested, double barOpacity)
         {
             var key = requested == TelegramTheme.Light ? "Light" : "Default";
             if (!Application.Current.Resources.ThemeDictionaries.TryGetValue(key, out var value) || value is not ResourceDictionary dictionary)
@@ -287,35 +329,54 @@ namespace Telegram.Common
                 return;
             }
 
-            foreach (var name in _applicationSurfaces)
+            foreach (var name in _barSurfaces)
             {
-                if (!dictionary.TryGetValue(name, out var resource))
+                FadeApplicationSurface(dictionary, name, barOpacity);
+            }
+
+            FadeApplicationSurface(dictionary, FooterSurface, Math.Max(barOpacity, FooterMinimumOpacity));
+        }
+
+        private static void FadeApplicationSurface(ResourceDictionary dictionary, string name, double opacity)
+        {
+            if (!dictionary.TryGetValue(name, out var resource))
+            {
+                return;
+            }
+
+            if (resource is Microsoft.UI.Xaml.Media.AcrylicBrush acrylic)
+            {
+                if (!_applicationSurfaceColors.TryGetValue(acrylic, out var original))
                 {
-                    continue;
+                    _applicationSurfaceColors[acrylic] = original = acrylic.FallbackColor;
                 }
 
-                if (resource is Microsoft.UI.Xaml.Media.AcrylicBrush acrylic)
+                original.A = (byte)(original.A * opacity);
+                acrylic.FallbackColor = original;
+            }
+            else if (resource is SolidColorBrush solid)
+            {
+                if (!_applicationSurfaceColors.TryGetValue(solid, out var original))
                 {
-                    if (!_applicationSurfaceColors.TryGetValue(acrylic, out var original))
-                    {
-                        _applicationSurfaceColors[acrylic] = original = acrylic.FallbackColor;
-                    }
-
-                    original.A = (byte)(original.A * opacity);
-                    acrylic.FallbackColor = original;
+                    _applicationSurfaceColors[solid] = original = solid.Color;
                 }
-                else if (resource is SolidColorBrush solid)
-                {
-                    if (!_applicationSurfaceColors.TryGetValue(solid, out var original))
-                    {
-                        _applicationSurfaceColors[solid] = original = solid.Color;
-                    }
 
-                    original.A = (byte)(original.A * opacity);
-                    solid.Color = original;
-                }
+                original.A = (byte)(original.A * opacity);
+                solid.Color = original;
             }
         }
+
+        /// <summary>
+        /// The hairlines between the big parts of the window - the folders rail, the chat list,
+        /// the detail pane, the navigation pane and the headers. Cleared by the experimental
+        /// <see cref="AppearanceSettings.HideSeparators"/>; separators inside lists and cards are
+        /// drawn with other brushes and stay.
+        /// </summary>
+        private static readonly HashSet<string> _separators = new()
+        {
+            "NavigationViewItemSeparatorForeground",
+            "PageHeaderBorderBrush",
+        };
 
         private static readonly HashSet<string> _surfaces = new()
         {
@@ -502,6 +563,7 @@ namespace Telegram.Common
                 }
 
                 var surfaceOpacity = GetSurfaceOpacity();
+                var hideSeparators = AppSettings.Appearance.HideSeparators;
 
                 foreach (var item in lookup)
                 {
@@ -534,6 +596,10 @@ namespace Telegram.Common
                         if (_surfaces.Contains(item.Key))
                         {
                             value.A = (byte)(value.A * surfaceOpacity);
+                        }
+                        else if (hideSeparators && _separators.Contains(item.Key))
+                        {
+                            value.A = 0;
                         }
 
                         AddOrUpdate<SolidColorBrush>(target, muxcCopy, item.Key, create,
@@ -593,6 +659,16 @@ namespace Telegram.Common
                     // beneath them showed straight through their text.
                     UpdateApplicationSurfaces(requested, surfaceOpacity > 0 ? surfaceOpacity : AppSettings.Appearance.BackgroundOpacity / 100d);
                 }
+
+                // Not in the lookup - it is WinUI's own, an alias of CardStrokeColorDefaultBrush - so
+                // it is written here, with WinUI's value, to give the separator switch a brush to
+                // clear.
+                var gridBorder = hideSeparators
+                    ? Colors.Transparent
+                    : requested == TelegramTheme.Light ? Color.FromArgb(0x0F, 0, 0, 0) : Color.FromArgb(0x19, 0, 0, 0);
+
+                AddOrUpdate<SolidColorBrush>(target, muxcCopy, "NavigationViewContentGridBorderBrush", create,
+                    update => update.Color = gridBorder);
 
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlElevationBorderFocusedBrush", create, GetShade);
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlBorderBrushFocused", create, GetShade);

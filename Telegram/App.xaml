@@ -29,6 +29,8 @@
                     <StaticResource x:Key="SettingsPageBackground"
                                     ResourceKey="SystemControlTransparentBrush" />
 
+                    <SolidColorBrush x:Key="ChatFooterBackgroundBrush"
+                                     Color="#171717" />
                     <SolidColorBrush x:Key="PageSubHeaderBackgroundSolidBrush"
                                      Color="#2C2C2C" />
                     <!-- TODO: MUX AcrylicBrush doesn't work in XAML Islands
@@ -78,6 +80,8 @@
                     <StaticResource x:Key="SettingsPageBackground"
                                     ResourceKey="SystemControlTransparentBrush" />
 
+                    <SolidColorBrush x:Key="ChatFooterBackgroundBrush"
+                                     Color="#FFFFFF" />
                     <SolidColorBrush x:Key="PageSubHeaderBackgroundSolidBrush"
                                      Color="#F9F9F9" />
                     <media:AcrylicBrush x:Key="PageSubHeaderBackgroundBrush2"
