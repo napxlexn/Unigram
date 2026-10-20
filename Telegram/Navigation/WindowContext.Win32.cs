@@ -181,6 +181,12 @@ namespace Telegram.Navigation
             _backdrop = null;
             _island.Close();
 
+            // Close nulls the island's content and disposes its source in one go, and the
+            // Unloaded that would release this window's native caches is raised asynchronously -
+            // when it is raised at all for a tree with no source left. Low priority, so that if
+            // it does come it runs first and this finds nothing to do.
+            Dispatcher.Dispatch(ReleaseNative, Windows.System.DispatcherQueuePriority.Low);
+
             return Task.CompletedTask;
         }
 
