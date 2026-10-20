@@ -34,6 +34,18 @@ foreach ($name in ($arch -split '[,|]')) {
 
 $td_root = Resolve-Path "../tdlib"
 
+# Telegram/Td/Client.cs calls td_send(client_id, request_id, request) and
+# td_receive(timeout, &client_id, &request_id), which stock TDLib does not export. Applied once:
+# a tree that already carries the patch is left alone.
+$td_patch = Join-Path $PSScriptRoot "unigram-request-id.patch"
+& git -C "$td_root" apply --reverse --check "$td_patch" 2>$null
+if ($LastExitCode -ne 0) {
+  & git -C "$td_root" apply "$td_patch"
+  if ($LastExitCode -ne 0) {
+    throw "Could not apply $td_patch to $td_root."
+  }
+}
+
 # TDLib and the app share one manifest, so that openssl and zlib cannot drift between the
 # tdjson.dll we ship and the copies the app links against.
 $manifest_root = Resolve-Path "../.."

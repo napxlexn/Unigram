@@ -33,8 +33,12 @@
     <xsl:copy>
       <xsl:apply-templates select="@*" />
       <xsl:apply-templates select="f:TargetDeviceFamily" />
-      <PackageDependency Name="{$VCLibsName}" MinVersion="14.0.33519.0"
-                         Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+      <!-- Newer packaging targets (VS 18.11+) generate this entry themselves, and a second
+           declaration of the same package fails registration with 0x80073CF3. -->
+      <xsl:if test="not(f:PackageDependency[@Name = $VCLibsName])">
+        <PackageDependency Name="{$VCLibsName}" MinVersion="14.0.33519.0"
+                           Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+      </xsl:if>
       <xsl:apply-templates select="node()[not(self::f:TargetDeviceFamily)]" />
     </xsl:copy>
   </xsl:template>
