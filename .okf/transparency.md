@@ -29,5 +29,5 @@ UI: блок «Прозорість» у `Views/Settings/SettingsAppearancePage.
 - **Непрозорість фону:** `Common/Theme.cs`, множина `_surfaces`. Альфа фонових ключів теми (`ApplicationPageBackgroundThemeBrush`, `PageHeaderBackgroundBrush` та інші) множиться на коефіцієнт. Bot API `ThemeParameters` отримує непрозорі кольори. Зміна запускає `NightModeService.Update(false)` з дебаунсом 150 мс.
 - **Непрозорість шпалер:** `Controls/Chats/ChatBackgroundControl.cs`, `Opacity` всього контрола, тож разом зі шпалерами зникає і чорний шар затемнення.
 
-## Не перевірено
-Збірку та роботу в середовищі ще не перевіряли: на машині не було Visual Studio 2026.
+## Стан
+2026-10-20: Win32 Debug x64 збирається (0 помилок, без попереджень у файлах функції), застосунок запускається до екрана входу. Сам ефект прозорості після входу візуально ще не перевірено. Як зібрати: [[local-build]].
