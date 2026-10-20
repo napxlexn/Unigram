@@ -227,6 +227,7 @@
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.WindowMaterialOptions}"
+                                                       AutomationProperties.Name="Матеріал вікна"
                                                        SelectedIndex="{x:Bind ViewModel.WindowMaterialIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
@@ -266,6 +267,10 @@
                                 Margin="12,6,16,6"
                                 Grid.Column="2" />
                     </Grid>
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.IsWallpaperEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Показувати шпалери"
+                              Content="Показувати шпалери в чатах"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
                     <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
@@ -289,9 +294,11 @@
                         </Border>
 
                         <TextBlock Text="{x:Bind ConvertPercent('Непрозорість шпалер', ViewModel.WallpaperOpacity), Mode=OneWay}"
+                                   Opacity="{x:Bind ConvertEnabledOpacity(ViewModel.IsWallpaperEnabled), Mode=OneWay}"
                                    VerticalAlignment="Center"
                                    Grid.Column="1" />
                         <Slider Value="{x:Bind ViewModel.WallpaperOpacity, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsWallpaperEnabled, Mode=OneWay}"
                                 AutomationProperties.Name="Непрозорість шпалер"
                                 Minimum="0"
                                 Maximum="100"

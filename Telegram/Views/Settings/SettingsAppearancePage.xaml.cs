@@ -110,6 +110,11 @@ namespace Telegram.Views.Settings
             return string.Format("{0}: {1:0}%", header, value);
         }
 
+        private double ConvertEnabledOpacity(bool enabled)
+        {
+            return enabled ? 1 : 0.5;
+        }
+
         #endregion
 
         private void OnPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
