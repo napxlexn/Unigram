@@ -536,6 +536,74 @@ namespace Telegram.ViewModels.Settings
             false
         };
 
+        #region Transparency
+
+        // The UWP host only has BackdropMaterial, which is Mica or nothing.
+        public List<SettingsOptionItem<WindowMaterial>> WindowMaterialOptions { get; } = WindowContext.SupportsWindowMaterials
+            ? new()
+            {
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.None, "Немає"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.Mica, "Mica"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.MicaAlt, "Mica Alt"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.Acrylic, "Acrylic"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.BlurBehind, "Розмиття (як AI Limits)"),
+            }
+            : new()
+            {
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.None, "Немає"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.Mica, "Mica"),
+            };
+
+        public int WindowMaterialIndex
+        {
+            get => Math.Max(0, WindowMaterialOptions.FindIndex(x => x.Value == AppSettings.Appearance.WindowMaterial));
+            set
+            {
+                if (value >= 0 && value < WindowMaterialOptions.Count && AppSettings.Appearance.WindowMaterial != WindowMaterialOptions[value].Value)
+                {
+                    AppSettings.Appearance.WindowMaterial = WindowMaterialOptions[value].Value;
+                    AppearanceSettings.RaiseTransparencyChanged();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double BackgroundOpacity
+        {
+            get => AppSettings.Appearance.BackgroundOpacity;
+            set
+            {
+                if (AppSettings.Appearance.BackgroundOpacity != (int)value)
+                {
+                    AppSettings.Appearance.BackgroundOpacity = (int)value;
+                    RaisePropertyChanged();
+
+                    // Every surface brush of every window is rewritten on a theme pass, so a drag
+                    // of the slider only triggers one once it settles.
+                    _backgroundOpacityDebouncer ??= new DebouncedProperty<int>(150, _ => NightModeService.Current.Update(false, updateBackground: false));
+                    _backgroundOpacityDebouncer.Set((int)value);
+                }
+            }
+        }
+
+        private DebouncedProperty<int> _backgroundOpacityDebouncer;
+
+        public double WallpaperOpacity
+        {
+            get => AppSettings.Appearance.WallpaperOpacity;
+            set
+            {
+                if (AppSettings.Appearance.WallpaperOpacity != (int)value)
+                {
+                    AppSettings.Appearance.WallpaperOpacity = (int)value;
+                    AppearanceSettings.RaiseTransparencyChanged();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        #endregion
+
         public List<SettingsOptionItem<bool>> SendByOptions { get; } = new()
         {
             new SettingsOptionItem<bool>(true, Strings.SendByEnterKey),

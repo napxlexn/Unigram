@@ -105,6 +105,11 @@ namespace Telegram.Views.Settings
                 : Strings.QuickReactionInfo;
         }
 
+        private string ConvertPercent(string header, double value)
+        {
+            return string.Format("{0}: {1:0}%", header, value);
+        }
+
         #endregion
 
         private void OnPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)

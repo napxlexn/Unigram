@@ -6,7 +6,10 @@
 //
 
 using System;
+using System.Collections.Generic;
 using Telegram.Navigation;
+using Telegram.Services;
+using Telegram.Services.Settings;
 using Windows.System;
 using Windows.UI;
 using Windows.UI.ViewManagement;
@@ -47,7 +50,17 @@ namespace Telegram.Host
         private readonly UISettings _settings = new();
         private readonly AccessibilitySettings _accessibility = new();
 
+        // The blur-behind tint, AABBGGRR: a near-black at ~11%, the same as AI Limits. The pages
+        // on top carry the real colour; this only keeps bright windows behind from glaring.
+        private const uint BlurTintDark = 0x1C121212;
+        private const uint BlurTintLight = 0x1CF3F3F3;
+
+        // Every live backdrop by its HWND, so that the window procedure can ask for the blur to
+        // be restarted after a drag or a DPI change without holding on to the owner.
+        private static readonly Dictionary<IntPtr, WindowBackdrop> _windows = new();
+
         private bool _active;
+        private WindowMaterial _material = WindowMaterial.None;
 
         public WindowBackdrop(IntPtr hwnd, WindowPresenter presenter)
         {
@@ -57,6 +70,9 @@ namespace Telegram.Host
             _settings.AdvancedEffectsEnabledChanged += OnAdvancedEffectsEnabledChanged;
             _accessibility.HighContrastChanged += OnHighContrastChanged;
             _presenter.ActualThemeChanged += OnActualThemeChanged;
+            AppearanceSettings.TransparencyChanged += OnTransparencyChanged;
+
+            _windows[hwnd] = this;
 
             Update();
         }
@@ -66,12 +82,32 @@ namespace Telegram.Host
             _settings.AdvancedEffectsEnabledChanged -= OnAdvancedEffectsEnabledChanged;
             _accessibility.HighContrastChanged -= OnHighContrastChanged;
             _presenter.ActualThemeChanged -= OnActualThemeChanged;
+            AppearanceSettings.TransparencyChanged -= OnTransparencyChanged;
+
+            _windows.Remove(_hwnd);
 
             if (_active)
             {
-                Win32.SetBackdrop(_hwnd, false);
+                Apply(WindowMaterial.None);
                 _active = false;
             }
+        }
+
+        /// <summary>
+        /// DWM sometimes drops the blur-behind accent when the window is dragged across monitors
+        /// or changes scale, leaving a flat tint. Turning it off and on again brings it back.
+        /// </summary>
+        public static void Refresh(IntPtr hwnd)
+        {
+            if (_windows.TryGetValue(hwnd, out var backdrop) && backdrop._active && backdrop._material == WindowMaterial.BlurBehind)
+            {
+                backdrop.Apply(WindowMaterial.BlurBehind);
+            }
+        }
+
+        private void OnTransparencyChanged(object sender, EventArgs args)
+        {
+            Post();
         }
 
         // These arrive on a system thread, so they are marshalled before touching XAML.
@@ -106,23 +142,65 @@ namespace Telegram.Host
             // gets a light Mica behind a dark window.
             Win32.SetDarkMode(_hwnd, _presenter.ActualTheme == ElementTheme.Dark);
 
-            var wanted = Win32.IsBackdropSupported
-                && !_accessibility.HighContrast
-                && _settings.AdvancedEffectsEnabled;
+            var material = AppSettings.Appearance.WindowMaterial;
+            if (!IsSupported(material) || _accessibility.HighContrast || !_settings.AdvancedEffectsEnabled)
+            {
+                material = WindowMaterial.None;
+            }
 
-            if (wanted != _active)
+            // Blur-behind is re-applied even when unchanged, since its tint follows the theme.
+            if (material != _material || material == WindowMaterial.BlurBehind)
             {
                 // The XAML backstop only has to come off once per thread, and it never goes back
                 // on: turning it off is what lets the backdrop reach the client area at all.
-                if (wanted)
+                if (material != WindowMaterial.None)
                 {
                     WindowPrivate.TrySetTransparentBackground(true);
                 }
 
-                _active = Win32.SetBackdrop(_hwnd, wanted) && wanted;
+                // Off first, whatever comes next: a system backdrop and the accent policy draw on
+                // top of each other if both are left set.
+                if (_material != WindowMaterial.None && _material != material)
+                {
+                    Apply(WindowMaterial.None);
+                }
+
+                _active = Apply(material) && material != WindowMaterial.None;
+                _material = _active ? material : WindowMaterial.None;
             }
 
             _presenter.Background = new SolidColorBrush(_active ? Colors.Transparent : Fallback());
+        }
+
+        private static bool IsSupported(WindowMaterial material) => material switch
+        {
+            WindowMaterial.None => false,
+            WindowMaterial.Mica => Win32.IsBackdropSupported,
+            WindowMaterial.MicaAlt => Win32.IsBackdropTypeSupported(Win32.DWMSBT_TABBEDWINDOW),
+            WindowMaterial.Acrylic => Win32.IsBackdropTypeSupported(Win32.DWMSBT_TRANSIENTWINDOW),
+            // The accent policy is older than Mica and works on Windows 10 as well.
+            WindowMaterial.BlurBehind => true,
+            _ => false
+        };
+
+        private bool Apply(WindowMaterial material)
+        {
+            switch (material)
+            {
+                case WindowMaterial.Mica:
+                    return Win32.SetBackdrop(_hwnd, Win32.DWMSBT_MAINWINDOW);
+                case WindowMaterial.MicaAlt:
+                    return Win32.SetBackdrop(_hwnd, Win32.DWMSBT_TABBEDWINDOW);
+                case WindowMaterial.Acrylic:
+                    return Win32.SetBackdrop(_hwnd, Win32.DWMSBT_TRANSIENTWINDOW);
+                case WindowMaterial.BlurBehind:
+                    var tint = _presenter.ActualTheme == ElementTheme.Dark ? BlurTintDark : BlurTintLight;
+                    return Win32.SetBlurBehind(_hwnd, true, tint);
+                default:
+                    Win32.SetBlurBehind(_hwnd, false, 0);
+                    Win32.SetBackdrop(_hwnd, Win32.DWMSBT_NONE);
+                    return true;
+            }
         }
 
         /// <summary>

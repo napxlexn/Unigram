@@ -40,6 +40,19 @@ namespace Telegram.Services.Settings
         System
     }
 
+    /// <summary>
+    /// What the window draws behind its content. Only the Win32 host can ask DWM for anything
+    /// but Mica; the UWP host treats every value other than None as Mica.
+    /// </summary>
+    public enum WindowMaterial
+    {
+        None,
+        Mica,
+        MicaAlt,
+        Acrylic,
+        BlurBehind
+    }
+
     public enum AccentShade
     {
         Default,
@@ -287,6 +300,40 @@ namespace Telegram.Services.Settings
         }
 
         public int CornerRadius => BubbleRadius > 0 ? BubbleRadius < 15 ? BubbleRadius : 24 : 0;
+
+        /// <summary>
+        /// Raised when any of the window transparency settings change, so that every open window
+        /// can update its backdrop without a restart.
+        /// </summary>
+        public static event EventHandler TransparencyChanged;
+
+        public static void RaiseTransparencyChanged()
+        {
+            TransparencyChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        private static int? _windowMaterial;
+        public WindowMaterial WindowMaterial
+        {
+            get => (WindowMaterial)(_windowMaterial ??= GetValueOrDefault("WindowMaterial", (int)WindowMaterial.Mica));
+            set => AddOrUpdateValue(ref _windowMaterial, "WindowMaterial", (int)value);
+        }
+
+        // Percent, 10-100. 100 is stock Unigram: opaque pages over the material.
+        private static int? _backgroundOpacity;
+        public int BackgroundOpacity
+        {
+            get => _backgroundOpacity ??= Math.Clamp(GetValueOrDefault("BackgroundOpacity", 100), 10, 100);
+            set => AddOrUpdateValue(ref _backgroundOpacity, "BackgroundOpacity", Math.Clamp(value, 10, 100));
+        }
+
+        // Percent, 0-100, of the chat wallpaper. 0 leaves only the material behind the messages.
+        private static int? _wallpaperOpacity;
+        public int WallpaperOpacity
+        {
+            get => _wallpaperOpacity ??= Math.Clamp(GetValueOrDefault("WallpaperOpacity", 100), 0, 100);
+            set => AddOrUpdateValue(ref _wallpaperOpacity, "WallpaperOpacity", Math.Clamp(value, 0, 100));
+        }
 
         private bool? _isQuickReplySelected;
         public bool IsQuickReplySelected

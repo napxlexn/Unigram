@@ -796,10 +796,20 @@ namespace Telegram.Navigation
         private static WindowContext _current;
         public static WindowContext Current => _current;
 
+        /// <summary>
+        /// BackdropMaterial only knows Mica, so any material but None is Mica here. Read once per
+        /// window: a change shows up in windows opened after it.
+        /// </summary>
         partial void SetBackdropMaterial(WindowPresenter content)
         {
-            Microsoft.UI.Xaml.Controls.BackdropMaterial.SetApplyToRootOrPageBackground(content, true);
+            var enabled = global::Telegram.Services.AppSettings.Appearance.WindowMaterial != global::Telegram.Services.Settings.WindowMaterial.None;
+            Microsoft.UI.Xaml.Controls.BackdropMaterial.SetApplyToRootOrPageBackground(content, enabled);
         }
+
+        /// <summary>
+        /// Whether this host can draw materials other than Mica - see the Win32 half.
+        /// </summary>
+        public static bool SupportsWindowMaterials => false;
 
         /// <summary>
         /// Nothing to do: a UWP picker is owned by the view that opens it, and the app model knows

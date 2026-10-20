@@ -182,6 +182,22 @@ namespace Telegram.Common
         private readonly Dictionary<ElementTheme, ThemeParameters> _parameters = new();
 
         /// <summary>
+        /// The opaque page surfaces that sit between the window material and the content. Their
+        /// alpha follows <see cref="AppearanceSettings.BackgroundOpacity"/>; everything else -
+        /// bubbles, controls, cards, dialogs - keeps its own, so text stays readable.
+        /// </summary>
+        private static readonly HashSet<string> _surfaces = new()
+        {
+            "ApplicationPageBackgroundThemeBrush",
+            "ChatPageBackgroundBrush",
+            "PageHeaderBackgroundBrush",
+            "PageSubHeaderBackgroundBrush",
+            "PageBackgroundDarkBrush",
+            "PageTitleBackgroundBrush",
+            "SolidBackgroundFillColorBaseBrush",
+        };
+
+        /// <summary>
         /// The bot API's view of the theme. It differs between light and dark, so the window
         /// asking has to say which of the two it is currently showing.
         /// </summary>
@@ -354,6 +370,8 @@ namespace Telegram.Common
                     }
                 }
 
+                var surfaceOpacity = AppSettings.Appearance.BackgroundOpacity / 100d;
+
                 foreach (var item in lookup)
                 {
                     var kind = item.Value.Kind;
@@ -379,6 +397,12 @@ namespace Telegram.Common
                         if (themeParameters.ContainsKey(item.Key))
                         {
                             themeParameters[item.Key] = value.ToValue();
+                        }
+
+                        // After the bot API copy: web apps get the theme's real, opaque colour.
+                        if (_surfaces.Contains(item.Key))
+                        {
+                            value.A = (byte)(value.A * surfaceOpacity);
                         }
 
                         AddOrUpdate<SolidColorBrush>(target, muxcCopy, item.Key, create,

@@ -557,6 +557,12 @@ namespace Telegram.Navigation
         }
 
         /// <summary>
+        /// DWM is asked directly against the HWND here, so Mica Alt, Acrylic and blur-behind are
+        /// all available, and switch live.
+        /// </summary>
+        public static bool SupportsWindowMaterials => true;
+
+        /// <summary>
         /// A picker in a desktop process has no owning window of its own, and shows nothing until
         /// it is given one: every FileOpenPicker, FileSavePicker and FolderPicker has to be
         /// initialized with the HWND it should be modal to.

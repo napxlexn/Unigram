@@ -309,6 +309,7 @@ namespace Telegram.Host
                         window.Owner?.SizeChanged();
                     }
 
+                    WindowBackdrop.Refresh(hWnd);
                     return IntPtr.Zero;
 
                 case Win32.WM_SIZE:
@@ -362,6 +363,7 @@ namespace Telegram.Host
                 case Win32.WM_EXITSIZEMOVE:
                     // The end of a drag or a resize, rather than every position it passed through.
                     WindowLayout.Save(hWnd, window?._persistedId);
+                    WindowBackdrop.Refresh(hWnd);
                     break;
 
                 case Win32.WM_DESTROY:

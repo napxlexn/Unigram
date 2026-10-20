@@ -90,6 +90,25 @@ namespace Telegram.Host
         public int cxLeftWidth, cxRightWidth, cyTopHeight, cyBottomHeight;
     }
 
+    // Undocumented, but stable since Windows 10 1507: ACCENT_POLICY and the attribute block that
+    // carries it to SetWindowCompositionAttribute.
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ACCENT_POLICY
+    {
+        public int AccentState;
+        public int AccentFlags;
+        public uint GradientColor;
+        public int AnimationId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct WINDOWCOMPOSITIONATTRIBDATA
+    {
+        public int Attrib;
+        public IntPtr Data;
+        public int SizeOfData;
+    }
+
     // DISPATCHERQUEUE_THREAD_TYPE / _APARTMENTTYPE, from dispatcherqueue.h.
     [StructLayout(LayoutKind.Sequential)]
     internal struct DispatcherQueueOptions
@@ -220,19 +239,75 @@ namespace Telegram.Host
 
         public static bool SetBackdrop(IntPtr hwnd, bool enabled)
         {
-            if (hwnd == IntPtr.Zero || !IsBackdropSupported)
+            return SetBackdrop(hwnd, enabled ? DWMSBT_MAINWINDOW : DWMSBT_NONE);
+        }
+
+        /// <summary>
+        /// Mica Alt and Acrylic only exist as DWMWA_SYSTEMBACKDROP_TYPE values, so before 22621
+        /// they are refused rather than quietly turned into Mica.
+        /// </summary>
+        public static bool IsBackdropTypeSupported(int type) => type switch
+        {
+            DWMSBT_NONE => true,
+            DWMSBT_MAINWINDOW => IsBackdropSupported,
+            _ => Environment.OSVersion.Version.Build >= 22621
+        };
+
+        public static bool SetBackdrop(IntPtr hwnd, int type)
+        {
+            if (hwnd == IntPtr.Zero || !IsBackdropSupported || !IsBackdropTypeSupported(type))
             {
                 return false;
             }
 
             if (Environment.OSVersion.Version.Build >= 22621)
             {
-                var backdrop = enabled ? DWMSBT_MAINWINDOW : DWMSBT_NONE;
-                return DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int)) >= 0;
+                return DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref type, sizeof(int)) >= 0;
             }
 
-            var legacy = enabled ? 1 : 0;
+            var legacy = type == DWMSBT_MAINWINDOW ? 1 : 0;
             return DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFECT, ref legacy, sizeof(int)) >= 0;
+        }
+
+        // SetWindowCompositionAttribute. BLURBEHIND (3) rather than ACRYLICBLURBEHIND (4): the
+        // acrylic accent drops its blur on a drag or a monitor change and leaves a flat tint.
+        public const int WCA_ACCENT_POLICY = 19;
+        public const int ACCENT_DISABLED = 0;
+        public const int ACCENT_ENABLE_BLURBEHIND = 3;
+
+        /// <summary>
+        /// A live blur of whatever is behind the window, not just the wallpaper. Turned off and on
+        /// again every time, because that is what makes DWM restart a blur that got stuck.
+        /// <paramref name="tint"/> is AABBGGRR.
+        /// </summary>
+        public static unsafe bool SetBlurBehind(IntPtr hwnd, bool enabled, uint tint)
+        {
+            if (hwnd == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            static bool Apply(IntPtr hwnd, int state, uint color)
+            {
+                var accent = new ACCENT_POLICY
+                {
+                    AccentState = state,
+                    AccentFlags = 2, // draw the gradient colour as the tint
+                    GradientColor = color
+                };
+
+                var data = new WINDOWCOMPOSITIONATTRIBDATA
+                {
+                    Attrib = WCA_ACCENT_POLICY,
+                    Data = (IntPtr)(&accent),
+                    SizeOfData = sizeof(ACCENT_POLICY)
+                };
+
+                return SetWindowCompositionAttribute(hwnd, ref data);
+            }
+
+            var disabled = Apply(hwnd, ACCENT_DISABLED, 0);
+            return enabled ? Apply(hwnd, ACCENT_ENABLE_BLURBEHIND, tint) : disabled;
         }
 
         public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
@@ -406,6 +481,10 @@ namespace Telegram.Host
 
         [LibraryImport("dwmapi.dll")]
         public static partial int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS margins);
+
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool SetWindowCompositionAttribute(IntPtr hWnd, ref WINDOWCOMPOSITIONATTRIBDATA data);
 
         [LibraryImport("coremessaging.dll", EntryPoint = "CreateDispatcherQueueController")]
         public static partial int CreateDispatcherQueueController(DispatcherQueueOptions options, out IntPtr controller);

@@ -11,6 +11,7 @@ using Telegram.Common;
 using Telegram.Native.Controls;
 using Telegram.Navigation;
 using Telegram.Services;
+using Telegram.Services.Settings;
 using Telegram.Td.Api;
 using Windows.UI;
 using Windows.UI.Composition;
@@ -86,12 +87,26 @@ namespace Telegram.Controls.Chats
         {
             _aggregator?.Subscribe<UpdateDefaultBackground>(this, Handle);
             ActualThemeChanged += OnActualThemeChanged;
+            AppearanceSettings.TransparencyChanged += OnTransparencyChanged;
         }
 
         protected override void OnUnloaded()
         {
             _aggregator?.Unsubscribe(this);
             ActualThemeChanged -= OnActualThemeChanged;
+            AppearanceSettings.TransparencyChanged -= OnTransparencyChanged;
+        }
+
+        private void OnTransparencyChanged(object sender, EventArgs args)
+        {
+            this.BeginOnUIThread(UpdateOpacity);
+        }
+
+        // The whole control rather than the presenter: the dimming layer below the presenter is
+        // a solid black, and it has to fade with the wallpaper for the material to show through.
+        private void UpdateOpacity()
+        {
+            Opacity = AppSettings.Appearance.WallpaperOpacity / 100d;
         }
 
         // NightModeService writes the window's RequestedTheme and publishes UpdateDefaultBackground
@@ -237,6 +252,8 @@ namespace Telegram.Controls.Chats
             {
                 return;
             }
+
+            UpdateOpacity();
 
             var dark = ActualTheme == ElementTheme.Dark;
             var variant = dark ? _dark : _light;
