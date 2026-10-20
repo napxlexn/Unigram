@@ -221,6 +221,114 @@
                     </controls:SettingsButton>
                 </controls:HeaderedControl>
 
+                <controls:HeaderedControl Header="Майданчик"
+                                          Footer="Живий приклад: шпалери, бульбашки, реакції, дати й шапка змінюються разом із налаштуваннями нижче. Прокрутіть його, щоб побачити, як повідомлення заходять під шапку.">
+                    <Grid x:Name="Playground"
+                          AutomationProperties.Name="Майданчик"
+                          Height="320"
+                          CornerRadius="4">
+                        <chats:ChatBackgroundControl x:Name="PlaygroundBackground"
+                                                     CornerRadius="4" />
+
+                        <ScrollViewer x:Name="PlaygroundScroll"
+                                      VerticalScrollBarVisibility="Hidden"
+                                      VerticalScrollMode="Enabled"
+                                      HorizontalScrollMode="Disabled">
+                            <StackPanel x:Name="PlaygroundBubbles"
+                                        Padding="0,64,0,16"
+                                        Spacing="6">
+                                <messages:MessageService HorizontalAlignment="Center">
+                                    <TextBlock Text="Сьогодні"
+                                               Foreground="White"
+                                               FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                               Style="{StaticResource CaptionTextBlockStyle}" />
+                                </messages:MessageService>
+
+                                <messages:MessageBubble x:Name="PlaygroundIncoming"
+                                                        HorizontalAlignment="Left" />
+
+                                <!-- The capsules a message's reactions are drawn in, painted with
+                                     the same brushes, so they change with the reaction style. -->
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="4"
+                                            Margin="58,0,0,0">
+                                    <Grid MinWidth="44"
+                                          Height="28"
+                                          Padding="8,0"
+                                          CornerRadius="14"
+                                          Background="{ThemeResource MessageReactionChosenBackgroundBrush}">
+                                        <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="14"
+                                                Margin="-8,0" />
+                                        <TextBlock Text="❤ 24"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                                   Foreground="{ThemeResource MessageReactionChosenForegroundBrush}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                                    </Grid>
+                                    <Grid MinWidth="44"
+                                          Height="28"
+                                          Padding="8,0"
+                                          CornerRadius="14"
+                                          Background="{ThemeResource MessageReactionBackgroundBrush}">
+                                        <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="14"
+                                                Margin="-8,0" />
+                                        <TextBlock Text="🔥 7"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                                   Foreground="{ThemeResource MessageReactionForegroundBrush}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <messages:MessageBubble x:Name="PlaygroundOutgoing"
+                                                        HorizontalAlignment="Right"
+                                                        IsOutgoing="True" />
+
+                                <messages:MessageService HorizontalAlignment="Center">
+                                    <TextBlock Text="Олена приєдналася до групи"
+                                               Foreground="White"
+                                               FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                               Style="{StaticResource CaptionTextBlockStyle}" />
+                                </messages:MessageService>
+
+                                <messages:MessageBubble x:Name="PlaygroundIncoming2"
+                                                        HorizontalAlignment="Left" />
+
+                                <messages:MessageBubble x:Name="PlaygroundOutgoing2"
+                                                        HorizontalAlignment="Right"
+                                                        IsOutgoing="True" />
+
+                                <messages:MessageBubble x:Name="PlaygroundIncoming3"
+                                                        HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- The header the pages scroll under, in both of its forms. -->
+                        <Border x:Name="PlaygroundHeaderOriginal"
+                                Height="48"
+                                VerticalAlignment="Top"
+                                Background="{ThemeResource PageSubHeaderBackgroundBrush2}"
+                                BorderBrush="{ThemeResource NavigationViewContentGridBorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="PlaygroundHeaderGlass"
+                                Height="72"
+                                VerticalAlignment="Top"
+                                IsHitTestVisible="False" />
+                        <TextBlock x:Name="PlaygroundTitle"
+                                   Text="Олена"
+                                   FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                   FontWeight="SemiBold"
+                                   Margin="16,12,16,0"
+                                   VerticalAlignment="Top"
+                                   IsHitTestVisible="False" />
+                    </Grid>
+                </controls:HeaderedControl>
+
                 <controls:HeaderedControl Header="Прозорість"
                                           Footer="Матеріал вікна потребує увімкнених ефектів прозорості в Windows. Розмиття показує розмиті вікна позаду, акрил — те саме під тінтом Windows.">
                     <controls:SettingsButton Content="Матеріал вікна"

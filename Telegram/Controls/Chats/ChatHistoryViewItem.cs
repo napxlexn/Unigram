@@ -600,6 +600,19 @@ namespace Telegram.Controls.Chats
             }
         }
 
+        /// <summary>
+        /// Rebuilds the stops from the colours already held, for a glass style that changed the
+        /// alpha they are drawn at.
+        /// </summary>
+        public void RefreshStops()
+        {
+            if (_gradientBrush != null && _colors != null)
+            {
+                _gradientBrush.ColorStops.Clear();
+                ApplyColorStops(_colors);
+            }
+        }
+
         private void ApplyColorStops(Vector<int> value)
         {
             Span<int> sorted = stackalloc int[4];

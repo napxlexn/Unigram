@@ -7,6 +7,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Telegram.Common;
 using Telegram.Controls;
 using Telegram.Controls.Cells;
@@ -75,7 +76,64 @@ namespace Telegram.Views.Settings
                 Message1.Mockup(ViewModel.ClientService, Strings.FontSizePreviewLine1, user, Strings.FontSizePreviewReply, false, DateTime.Now.AddSeconds(-25));
                 Message2.Mockup(Strings.FontSizePreviewLine2, true, DateTime.Now);
             }
+
+            InitializePlayground();
         }
+
+        #region Playground
+
+        private MessageBubbleBackgroundCoordinator _playgroundBackground;
+
+        private void InitializePlayground()
+        {
+            PlaygroundBackground.Update(ViewModel.ClientService, ViewModel.Aggregator);
+
+            _playgroundBackground ??= new MessageBubbleBackgroundCoordinator(PlaygroundBubbles, ViewModel.Window);
+            _playgroundBackground.Attach(PlaygroundOutgoing);
+            _playgroundBackground.Attach(PlaygroundOutgoing2);
+
+            PlaygroundIncoming.Mockup("Як тобі нове скло? Бульбашки тепер просвічують шпалери ✨", false, DateTime.Now.AddMinutes(-3));
+            PlaygroundOutgoing.Mockup("Виглядає чудово! Ще трохи сяйва — і буде ідеально 😍", true, DateTime.Now.AddMinutes(-2));
+            PlaygroundIncoming2.Mockup("Прокрути вгору: повідомлення плавно заходять під шапку 👆", false, DateTime.Now.AddMinutes(-1));
+            PlaygroundOutgoing2.Mockup("А дати й реакції теж можна зробити скляними 🫧", true, DateTime.Now.AddSeconds(-40));
+            PlaygroundIncoming3.Mockup("Спробуй «Матове скло» і «Скло з сяйвом» нижче 👇", false, DateTime.Now);
+
+            UpdatePlaygroundHeader();
+
+            // Opened scrolled to the end, as a chat is, so the first messages already sit under
+            // the header and show what it does to them.
+            PlaygroundScroll.Loaded += (s, args) => PlaygroundScroll.ChangeView(null, PlaygroundScroll.ScrollableHeight, null, true);
+        }
+
+        private void UpdatePlaygroundHeader()
+        {
+            var glass = AppSettings.Appearance.IsGlassHeaderEnabled;
+
+            PlaygroundHeaderOriginal.Visibility = glass ? Visibility.Collapsed : Visibility.Visible;
+            PlaygroundHeaderGlass.Visibility = glass ? Visibility.Visible : Visibility.Collapsed;
+            PlaygroundHeaderGlass.Background = glass ? MasterDetailView.CreateGlassHeaderBrush(ActualTheme) : null;
+
+            // The same sizes the real header shows its title at once a page is scrolled.
+            PlaygroundTitle.FontSize = glass ? 18 : 14;
+        }
+
+        /// <summary>
+        /// The colours change with the theme pass the setting triggers, which runs after this
+        /// returns; the fills that are not a colour are re-read once it has.
+        /// </summary>
+        private async void RefreshPlayground()
+        {
+            await Task.Delay(250);
+
+            foreach (var bubble in new[] { Message1, Message2, PlaygroundIncoming, PlaygroundOutgoing, PlaygroundIncoming2, PlaygroundOutgoing2, PlaygroundIncoming3 })
+            {
+                bubble.RefreshStyle();
+            }
+
+            UpdatePlaygroundHeader();
+        }
+
+        #endregion
 
         private MessageBubbleBackgroundCoordinator _background;
 
@@ -123,6 +181,22 @@ namespace Telegram.Views.Settings
             {
                 Message1.UpdateMockup(false, true, true);
                 Message2.UpdateMockup(true, true, true);
+                PlaygroundIncoming.UpdateMockup(false, true, true);
+                PlaygroundOutgoing.UpdateMockup(true, true, true);
+                PlaygroundIncoming2.UpdateMockup(false, true, true);
+                PlaygroundOutgoing2.UpdateMockup(true, true, true);
+                PlaygroundIncoming3.UpdateMockup(false, true, true);
+            }
+            else if (e.PropertyName is nameof(ViewModel.BubbleStyleIndex)
+                or nameof(ViewModel.BubbleOpacity)
+                or nameof(ViewModel.ReactionStyleIndex)
+                or nameof(ViewModel.ServiceStyleIndex)
+                or nameof(ViewModel.MessageTextStyleIndex)
+                or nameof(ViewModel.IsGlassHeaderEnabled)
+                or nameof(ViewModel.BackgroundOpacity)
+                or nameof(ViewModel.WindowMaterialIndex))
+            {
+                RefreshPlayground();
             }
         }
 
