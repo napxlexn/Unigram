@@ -63,6 +63,17 @@ namespace Telegram.Controls.Media
                 source = compositor.CreateColorBrush(TintColor);
             }
 
+            // Solid all the way down needs no mask - and a mask with two stops at the end is one
+            // the compositor rejects, failing the process.
+            if (SolidUntil >= 1)
+            {
+                mask.Dispose();
+
+                _brush = source;
+                CompositionBrush = source;
+                return;
+            }
+
             var masked = compositor.CreateMaskBrush();
             masked.Source = source;
             masked.Mask = mask;
@@ -73,7 +84,10 @@ namespace Telegram.Controls.Media
 
         protected override void OnDisconnected()
         {
-            _brush?.Dispose();
+            // Released, not disposed: XAML hands its composition work to the compositor
+            // asynchronously, and a brush disposed here can still be in a frame being committed,
+            // which fails the process with RO_E_CLOSED. Switching header styles back and forth
+            // did exactly that. The wrappers free the graph when they are collected.
             _brush = null;
             CompositionBrush = null;
         }

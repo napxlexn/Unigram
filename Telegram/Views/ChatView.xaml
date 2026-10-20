@@ -1601,6 +1601,8 @@
                                      Visibility="Collapsed" />
 
                 <Grid x:Name="ChatFooter"
+                      BorderBrush="{ThemeResource ChatFooterRimBrush}"
+                      BorderThickness="1"
                       CornerRadius="24">
                     <chats:ChatBottomButton x:Name="ButtonAction"
                                             LosingFocus="ButtonAction_LosingFocus"

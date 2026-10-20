@@ -17,6 +17,7 @@ using Telegram.Controls.Media;
 using Telegram.Navigation;
 using Telegram.Navigation.Services;
 using Telegram.Services;
+using Telegram.Services.Settings;
 using Telegram.Views;
 using Windows.Graphics.Display;
 using Windows.UI;
@@ -628,25 +629,76 @@ namespace Telegram.Controls
                 return;
             }
 
-            var glass = AppSettings.Appearance.IsGlassHeaderEnabled;
-            if (glass)
-            {
-                DetailHeaderBackground.Background = CreateGlassHeaderBrush(ActualTheme);
-                DetailHeaderBackground.BorderThickness = new Thickness(0);
-                DetailHeaderBackground.Height = _headerHeight + 24;
-            }
-            else
-            {
-                DetailHeaderBackground.Background = _headerBackground;
-                DetailHeaderBackground.BorderThickness = _headerBorder;
-                DetailHeaderBackground.Height = _headerHeight;
-            }
+            var style = AppSettings.Appearance.HeaderStyle;
+            ApplyHeaderStyle(DetailHeaderBackground, style, ActualTheme, _headerBackground, _headerBorder, _headerHeight);
 
-            _properties?.InsertScalar("MinScale", glass ? GlassTitleMinScale : TitleMinScale);
+            _properties?.InsertScalar("MinScale", style == HeaderStyle.Original ? TitleMinScale : GlassTitleMinScale);
         }
 
         private const float TitleMinScale = 0.583f;
         private const float GlassTitleMinScale = 0.75f;
+
+        /// <summary>
+        /// Puts one of the header styles on a header background. Shared with the appearance
+        /// page's playground, so that it shows exactly what the pages get.
+        /// </summary>
+        public static void ApplyHeaderStyle(Border header, HeaderStyle style, ElementTheme theme, Brush original, Thickness originalBorder, double height)
+        {
+            switch (style)
+            {
+                case HeaderStyle.Glass:
+                    // Taller than the bar, so that the fade happens below the title rather than
+                    // through it, and no hairline: the edge is the gradient.
+                    header.Background = CreateGlassHeaderBrush(theme);
+                    header.BorderThickness = new Thickness(0);
+                    header.CornerRadius = default;
+                    header.Margin = default;
+                    header.Height = height + 24;
+                    break;
+
+                case HeaderStyle.Capsule:
+                    // Floating, rounded and inset like the settings cards, and glass all the way
+                    // through: the same blur as the glass header, held to the capsule's edge
+                    // instead of fading, with light catching the rim.
+                    header.Background = CreateCapsuleHeaderBrush(theme);
+                    header.BorderBrush = CreateRimBrush(theme);
+                    header.BorderThickness = new Thickness(1);
+                    header.CornerRadius = new CornerRadius(14);
+                    header.Margin = new Thickness(12, 6, 12, 0);
+                    header.Height = height - 4;
+                    break;
+
+                default:
+                    header.Background = original;
+                    header.ClearValue(Border.BorderBrushProperty);
+                    header.BorderThickness = originalBorder;
+                    header.CornerRadius = default;
+                    header.Margin = default;
+                    header.Height = height;
+                    break;
+            }
+        }
+
+        public static Brush CreateCapsuleHeaderBrush(ElementTheme theme)
+        {
+            var tint = theme == ElementTheme.Light
+                ? Windows.UI.Color.FromArgb(0x40, 0xF6, 0xF6, 0xF6)
+                : Windows.UI.Color.FromArgb(0x38, 0x28, 0x28, 0x28);
+
+            return new FadingGlassBrush { TintColor = tint, BlurAmount = 32, SolidUntil = 1 };
+        }
+
+        /// <summary>
+        /// Light catching the edge of a pane of glass: bright along the top, almost gone at the
+        /// bottom.
+        /// </summary>
+        public static Brush CreateRimBrush(ElementTheme theme)
+        {
+            var gradient = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0, 0), EndPoint = new Windows.Foundation.Point(0, 1) };
+            gradient.GradientStops.Add(new GradientStop { Offset = 0, Color = theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF) });
+            gradient.GradientStops.Add(new GradientStop { Offset = 1, Color = theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x14, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF) });
+            return gradient;
+        }
 
         /// <summary>
         /// The window is glass already, so the header adds no tint of its own to speak of - a
@@ -708,7 +760,7 @@ namespace Telegram.Controls
 
             _properties = visual1.Compositor.CreatePropertySet();
             _properties.InsertVector3("Translation", new Vector3(0, 32, 0));
-            _properties.InsertScalar("MinScale", AppSettings.Appearance.IsGlassHeaderEnabled ? GlassTitleMinScale : TitleMinScale);
+            _properties.InsertScalar("MinScale", AppSettings.Appearance.HeaderStyle == HeaderStyle.Original ? TitleMinScale : GlassTitleMinScale);
 
             var properties = _properties;
 
@@ -729,6 +781,11 @@ namespace Telegram.Controls
             var expIn = "clamp(1.357 - ((-scrollViewer.Translation.Y / 32) * 0.357), 1, 1.357)";
             var slideIn = visual1.Compositor.CreateExpressionAnimation($"vector3({expIn}, {expIn}, 1)");
             slideIn.SetReferenceParameter("scrollViewer", properties);
+
+            // From the top centre rather than the corner, so that an inset capsule grows into
+            // place instead of sliding in from the left.
+            var centre = visual1.Compositor.CreateExpressionAnimation("vector3(this.Target.Size.X / 2, 0, 0)");
+            visual1.StartAnimation("CenterPoint", centre);
 
             visual1.StartAnimation("Scale", slideIn);
             visual2.StartAnimation("Scale", slideOut);

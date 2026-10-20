@@ -45,10 +45,29 @@ namespace Telegram.Common
         /// <summary>
         /// The colour a message brush is drawn in under the chosen styles.
         /// </summary>
-        public static Color Adjust(string key, Color color, TelegramTheme parent)
+        public static Color Adjust(string key, Color color, TelegramTheme parent, bool outgoing)
         {
             var appearance = AppSettings.Appearance;
             var dark = parent == TelegramTheme.Dark;
+
+            // Own colours first, replacing the theme's; the glass styles below then apply to
+            // them exactly as they would to the theme's own.
+            if (appearance.UseCustomMessageColors)
+            {
+                var text = outgoing ? appearance.CustomOutgoingTextColor : appearance.CustomIncomingTextColor;
+
+                color = key switch
+                {
+                    "MessageBackgroundBrush" => outgoing ? appearance.CustomOutgoingColor : appearance.CustomIncomingColor,
+                    "MessageForegroundBrush" => text,
+                    "MessageSubtleLabelBrush" or "MessageSubtleGlyphBrush" or "MessageSubtleForegroundBrush" => WithAlpha(text, 0x99),
+                    "MessageReactionBackgroundBrush" => appearance.CustomReactionColor,
+                    "MessageReactionForegroundBrush" => text,
+                    "MessageReactionChosenBackgroundBrush" => appearance.CustomOutgoingColor,
+                    "MessageReactionChosenForegroundBrush" => appearance.CustomOutgoingTextColor,
+                    _ => color
+                };
+            }
 
             switch (key)
             {
@@ -80,6 +99,12 @@ namespace Telegram.Common
                     break;
             }
 
+            return color;
+        }
+
+        private static Color WithAlpha(Color color, byte alpha)
+        {
+            color.A = alpha;
             return color;
         }
 

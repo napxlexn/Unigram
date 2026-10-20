@@ -80,6 +80,33 @@ namespace Telegram.Views.Settings
             InitializePlayground();
         }
 
+        #region Custom colours
+
+        private void CustomColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement target || target.Tag is not string name)
+            {
+                return;
+            }
+
+            var picker = new Microsoft.UI.Xaml.Controls.ColorPicker
+            {
+                Color = ViewModel.GetCustomColor(name),
+                IsAlphaEnabled = false,
+                IsMoreButtonVisible = false,
+                IsColorChannelTextInputVisible = false,
+                IsHexInputVisible = true
+            };
+
+            // Live, as the picker is dragged: the playground above and any open chat follow.
+            picker.ColorChanged += (s, args) => ViewModel.SetCustomColor(name, args.NewColor);
+
+            var flyout = new Flyout { Content = picker };
+            flyout.ShowAt(target);
+        }
+
+        #endregion
+
         #region Playground
 
         private MessageBubbleBackgroundCoordinator _playgroundBackground;
@@ -107,14 +134,21 @@ namespace Telegram.Views.Settings
 
         private void UpdatePlaygroundHeader()
         {
-            var glass = AppSettings.Appearance.IsGlassHeaderEnabled;
+            var style = AppSettings.Appearance.HeaderStyle;
+            var original = style == HeaderStyle.Original;
 
-            PlaygroundHeaderOriginal.Visibility = glass ? Visibility.Collapsed : Visibility.Visible;
-            PlaygroundHeaderGlass.Visibility = glass ? Visibility.Visible : Visibility.Collapsed;
-            PlaygroundHeaderGlass.Background = glass ? MasterDetailView.CreateGlassHeaderBrush(ActualTheme) : null;
+            PlaygroundHeaderOriginal.Visibility = original ? Visibility.Visible : Visibility.Collapsed;
+            PlaygroundHeaderGlass.Visibility = original ? Visibility.Collapsed : Visibility.Visible;
 
-            // The same sizes the real header shows its title at once a page is scrolled.
-            PlaygroundTitle.FontSize = glass ? 18 : 14;
+            if (!original)
+            {
+                MasterDetailView.ApplyHeaderStyle(PlaygroundHeaderGlass, style, ActualTheme, null, default, 48);
+            }
+
+            // The same sizes the real header shows its title at once a page is scrolled; inside
+            // the capsule it sits a little further in.
+            PlaygroundTitle.FontSize = original ? 14 : 18;
+            PlaygroundTitle.Margin = style == HeaderStyle.Capsule ? new Thickness(28, 16, 16, 0) : new Thickness(16, 12, 16, 0);
         }
 
         /// <summary>
@@ -192,7 +226,8 @@ namespace Telegram.Views.Settings
                 or nameof(ViewModel.ReactionStyleIndex)
                 or nameof(ViewModel.ServiceStyleIndex)
                 or nameof(ViewModel.MessageTextStyleIndex)
-                or nameof(ViewModel.IsGlassHeaderEnabled)
+                or nameof(ViewModel.HeaderStyleIndex)
+                or nameof(ViewModel.UseCustomMessageColors)
                 or nameof(ViewModel.BackgroundOpacity)
                 or nameof(ViewModel.WindowMaterialIndex))
             {
