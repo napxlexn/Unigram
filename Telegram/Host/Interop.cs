@@ -136,6 +136,10 @@ namespace Telegram.Host
         public const uint WM_DPICHANGED = 0x02E0;
 
         public const int WA_INACTIVE = 0;
+        public const uint WM_MOUSEACTIVATE = 0x0021;
+        public const int MA_NOACTIVATE = 3;
+        public const int SW_SHOWNOACTIVATE = 4;
+        public const uint WS_EX_NOACTIVATE = 0x08000000;
         public const uint WM_NCCALCSIZE = 0x0083;
         public const uint WM_NCHITTEST = 0x0084;
         public const uint WM_NCLBUTTONDOWN = 0x00A1;

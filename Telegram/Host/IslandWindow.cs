@@ -110,6 +110,11 @@ namespace Telegram.Host
             // composition content.
             var exStyle = transparent ? Win32.WS_EX_NOREDIRECTIONBITMAP : 0u;
 
+            if (NoActivate)
+            {
+                exStyle |= Win32.WS_EX_NOACTIVATE;
+            }
+
             window._hwnd = Win32.CreateWindowExW(exStyle, _classNamePtr, windowName,
                 Win32.WS_OVERLAPPEDWINDOW, x, y, width, height,
                 IntPtr.Zero, IntPtr.Zero, Win32.GetModuleHandleW(IntPtr.Zero), IntPtr.Zero);
@@ -164,11 +169,19 @@ namespace Telegram.Host
             // first resized - so without this the caption is dead until you minimize and restore.
             window.LayoutDragBar();
 
-            Win32.ShowWindow(window._hwnd, Win32.SW_SHOW);
+            Win32.ShowWindow(window._hwnd, NoActivate ? Win32.SW_SHOWNOACTIVATE : Win32.SW_SHOW);
             Win32.UpdateWindow(window._hwnd);
 
             return window;
         }
+
+        /// <summary>
+        /// Test hook, from the <c>--no-activate</c> command line switch: windows never take the
+        /// foreground, so the app can be driven through UI Automation beside a full-screen app
+        /// without stealing its input. UI Automation hands the provider the right to activate,
+        /// and the first focus change after a navigation would otherwise use it.
+        /// </summary>
+        internal static readonly bool NoActivate = Array.IndexOf(Environment.GetCommandLineArgs(), "--no-activate") >= 0;
 
         /// <summary>
         /// Consulted before the island's own accelerator handling, so that the app sees a key
@@ -197,8 +210,12 @@ namespace Telegram.Host
 
         public void Show()
         {
-            Win32.ShowWindow(_hwnd, Win32.SW_SHOW);
-            Win32.SetForegroundWindow(_hwnd);
+            Win32.ShowWindow(_hwnd, NoActivate ? Win32.SW_SHOWNOACTIVATE : Win32.SW_SHOW);
+
+            if (!NoActivate)
+            {
+                Win32.SetForegroundWindow(_hwnd);
+            }
         }
 
         public bool PreTranslateMessage(ref MSG message)
@@ -282,7 +299,18 @@ namespace Telegram.Host
 
                     break;
 
+                case Win32.WM_MOUSEACTIVATE when NoActivate:
+                    return (IntPtr)Win32.MA_NOACTIVATE;
+
                 case Win32.WM_ACTIVATE:
+                    // Activated anyway - by a focus change after UI Automation granted the right -
+                    // so the foreground goes straight back to the window that just lost it.
+                    if (NoActivate && ((int)wParam & 0xFFFF) != Win32.WA_INACTIVE && lParam != IntPtr.Zero)
+                    {
+                        Win32.SetForegroundWindow(lParam);
+                        break;
+                    }
+
                     window?.SetActive(((int)wParam & 0xFFFF) != Win32.WA_INACTIVE);
                     break;
 

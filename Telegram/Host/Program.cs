@@ -67,6 +67,8 @@ namespace Telegram.Host
             // The real arguments rather than an invented launch: a packaged app gets them from
             // AppInstance, and everything downstream - protocol links, share targets, file
             // activation - already knows how to read them.
+            E2eDriver.Start();
+
             app.Start(AppInstance.GetActivatedEventArgs());
 
             while (Win32.GetMessageW(out var message, IntPtr.Zero, 0, 0) > 0)
