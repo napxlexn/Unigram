@@ -53,6 +53,18 @@ namespace Telegram.Services.Settings
         BlurBehind
     }
 
+    /// <summary>
+    /// What the side navigation pane is painted with. Original is the framework's own brush;
+    /// the glass ones blur whatever of the window lies under the open pane.
+    /// </summary>
+    public enum PaneMaterial
+    {
+        Original,
+        FrostedGlass,
+        LightGlass,
+        Solid
+    }
+
     public enum AccentShade
     {
         Default,
@@ -338,7 +350,21 @@ namespace Telegram.Services.Settings
         private static int? _windowMaterial;
         public WindowMaterial WindowMaterial
         {
-            get => (WindowMaterial)(_windowMaterial ??= GetValueOrDefault("WindowMaterial", (int)WindowMaterial.Mica));
+            get
+            {
+                var material = (WindowMaterial)(_windowMaterial ??= GetValueOrDefault("WindowMaterial", (int)WindowMaterial.BlurBehind));
+
+                // Mica and Mica Alt only ever showed a tinted wallpaper, never what is behind the
+                // window, so the Win32 host no longer offers them; a stored one becomes the blur.
+                // The UWP host has nothing but Mica, which is what any value other than None means
+                // there.
+                if (WindowContext.SupportsWindowMaterials && material is WindowMaterial.Mica or WindowMaterial.MicaAlt)
+                {
+                    return WindowMaterial.BlurBehind;
+                }
+
+                return material;
+            }
             set => AddOrUpdateValue(ref _windowMaterial, "WindowMaterial", (int)value);
         }
 
@@ -348,6 +374,29 @@ namespace Telegram.Services.Settings
         {
             get => _backgroundOpacity ??= Math.Clamp(GetValueOrDefault("BackgroundOpacity", 70), 10, 100);
             set => AddOrUpdateValue(ref _backgroundOpacity, "BackgroundOpacity", Math.Clamp(value, 10, 100));
+        }
+
+        public static event EventHandler PaneMaterialChanged;
+
+        public static void RaisePaneMaterialChanged()
+        {
+            PaneMaterialChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        private static int? _paneMaterial;
+        public PaneMaterial PaneMaterial
+        {
+            get => (PaneMaterial)(_paneMaterial ??= GetValueOrDefault("PaneMaterial", (int)PaneMaterial.Original));
+            set => AddOrUpdateValue(ref _paneMaterial, "PaneMaterial", (int)value);
+        }
+
+        // Experimental: the hairlines between the folders rail, the chat list, the detail pane
+        // and the headers go clear. A candidate for the default if it holds up.
+        private static bool? _hideSeparators;
+        public bool HideSeparators
+        {
+            get => _hideSeparators ??= GetValueOrDefault("HideSeparators", false);
+            set => AddOrUpdateValue(ref _hideSeparators, "HideSeparators", value);
         }
 
         // Off draws no wallpaper at all, whatever its opacity: the chat sits on the same glass as

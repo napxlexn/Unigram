@@ -100,7 +100,56 @@ namespace Telegram.Views.Host
             Navigation.Content = _navigationService.Frame;
 
             VisualUtilities.DropShadow(ThemeShadow);
+
+            Loaded += (s, args) =>
+            {
+                UpdatePaneMaterial();
+                AppearanceSettings.PaneMaterialChanged += OnPaneMaterialChanged;
+            };
+
+            Unloaded += (s, args) => AppearanceSettings.PaneMaterialChanged -= OnPaneMaterialChanged;
+            ActualThemeChanged += (s, args) => UpdatePaneMaterial();
         }
+
+        #region Pane material
+
+        // The pane brush from markup, which is what Original goes back to.
+        private Brush _originalPaneBackground;
+
+        private void OnPaneMaterialChanged(object sender, EventArgs args)
+        {
+            this.BeginOnUIThread(UpdatePaneMaterial);
+        }
+
+        /// <summary>
+        /// The glass options blur what of the window lies under the open pane - the chat list,
+        /// mostly - and differ only in how dense their tint is. WinUI's AcrylicBrush cannot do the
+        /// same here: it does not render in an island.
+        /// </summary>
+        private void UpdatePaneMaterial()
+        {
+            _originalPaneBackground ??= Navigation.PaneBackground;
+
+            var tint = ActualTheme == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(0xFF, 0x20, 0x20, 0x20)
+                : Windows.UI.Color.FromArgb(0xFF, 0xF3, 0xF3, 0xF3);
+
+            Navigation.PaneBackground = AppSettings.Appearance.PaneMaterial switch
+            {
+                PaneMaterial.FrostedGlass => new SolidGaussianBrush { TintColor = WithAlpha(tint, 0xC8), FallbackColor = tint },
+                PaneMaterial.LightGlass => new SolidGaussianBrush { TintColor = WithAlpha(tint, 0x78), FallbackColor = tint },
+                PaneMaterial.Solid => new SolidColorBrush(tint),
+                _ => _originalPaneBackground
+            };
+        }
+
+        private static Windows.UI.Color WithAlpha(Windows.UI.Color color, byte alpha)
+        {
+            color.A = alpha;
+            return color;
+        }
+
+        #endregion
 
         public INavigationService NavigationService
         {

@@ -17,6 +17,7 @@ using Telegram.Navigation;
 using Telegram.Navigation.Services;
 using Telegram.Services;
 using Telegram.Services.Settings;
+using Telegram.Services.Updates;
 using Telegram.Td.Api;
 using Telegram.Views.Popups;
 using Telegram.Views.Settings;
@@ -543,10 +544,8 @@ namespace Telegram.ViewModels.Settings
             ? new()
             {
                 new SettingsOptionItem<WindowMaterial>(WindowMaterial.None, "Немає"),
-                new SettingsOptionItem<WindowMaterial>(WindowMaterial.Mica, "Mica"),
-                new SettingsOptionItem<WindowMaterial>(WindowMaterial.MicaAlt, "Mica Alt"),
-                new SettingsOptionItem<WindowMaterial>(WindowMaterial.Acrylic, "Acrylic"),
-                new SettingsOptionItem<WindowMaterial>(WindowMaterial.BlurBehind, "Розмиття (як AI Limits)"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.Acrylic, "Акрил"),
+                new SettingsOptionItem<WindowMaterial>(WindowMaterial.BlurBehind, "Розмиття"),
             }
             : new()
             {
@@ -592,6 +591,63 @@ namespace Telegram.ViewModels.Settings
         }
 
         private DebouncedProperty<int> _backgroundOpacityDebouncer;
+
+        public List<SettingsOptionItem<PaneMaterial>> PaneMaterialOptions { get; } = new()
+        {
+            new SettingsOptionItem<PaneMaterial>(PaneMaterial.Original, "Оригінал"),
+            new SettingsOptionItem<PaneMaterial>(PaneMaterial.FrostedGlass, "Матове скло"),
+            new SettingsOptionItem<PaneMaterial>(PaneMaterial.LightGlass, "Легке скло"),
+            new SettingsOptionItem<PaneMaterial>(PaneMaterial.Solid, "Суцільний"),
+        };
+
+        public int PaneMaterialIndex
+        {
+            get => Math.Max(0, PaneMaterialOptions.FindIndex(x => x.Value == AppSettings.Appearance.PaneMaterial));
+            set
+            {
+                if (value >= 0 && value < PaneMaterialOptions.Count && AppSettings.Appearance.PaneMaterial != PaneMaterialOptions[value].Value)
+                {
+                    AppSettings.Appearance.PaneMaterial = PaneMaterialOptions[value].Value;
+                    AppearanceSettings.RaisePaneMaterialChanged();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public bool HideSeparators
+        {
+            get => AppSettings.Appearance.HideSeparators;
+            set
+            {
+                if (AppSettings.Appearance.HideSeparators != value)
+                {
+                    AppSettings.Appearance.HideSeparators = value;
+                    NightModeService.Current.Update(false, updateBackground: false);
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        // The same switch as Settings > Folders > tabs view, here beside the rest of the layout.
+        public List<SettingsOptionItem<bool>> FoldersPlacementOptions { get; } = new()
+        {
+            new SettingsOptionItem<bool>(false, "Зверху"),
+            new SettingsOptionItem<bool>(true, "Зліва"),
+        };
+
+        public int FoldersPlacementIndex
+        {
+            get => AppSettings.UseLeftTabsForChats ? 1 : 0;
+            set
+            {
+                if (value is 0 or 1 && AppSettings.UseLeftTabsForChats != (value == 1))
+                {
+                    AppSettings.UseLeftTabsForChats = value == 1;
+                    Aggregator.Publish(new UpdateChatFoldersLayout());
+                    RaisePropertyChanged();
+                }
+            }
+        }
 
         public bool IsWallpaperEnabled
         {

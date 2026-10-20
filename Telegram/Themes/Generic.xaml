@@ -7489,7 +7489,7 @@
         <Setter Property="Foreground"
                 Value="{ThemeResource TelegramForegroundAccentBrush}" />
         <Setter Property="Background"
-                Value="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
+                Value="{ThemeResource ChatFooterBackgroundBrush}" />
         <Setter Property="Padding"
                 Value="0,0,0,2" />
         <Setter Property="HorizontalAlignment"
