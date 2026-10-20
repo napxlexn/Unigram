@@ -165,6 +165,25 @@ namespace Telegram.Host
 
                     return navigation.Navigate(page) ? "ok" : "refused";
 
+                case "gc":
+                    {
+                        // Separates a real handle leak from handles that are only waiting for
+                        // their wrappers to be finalized: count before and after this.
+                        var before = GC.GetTotalMemory(false);
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                        GC.Collect();
+                        return $"ok {before / 1048576}MB -> {GC.GetTotalMemory(true) / 1048576}MB";
+                    }
+
+                case "navtype":
+                    {
+                        // Any page by type name, for walking every page in a smoke test.
+                        var type = typeof(SettingsAppearancePage).Assembly.GetType(parts[1], throwOnError: true);
+                        var ok = navigation.Navigate(type);
+                        return (ok ? "ok " : "refused ") + (navigation.Content?.GetType().Name ?? "null");
+                    }
+
                 case "chat":
                     if (navigation is not TLNavigationService service)
                     {
@@ -278,6 +297,63 @@ namespace Telegram.Host
                         var tint = args.Length > 0 ? Convert.ToUInt32(args[0], 16) : 0u;
                         var flags = args.Length > 1 ? int.Parse(args[1]) : 2;
                         return "ok=" + SetAccent(hwnd, int.Parse(parts[1]), tint, flags);
+                    }
+
+                case "pane":
+                    {
+                        var rootWindow = window.Content as Views.Host.RootWindow;
+                        if (rootWindow == null)
+                        {
+                            Walk(root, element =>
+                            {
+                                rootWindow = element as Views.Host.RootWindow;
+                                return rootWindow != null;
+                            });
+                        }
+
+                        if (rootWindow == null)
+                        {
+                            return "error: no root window";
+                        }
+
+                        rootWindow.IsPaneOpen = parts[1] == "1";
+                        return "ok " + rootWindow.IsPaneOpen;
+                    }
+
+                case "import-original":
+                    {
+                        // The colour scheme worn in the user's Store install, read out of its
+                        // settings.dat: Night with a purple accent, a four-stop outgoing gradient
+                        // and a dark pattern. Created as a variant of Night - the same thing the
+                        // themes page makes with "+" - and worn, so it shows up as the user's own.
+                        if (navigation is not TLNavigationService tl)
+                        {
+                            return "error: no client";
+                        }
+
+                        var settings = new Telegram.Td.Api.ThemeSettings(
+                            new Telegram.Td.Api.BuiltInThemeNight(),
+                            0x917BBD,
+                            Services.Settings.ThemeSettingsStore.LoadBackground("LqK3YYoX2EnrCgAAJ63F4zvk4wg", 5321028841211169515, true),
+                            Telegram.Td.Api.TdBackground.FromString("258DE5~4272DF~8146D7~9F3EAA"),
+                            false,
+                            false,
+                            0x917BBD);
+
+                        var id = AppSettings.Appearance.CreateVariant(Services.Settings.TelegramThemeType.Night, settings);
+
+                        AppSettings.Appearance.ForceNightMode = true;
+                        AppSettings.Appearance.RequestedTheme = Services.Settings.TelegramTheme.Dark;
+                        AppSettings.Appearance.WearVariant(Services.Settings.TelegramThemeType.Night, id, null, true);
+                        NightModeService.Current.Show(Services.Settings.TelegramTheme.Dark, window.Content.XamlRoot);
+                        Telegram.ViewModels.Settings.ThemeData.SendDefaultBackground(tl.ClientService, settings.Background, true);
+
+                        // Folders as tabs on top, and the adaptive wide layout, as in that install.
+                        AppSettings.UseLeftTabsForChats = false;
+                        AppSettings.IsAdaptiveWideEnabled = true;
+                        EventAggregator.Current.Publish(new Services.Updates.UpdateChatFoldersLayout());
+
+                        return "ok variant " + id;
                     }
 
                 case "night":
