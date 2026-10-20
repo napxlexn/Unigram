@@ -2447,6 +2447,15 @@ namespace Telegram.Controls.Messages
             }
         }
 
+        /// <summary>
+        /// Re-applies the glass bubble style, for previews that have to follow a setting while
+        /// it is being changed rather than the next time they are realized.
+        /// </summary>
+        public void RefreshStyle()
+        {
+            UpdateContentPanelState();
+        }
+
         private int _styleVersion = -1;
 
         private void UpdateContentPanelState()
@@ -2457,6 +2466,7 @@ namespace Telegram.Controls.Messages
             }
 
             _styleVersion = MessageStyle.Version;
+            _brush?.RefreshStops();
 
             var light = _currentState is "LightState" or "LightStateOut";
             if (light)

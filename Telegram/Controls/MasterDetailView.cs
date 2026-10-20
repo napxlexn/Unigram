@@ -628,17 +628,10 @@ namespace Telegram.Controls
                 return;
             }
 
-            if (AppSettings.Appearance.IsGlassHeaderEnabled)
+            var glass = AppSettings.Appearance.IsGlassHeaderEnabled;
+            if (glass)
             {
-                // Taller than the bar, so that the fade happens below the title rather than
-                // through it, and no hairline: the edge is the gradient.
-                var tint = ActualTheme == ElementTheme.Light
-                    ? Windows.UI.Color.FromArgb(0, 0xF3, 0xF3, 0xF3)
-                    : Windows.UI.Color.FromArgb(0, 0x20, 0x20, 0x20);
-
-                tint.A = (byte)(255 * Math.Clamp(AppSettings.Appearance.BackgroundOpacity / 100d + 0.15, 0.3, 0.9));
-
-                DetailHeaderBackground.Background = new FadingGlassBrush { TintColor = tint };
+                DetailHeaderBackground.Background = CreateGlassHeaderBrush(ActualTheme);
                 DetailHeaderBackground.BorderThickness = new Thickness(0);
                 DetailHeaderBackground.Height = _headerHeight + 24;
             }
@@ -648,6 +641,27 @@ namespace Telegram.Controls
                 DetailHeaderBackground.BorderThickness = _headerBorder;
                 DetailHeaderBackground.Height = _headerHeight;
             }
+
+            _properties?.InsertScalar("MinScale", glass ? GlassTitleMinScale : TitleMinScale);
+        }
+
+        private const float TitleMinScale = 0.583f;
+        private const float GlassTitleMinScale = 0.75f;
+
+        /// <summary>
+        /// The window is glass already, so the header adds no tint of its own to speak of - a
+        /// darker band is exactly what it replaces. What it does is blur what scrolls beneath
+        /// it, strongly enough to read the title over, and fade that blur out below the title,
+        /// so content slides into the glass instead of under a bar. Shared with the appearance
+        /// page's playground, which is why it is a factory.
+        /// </summary>
+        public static Brush CreateGlassHeaderBrush(ElementTheme theme)
+        {
+            var tint = theme == ElementTheme.Light
+                ? Windows.UI.Color.FromArgb(0x18, 0xF3, 0xF3, 0xF3)
+                : Windows.UI.Color.FromArgb(0x14, 0x20, 0x20, 0x20);
+
+            return new FadingGlassBrush { TintColor = tint, BlurAmount = 32, SolidUntil = 0.6 };
         }
 
         #endregion
@@ -694,10 +708,13 @@ namespace Telegram.Controls
 
             _properties = visual1.Compositor.CreatePropertySet();
             _properties.InsertVector3("Translation", new Vector3(0, 32, 0));
+            _properties.InsertScalar("MinScale", AppSettings.Appearance.IsGlassHeaderEnabled ? GlassTitleMinScale : TitleMinScale);
 
             var properties = _properties;
 
-            var expOut = "clamp(1 - ((-scrollViewer.Translation.Y / 32) * 0.417), 0.583, 1)";
+            // How small the title gets once the page is scrolled: the original header shrinks it to
+            // 14pt, the glass one keeps it larger - see MinScale.
+            var expOut = "clamp(1 - ((-scrollViewer.Translation.Y / 32) * (1 - scrollViewer.MinScale)), scrollViewer.MinScale, 1)";
             var slideOut = visual1.Compositor.CreateExpressionAnimation($"vector3({expOut}, {expOut}, 1)");
             slideOut.SetReferenceParameter("scrollViewer", properties);
 
