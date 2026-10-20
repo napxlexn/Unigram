@@ -85,7 +85,8 @@ namespace Telegram.Controls.Media
                 return;
             }
 
-            m_brush?.Dispose();
+            // The old graph is released, not disposed: XAML may still have it in a frame the
+            // compositor has yet to commit, and a disposed one there fails with RO_E_CLOSED.
             m_brush = null;
             UpdateBrushByDispatcher();
         }

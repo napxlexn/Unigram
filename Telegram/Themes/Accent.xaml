@@ -26,6 +26,16 @@
             <media:SolidGaussianBrush x:Key="MessageServiceBackgroundBrush"
                                       FallbackColor="#667A8A96"
                                       TintColor="#78787878" />
+
+            <!-- A second pane of glass laid over the window's: it refracts (blurs) what is under it
+                 and darkens it a little, with light catching its rim. -->
+            <media:SolidGaussianBrush x:Key="ChatFooterGlassBrush"
+                                      FallbackColor="#F0181818"
+                                      TintColor="#8C161616" />
+            <LinearGradientBrush x:Key="ChatFooterRimBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#55FFFFFF" Offset="0" />
+                <GradientStop Color="#12FFFFFF" Offset="1" />
+            </LinearGradientBrush>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
             <x:String x:Key="BreadcrumbBarChevronLeftToRight">&#xE0E3;</x:String>
@@ -50,6 +60,15 @@
             <media:SolidGaussianBrush x:Key="MessageServiceBackgroundBrush"
                                       FallbackColor="#667A8A96"
                                       TintColor="#34000000" />
+
+            <!-- The same pane on light: it brightens instead. -->
+            <media:SolidGaussianBrush x:Key="ChatFooterGlassBrush"
+                                      FallbackColor="#F2FAFAFA"
+                                      TintColor="#A6FFFFFF" />
+            <LinearGradientBrush x:Key="ChatFooterRimBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#E6FFFFFF" Offset="0" />
+                <GradientStop Color="#14000000" Offset="1" />
+            </LinearGradientBrush>
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 

@@ -707,16 +707,95 @@ namespace Telegram.ViewModels.Settings
         {
             MessageStyle.Invalidate();
             NightModeService.Current.Update(false, updateBackground: false);
+            AppearanceSettings.RaiseMessageStyleChanged();
         }
 
-        public bool IsGlassHeaderEnabled
+        public bool UseCustomMessageColors
         {
-            get => AppSettings.Appearance.IsGlassHeaderEnabled;
+            get => AppSettings.Appearance.UseCustomMessageColors;
             set
             {
-                if (AppSettings.Appearance.IsGlassHeaderEnabled != value)
+                if (AppSettings.Appearance.UseCustomMessageColors != value)
                 {
-                    AppSettings.Appearance.IsGlassHeaderEnabled = value;
+                    AppSettings.Appearance.UseCustomMessageColors = value;
+                    ApplyMessageStyle();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public Windows.UI.Xaml.Media.SolidColorBrush CustomIncomingBrush => new(AppSettings.Appearance.CustomIncomingColor);
+        public Windows.UI.Xaml.Media.SolidColorBrush CustomOutgoingBrush => new(AppSettings.Appearance.CustomOutgoingColor);
+        public Windows.UI.Xaml.Media.SolidColorBrush CustomIncomingTextBrush => new(AppSettings.Appearance.CustomIncomingTextColor);
+        public Windows.UI.Xaml.Media.SolidColorBrush CustomOutgoingTextBrush => new(AppSettings.Appearance.CustomOutgoingTextColor);
+        public Windows.UI.Xaml.Media.SolidColorBrush CustomReactionBrush => new(AppSettings.Appearance.CustomReactionColor);
+
+        /// <summary>
+        /// Sets one of the own message colours by the name of its setting. A colour picker
+        /// reports every step of a drag, so the repaint waits for it to settle.
+        /// </summary>
+        public void SetCustomColor(string name, Windows.UI.Color color)
+        {
+            switch (name)
+            {
+                case nameof(AppearanceSettings.CustomIncomingColor):
+                    AppSettings.Appearance.CustomIncomingColor = color;
+                    RaisePropertyChanged(nameof(CustomIncomingBrush));
+                    break;
+                case nameof(AppearanceSettings.CustomOutgoingColor):
+                    AppSettings.Appearance.CustomOutgoingColor = color;
+                    RaisePropertyChanged(nameof(CustomOutgoingBrush));
+                    break;
+                case nameof(AppearanceSettings.CustomIncomingTextColor):
+                    AppSettings.Appearance.CustomIncomingTextColor = color;
+                    RaisePropertyChanged(nameof(CustomIncomingTextBrush));
+                    break;
+                case nameof(AppearanceSettings.CustomOutgoingTextColor):
+                    AppSettings.Appearance.CustomOutgoingTextColor = color;
+                    RaisePropertyChanged(nameof(CustomOutgoingTextBrush));
+                    break;
+                case nameof(AppearanceSettings.CustomReactionColor):
+                    AppSettings.Appearance.CustomReactionColor = color;
+                    RaisePropertyChanged(nameof(CustomReactionBrush));
+                    break;
+                default:
+                    return;
+            }
+
+            _customColorDebouncer ??= new DebouncedProperty<int>(120, _ =>
+            {
+                ApplyMessageStyle();
+                RaisePropertyChanged(nameof(UseCustomMessageColors));
+            });
+            _customColorDebouncer.Set(Environment.TickCount);
+        }
+
+        public Windows.UI.Color GetCustomColor(string name) => name switch
+        {
+            nameof(AppearanceSettings.CustomIncomingColor) => AppSettings.Appearance.CustomIncomingColor,
+            nameof(AppearanceSettings.CustomOutgoingColor) => AppSettings.Appearance.CustomOutgoingColor,
+            nameof(AppearanceSettings.CustomIncomingTextColor) => AppSettings.Appearance.CustomIncomingTextColor,
+            nameof(AppearanceSettings.CustomOutgoingTextColor) => AppSettings.Appearance.CustomOutgoingTextColor,
+            _ => AppSettings.Appearance.CustomReactionColor
+        };
+
+        private DebouncedProperty<int> _customColorDebouncer;
+
+        public List<SettingsOptionItem<HeaderStyle>> HeaderStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<HeaderStyle>(HeaderStyle.Original, "Оригінал"),
+            new SettingsOptionItem<HeaderStyle>(HeaderStyle.Glass, "Скло з переходом"),
+            new SettingsOptionItem<HeaderStyle>(HeaderStyle.Capsule, "Капсула"),
+        };
+
+        public int HeaderStyleIndex
+        {
+            get => Math.Max(0, HeaderStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.HeaderStyle));
+            set
+            {
+                if (value >= 0 && value < HeaderStyleOptions.Count && AppSettings.Appearance.HeaderStyle != HeaderStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.HeaderStyle = HeaderStyleOptions[value].Value;
                     AppearanceSettings.RaiseGlassHeaderChanged();
                     RaisePropertyChanged();
                 }

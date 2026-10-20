@@ -259,6 +259,8 @@ namespace Telegram.Controls.Chats
                 _window.ChatThemeChanged += OnChatThemeChanged;
             }
 
+            Services.Settings.AppearanceSettings.MessageStyleChanged += OnMessageStyleChanged;
+
             // Brushes that connected before Loaded already have a size, but a resize while the owner
             // was away raises no SizeChanged now.
             UpdateEndPoints();
@@ -281,11 +283,18 @@ namespace Telegram.Controls.Chats
             {
                 _window.ChatThemeChanged -= OnChatThemeChanged;
             }
+
+            Services.Settings.AppearanceSettings.MessageStyleChanged -= OnMessageStyleChanged;
         }
 
         private void OnChatThemeChanged(object sender, EventArgs e)
         {
             Update();
+        }
+
+        private void OnMessageStyleChanged(object sender, EventArgs e)
+        {
+            _owner.BeginOnUIThread(Update);
         }
 
         private void OnActualThemeChanged(FrameworkElement sender, object args)
@@ -380,6 +389,15 @@ namespace Telegram.Controls.Chats
             }
 
             stops = stops?.Count > 0 ? stops : null;
+
+            // Own message colours replace the theme's outgoing fill too, gradient included:
+            // the bubble then paints the plain colour the message brushes carry.
+            if (AppSettings.Appearance.UseCustomMessageColors)
+            {
+                stops = null;
+                animated = false;
+                fallbackColor = AppSettings.Appearance.CustomOutgoingColor;
+            }
 
             // Only a real change moves the version: every reconnect and every window event lands
             // here, and an unchanged theme must leave the brushes alone.

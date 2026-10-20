@@ -77,6 +77,13 @@ namespace Telegram.Services.Settings
         Glow
     }
 
+    public enum HeaderStyle
+    {
+        Original,
+        Glass,
+        Capsule
+    }
+
     public enum ReactionStyle
     {
         Original,
@@ -466,6 +473,67 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _messageTextStyle, "MessageTextStyle", (int)value);
         }
 
+        // Own colours for messages, taking over from whatever the app theme, its variant or a
+        // chat's theme would put there - outgoing gradients included.
+        private static bool? _useCustomMessageColors;
+        public bool UseCustomMessageColors
+        {
+            get => _useCustomMessageColors ??= GetValueOrDefault("UseCustomMessageColors", false);
+            set => AddOrUpdateValue(ref _useCustomMessageColors, "UseCustomMessageColors", value);
+        }
+
+        public Windows.UI.Color CustomIncomingColor
+        {
+            get => GetColor("CustomIncomingColor", 0xFF2B2B33);
+            set => SetColor("CustomIncomingColor", value);
+        }
+
+        public Windows.UI.Color CustomOutgoingColor
+        {
+            get => GetColor("CustomOutgoingColor", 0xFF6E57B8);
+            set => SetColor("CustomOutgoingColor", value);
+        }
+
+        public Windows.UI.Color CustomIncomingTextColor
+        {
+            get => GetColor("CustomIncomingTextColor", 0xFFF2F2F7);
+            set => SetColor("CustomIncomingTextColor", value);
+        }
+
+        public Windows.UI.Color CustomOutgoingTextColor
+        {
+            get => GetColor("CustomOutgoingTextColor", 0xFFFFFFFF);
+            set => SetColor("CustomOutgoingTextColor", value);
+        }
+
+        public Windows.UI.Color CustomReactionColor
+        {
+            get => GetColor("CustomReactionColor", 0xFF3C3C46);
+            set => SetColor("CustomReactionColor", value);
+        }
+
+        private Windows.UI.Color GetColor(string key, uint fallback)
+        {
+            var value = unchecked((uint)GetValueOrDefault(key, unchecked((int)fallback)));
+            return Windows.UI.Color.FromArgb((byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value);
+        }
+
+        private void SetColor(string key, Windows.UI.Color color)
+        {
+            AddOrUpdateValue(key, unchecked((int)((uint)color.A << 24 | (uint)color.R << 16 | (uint)color.G << 8 | color.B)));
+        }
+
+        /// <summary>
+        /// Raised whenever a message style or colour changes, for what draws its own fill - the
+        /// outgoing gradient - and has to resolve it again.
+        /// </summary>
+        public static event EventHandler MessageStyleChanged;
+
+        public static void RaiseMessageStyleChanged()
+        {
+            MessageStyleChanged?.Invoke(null, EventArgs.Empty);
+        }
+
         #endregion
 
         public static event EventHandler GlassHeaderChanged;
@@ -475,13 +543,15 @@ namespace Telegram.Services.Settings
             GlassHeaderChanged?.Invoke(null, EventArgs.Empty);
         }
 
-        // The header over a settings page: off is the original darker bar with a hairline, on is
-        // glass that fades out downwards, so the page scrolls under it gradually.
-        private static bool? _isGlassHeaderEnabled;
-        public bool IsGlassHeaderEnabled
+        // The header over a page: the original darker bar with a hairline, glass that fades out
+        // downwards so the page scrolls under it gradually, or a floating glass capsule like the
+        // settings cards. A header set by the earlier on/off switch carries over as glass.
+        private static int? _headerStyle;
+        public HeaderStyle HeaderStyle
         {
-            get => _isGlassHeaderEnabled ??= GetValueOrDefault("IsGlassHeaderEnabled", false);
-            set => AddOrUpdateValue(ref _isGlassHeaderEnabled, "IsGlassHeaderEnabled", value);
+            get => (HeaderStyle)(_headerStyle ??= GetValueOrDefault("HeaderStyle",
+                (int)(GetValueOrDefault("IsGlassHeaderEnabled", false) ? HeaderStyle.Glass : HeaderStyle.Original)));
+            set => AddOrUpdateValue(ref _headerStyle, "HeaderStyle", (int)value);
         }
 
         // Experimental: the hairlines between the folders rail, the chat list, the detail pane

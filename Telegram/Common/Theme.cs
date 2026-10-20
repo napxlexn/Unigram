@@ -1049,7 +1049,7 @@ namespace Telegram.Common
 
                 // The glass styles ride on these brushes, so that a change repaints every
                 // visible bubble without touching any of them.
-                brush.Value.Color = MessageStyle.Adjust(brush.Key, color, parent);
+                brush.Value.Color = MessageStyle.Adjust(brush.Key, color, parent, _suffix == "Outgoing");
             }
 
             UpdateBackground(parent);
