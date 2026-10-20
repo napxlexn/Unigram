@@ -6,7 +6,6 @@
 #include "Instance.h"
 #include "InstanceImpl.h"
 #include "v2/InstanceV2Impl.h"
-#include "v2/InstanceV2CompatImpl.h"
 #include "v2/InstanceV2ReferenceImpl.h"
 #include "VideoCaptureInterface.h"
 #include "RemoteMediaStateUpdatedEventArgs.h"
