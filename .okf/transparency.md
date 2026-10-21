@@ -56,7 +56,7 @@ UI: блок «Прозорість» у `Views/Settings/SettingsAppearancePage.
 ## Шапка, власні кольори, нижня панель (2026-10-21, четверта ітерація)
 - `HeaderStyle` (Original / Glass «Скло з переходом» / Capsule «Капсула») замінює `IsGlassHeaderEnabled`; старе значення мігрується. `MasterDetailView.ApplyHeaderStyle`: `CreateGlassHeaderBrush` (`FadingGlassBrush`, тінт ~0x14, blur 32) або `CreateCapsuleHeaderBrush` (заокруглена плашка з відступами) + `CreateRimBrush`. Мінімальний масштаб заголовка 0.75 (оригінал 0.583), центр масштабування — верх по центру.
 - Власні кольори повідомлень: `UseCustomMessageColors` + `CustomIncoming/Outgoing/IncomingText/OutgoingText/Reaction` колір. Мають пріоритет над темою, варіантом і темою чату; градієнт вихідних замінюється. Вибір — muxc `ColorPicker` у Flyout. «Теми для чатів» і «Шпалери чату» продубльовано в блоці «Повідомлення».
-- Майданчик стоїть над блоком «Повідомлення» і оновлюється на кожну зміну (`RefreshPlayground`).
+- Власного майданчика більше немає: блок «Повідомлення» стоїть одразу під стандартним попереднім переглядом теми (`Message1`/`Message2` плюс капсула дати), який оновлюється на кожну зміну (`RefreshPreview`).
 - Нижня панель каналу (Mute + подарунок): окремий скляний шар `ChatFooterGlassBrush` (`SolidGaussianBrush`, тінт #8C161616 / #A6FFFFFF) з обідком `ChatFooterRimBrush`.
 - Падіння: `FadingGlassBrush` пропускає маску при `SolidUntil >= 1` (дубль стопу → 0x80070057). Пензлі під час перемикання не диспозяться, а відпускаються (`FadingGlassBrush.OnDisconnected`, `PowerSavingBrushBase.Rebuild`), бо інакше RO_E_CLOSED 0x80000013. Перевірено 10 перемикань шапки та 6 капсул поспіль.
 
