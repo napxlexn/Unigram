@@ -278,6 +278,88 @@ namespace Telegram.Services.Settings
     }
 
     /// <summary>
+    /// What can be rounded, in a few categories, each with the elements in it for those who want
+    /// to go further. Ids are what the settings are stored under.
+    /// </summary>
+    public static class RadiusTree
+    {
+        public const int Maximum = 28;
+
+        public const string Master = "Master";
+
+        public const string Headers = "Headers";
+        public const string ChatHeader = "ChatHeader";
+        public const string PageHeaders = "PageHeaders";
+        public const string ContentFrame = "ContentFrame";
+
+        public const string Cards = "Cards";
+        public const string SettingsItems = "SettingsItems";
+        public const string Preview = "Preview";
+
+        public const string Controls = "Controls";
+        public const string Fields = "Fields";
+        public const string GlyphButtons = "GlyphButtons";
+        public const string Composer = "Composer";
+
+        public const string Overlays = "Overlays";
+
+        public const string ChatCapsules = "ChatCapsules";
+        public const string Reactions = "Reactions";
+        public const string Service = "Service";
+        public const string MediaButtons = "MediaButtons";
+
+        public static readonly (string Id, string Label, (string Id, string Label)[] Children)[] Categories =
+        {
+            (Headers, "Шапки й панелі", new[] { (ChatHeader, "Шапка чату"), (PageHeaders, "Шапки сторінок"), (ContentFrame, "Рамка вмісту вікна") }),
+            (Cards, "Пункти налаштувань і картки", new[] { (SettingsItems, "Пункти налаштувань"), (Preview, "Попередній перегляд") }),
+            (Controls, "Кнопки й поля вводу", new[] { (Fields, "Кнопки, поля й списки"), (GlyphButtons, "Кнопки-значки"), (Composer, "Поле вводу повідомлення") }),
+            (Overlays, "Меню й спливаючі вікна", System.Array.Empty<(string, string)>()),
+            (ChatCapsules, "Капсули в чаті", new[] { (Reactions, "Реакції"), (Service, "Дати й сервісні повідомлення"), (MediaButtons, "Кнопки на фото й відео") }),
+        };
+
+        public static string ParentOf(string id)
+        {
+            if (id == Master)
+            {
+                return null;
+            }
+
+            foreach (var category in Categories)
+            {
+                if (category.Id == id)
+                {
+                    return Master;
+                }
+
+                foreach (var child in category.Children)
+                {
+                    if (child.Id == id)
+                    {
+                        return category.Id;
+                    }
+                }
+            }
+
+            return Master;
+        }
+
+        public static System.Collections.Generic.IEnumerable<string> All()
+        {
+            yield return Master;
+
+            foreach (var category in Categories)
+            {
+                yield return category.Id;
+
+                foreach (var child in category.Children)
+                {
+                    yield return child.Id;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Every setting of a rim, as one: the one the elements share, or - prefixed - the bubbles'
     /// own, where a setting never changed falls back to the shared one.
     /// </summary>
@@ -705,27 +787,67 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _chatHeaderGlass, "ChatHeaderGlass", (int)value);
         }
 
-        // How round, in pixels: the header capsules, the settings cards, the buttons and fields.
-        // All the capsule's by default, so that everything matches it.
-        private static int? _headerRadius;
-        public int HeaderRadius
+        #region Corner radius
+
+        // A radius never set follows the one above it in RadiusTree - a category its master, an
+        // element its category - so the master moves everything nobody has touched, and leaves
+        // alone what someone has. "Set" is having a stored value; -1 is none.
+        private readonly System.Collections.Generic.Dictionary<string, int> _radii = new();
+
+        public int GetRadius(string id)
         {
-            get => _headerRadius ??= Math.Clamp(GetValueOrDefault("HeaderRadius", 16), 0, 28);
-            set => AddOrUpdateValue(ref _headerRadius, "HeaderRadius", Math.Clamp(value, 0, 28));
+            var own = GetOwnRadius(id);
+            if (own >= 0)
+            {
+                return own;
+            }
+
+            return RadiusTree.ParentOf(id) is string parent
+                ? GetRadius(parent)
+                : 16;
         }
 
-        private static int? _cardRadius;
-        public int CardRadius
+        public int GetOwnRadius(string id)
         {
-            get => _cardRadius ??= Math.Clamp(GetValueOrDefault("CardRadius", 16), 0, 24);
-            set => AddOrUpdateValue(ref _cardRadius, "CardRadius", Math.Clamp(value, 0, 24));
+            if (!_radii.TryGetValue(id, out var value))
+            {
+                _radii[id] = value = GetValueOrDefault("Radius." + id, -1);
+            }
+
+            return value;
         }
 
-        private static int? _controlRadius;
-        public int ControlRadius
+        public void SetRadius(string id, int value)
         {
-            get => _controlRadius ??= Math.Clamp(GetValueOrDefault("ControlRadius", 16), 0, 20);
-            set => AddOrUpdateValue(ref _controlRadius, "ControlRadius", Math.Clamp(value, 0, 20));
+            value = value < 0 ? -1 : Math.Clamp(value, 0, RadiusTree.Maximum);
+            _radii[id] = value;
+            AddOrUpdateValue("Radius." + id, value);
+        }
+
+        // Every slider moves every radius at once.
+        private static bool? _radiusSync;
+        public bool RadiusSync
+        {
+            get => _radiusSync ??= GetValueOrDefault("RadiusSync", false);
+            set => AddOrUpdateValue(ref _radiusSync, "RadiusSync", value);
+        }
+
+        #endregion
+
+        // Percent, 0-150, of the theme's colours' saturation: 100 is the theme as it is, 0 grey.
+        private static int? _themeSaturation;
+        public int ThemeSaturation
+        {
+            get => _themeSaturation ??= Math.Clamp(GetValueOrDefault("ThemeSaturation", 100), 0, 150);
+            set => AddOrUpdateValue(ref _themeSaturation, "ThemeSaturation", Math.Clamp(value, 0, 150));
+        }
+
+        // The composer's own fill under glass, percent: how much it stands out from the glass.
+        private static int? _inputFill;
+        public int InputFill
+        {
+            get => _inputFill ??= Math.Clamp(GetValueOrDefault("InputFill", 45), 0, 100);
+            set => AddOrUpdateValue(ref _inputFill, "InputFill", Math.Clamp(value, 0, 100));
         }
 
         private static int? _inputStyle;

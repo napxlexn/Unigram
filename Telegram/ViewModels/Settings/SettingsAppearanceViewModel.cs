@@ -632,40 +632,136 @@ namespace Telegram.ViewModels.Settings
             set => SetGlass(value, AppSettings.Appearance.ChatHeaderGlass, x => AppSettings.Appearance.ChatHeaderGlass = x);
         }
 
-        public double HeaderRadius
+        #region Corner radius
+
+        private RadiusNodeViewModel _radiusMaster;
+        public RadiusNodeViewModel RadiusMaster => _radiusMaster ??= CreateRadiusTree();
+
+        private List<RadiusNodeViewModel> _radiusCategories;
+        public List<RadiusNodeViewModel> RadiusCategories
         {
-            get => AppSettings.Appearance.HeaderRadius;
-            set => SetIntensity((int)value, AppSettings.Appearance.HeaderRadius, x => AppSettings.Appearance.HeaderRadius = x);
+            get
+            {
+                _ = RadiusMaster;
+                return _radiusCategories;
+            }
         }
 
-        public double CardRadius
+        private RadiusNodeViewModel CreateRadiusTree()
         {
-            get => AppSettings.Appearance.CardRadius;
+            var master = new RadiusNodeViewModel(this, RadiusTree.Master, "Загальне заокруглення", null);
+
+            _radiusCategories = new List<RadiusNodeViewModel>();
+
+            foreach (var (id, label, children) in RadiusTree.Categories)
+            {
+                var category = new RadiusNodeViewModel(this, id, label, master);
+
+                foreach (var (childId, childLabel) in children)
+                {
+                    category.Children.Add(new RadiusNodeViewModel(this, childId, childLabel, category));
+                }
+
+                master.Children.Add(category);
+                _radiusCategories.Add(category);
+            }
+
+            return master;
+        }
+
+        public bool RadiusSync
+        {
+            get => AppSettings.Appearance.RadiusSync;
             set
             {
-                if (AppSettings.Appearance.CardRadius != (int)value)
+                if (AppSettings.Appearance.RadiusSync != value)
                 {
-                    AppSettings.Appearance.CardRadius = (int)value;
+                    AppSettings.Appearance.RadiusSync = value;
                     RaisePropertyChanged();
                 }
             }
         }
 
-        public double ControlRadius
+        /// <summary>
+        /// A slider moved. In sync, every radius takes the value: the master holds it and
+        /// nothing below keeps one of its own. Otherwise the radius keeps it as its own, and
+        /// what follows it - everything below it not set apart - follows.
+        /// </summary>
+        public void SetRadius(RadiusNodeViewModel node, int value)
         {
-            get => AppSettings.Appearance.ControlRadius;
-            set
+            if (AppSettings.Appearance.RadiusSync)
             {
-                if (AppSettings.Appearance.ControlRadius != (int)value)
+                foreach (var id in RadiusTree.All())
                 {
-                    AppSettings.Appearance.ControlRadius = (int)value;
-                    RaisePropertyChanged();
+                    AppSettings.Appearance.SetRadius(id, -1);
+                }
 
-                    // A theme resource: written again with the theme, once the slider settles.
-                    _radiusDebouncer ??= new DebouncedProperty<int>(300, _ => NightModeService.Current.Update(false, updateBackground: false));
-                    _radiusDebouncer.Set((int)value);
+                AppSettings.Appearance.SetRadius(RadiusTree.Master, value);
+            }
+            else
+            {
+                AppSettings.Appearance.SetRadius(node.Id, value);
+            }
+
+            RadiusMaster.Refresh();
+            ApplyRadii();
+        }
+
+        /// <summary>
+        /// Lets every radius follow the master again.
+        /// </summary>
+        public void ResetRadii()
+        {
+            foreach (var id in RadiusTree.All())
+            {
+                if (id != RadiusTree.Master)
+                {
+                    AppSettings.Appearance.SetRadius(id, -1);
                 }
             }
+
+            RadiusMaster.Refresh();
+            ApplyRadii();
+        }
+
+        private void ApplyRadii()
+        {
+            // The resources go with the theme, the headers, composer and reactions with the
+            // glass; once the slider settles.
+            _radiusDebouncer ??= new DebouncedProperty<int>(250, _ =>
+            {
+                NightModeService.Current.Update(false, updateBackground: false);
+                ApplyGlass();
+                RaisePropertyChanged(nameof(RadiusMaster));
+            });
+            _radiusDebouncer.Set(Environment.TickCount);
+        }
+
+        #endregion
+
+        public double ThemeSaturation
+        {
+            get => AppSettings.Appearance.ThemeSaturation;
+            set
+            {
+                if (AppSettings.Appearance.ThemeSaturation != (int)value)
+                {
+                    AppSettings.Appearance.ThemeSaturation = (int)value;
+                    RaisePropertyChanged();
+
+                    // Every theme colour is written again, once the slider settles.
+                    _saturationDebouncer ??= new DebouncedProperty<int>(200, _ => NightModeService.Current.Update(false, updateBackground: false));
+                    _saturationDebouncer.Set((int)value);
+                }
+            }
+        }
+
+        private DebouncedProperty<int> _saturationDebouncer;
+
+        public double InputFill
+        {
+            get => AppSettings.Appearance.InputFill;
+            set => SetIntensity((int)value, AppSettings.Appearance.InputFill, x => AppSettings.Appearance.InputFill = x);
         }
 
         private DebouncedProperty<int> _radiusDebouncer;

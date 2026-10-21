@@ -956,7 +956,7 @@ namespace Telegram.Views
                     // One rounded capsule around the header and the bars, sized in
                     // UpdateClipperBackground. HeaderGlass rather than an element of its own over
                     // the header: it has to lie under the bars, or it would blur them away.
-                    HeaderGlass.CornerRadius = new CornerRadius(AppSettings.Appearance.HeaderRadius);
+                    HeaderGlass.CornerRadius = new CornerRadius(AppSettings.Appearance.GetRadius(Services.Settings.RadiusTree.ChatHeader));
                     SmoothGlass.Attach(HeaderGlass, headerKind, dark, rim: AppSettings.Appearance.RimOnPanels);
                     break;
 
@@ -971,6 +971,7 @@ namespace Telegram.Views
             // Every activation and theme change passes here, so the footer follows too.
             SmoothGlass.Attach(ChatFooterGlass, footerKind, dark, rim: AppSettings.Appearance.RimOnPanels);
 
+            UpdateTextAreaRadius(false);
             UpdateInputStyle(dark);
 
 
@@ -1122,8 +1123,20 @@ namespace Telegram.Views
             InputGlassBand.Background = null;
 
             var original = style == Services.Settings.InputStyle.Original;
-            TextRoot.Background = original ? _textRootBackground : null;
             ShadowCaster.Opacity = original ? 1 : 0;
+
+            // Glass of its own colour under the composer, as strong as the setting asks, so that
+            // it stays a field on the glass and does not melt into it.
+            if (original)
+            {
+                TextRoot.Background = _textRootBackground;
+            }
+            else
+            {
+                var fill = Glass.Resolve(kind, dark).Tint ?? (dark ? Windows.UI.Color.FromArgb(0xFF, 0x20, 0x20, 0x24) : Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
+                fill.A = (byte)(255 * AppSettings.Appearance.InputFill / 100);
+                TextRoot.Background = new SolidColorBrush(fill);
+            }
 
             if (!FromPreview && !ViewModel.IsSavedMessagesTab)
             {
@@ -1139,6 +1152,11 @@ namespace Telegram.Views
                     break;
 
                 case Services.Settings.InputStyle.Bar:
+                    // Its outline on the band, without a pane of its own.
+                    TextGlass.CornerRadius = TextRoot.CornerRadius;
+                    TextGlass.Visibility = Visibility.Visible;
+                    SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: true);
+
                     InputGlassBand.Height = double.NaN;
                     InputGlassBand.Margin = new Thickness(0);
                     InputGlassBand.VerticalAlignment = VerticalAlignment.Stretch;
@@ -1153,6 +1171,10 @@ namespace Telegram.Views
                         var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
                         var solid = Math.Max(1, Footer.ActualHeight + Footer.Margin.Bottom);
                         var total = solid + 40;
+
+                        TextGlass.CornerRadius = TextRoot.CornerRadius;
+                        TextGlass.Visibility = Visibility.Visible;
+                        SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: true);
 
                         InputGlassBand.VerticalAlignment = VerticalAlignment.Bottom;
                         InputGlassBand.Height = total;
@@ -7064,7 +7086,7 @@ namespace Telegram.Views
 
         private void UpdateTextAreaRadius(bool force = true)
         {
-            var radius = AppSettings.Appearance.CornerRadius;
+            var radius = AppSettings.Appearance.GetRadius(Services.Settings.RadiusTree.Composer);
             if (radius == _textAreaRadius && !force)
             {
                 return;

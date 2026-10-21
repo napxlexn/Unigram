@@ -37,6 +37,9 @@ namespace Telegram.Views.Settings
             Title = Strings.Appearance;
 
             Preview.CreateInsetClip();
+
+            var radius = new CornerRadius(AppSettings.Appearance.GetRadius(RadiusTree.Preview));
+            PreviewCard.CornerRadius = Preview.CornerRadius = BackgroundControl.CornerRadius = radius;
         }
 
         private void OnActualThemeChanged(FrameworkElement sender, object args)
@@ -125,6 +128,9 @@ namespace Telegram.Views.Settings
         {
             await Task.Delay(250);
 
+            var radius = new CornerRadius(AppSettings.Appearance.GetRadius(RadiusTree.Preview));
+            PreviewCard.CornerRadius = Preview.CornerRadius = BackgroundControl.CornerRadius = radius;
+
             Message1.RefreshStyle();
             Message2.RefreshStyle();
         }
@@ -195,6 +201,8 @@ namespace Telegram.Views.Settings
                 or nameof(ViewModel.RimHoverIndex)
                 or nameof(ViewModel.RimSmoothingIndex)
                 or nameof(ViewModel.SeparateBubbleRim)
+                or nameof(ViewModel.RadiusMaster)
+                or nameof(ViewModel.ThemeSaturation)
                 or nameof(ViewModel.RimAnimationIntensity)
                 or nameof(ViewModel.RimHoverIntensity)
                 or nameof(ViewModel.RimWidth)

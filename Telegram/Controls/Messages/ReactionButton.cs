@@ -81,6 +81,8 @@ namespace Telegram.Controls.Messages
         /// </summary>
         private void UpdateGlow()
         {
+            CornerRadius = new CornerRadius(AppSettings.Appearance.GetRadius(RadiusTree.Reactions));
+
             if (GlowHost == null || Icon == null || Count == null)
             {
                 return;

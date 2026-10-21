@@ -52,6 +52,7 @@ namespace Telegram.Common
 
                 UpdateEmojiSet();
                 UpdateScrolls();
+                UpdateRadii(null);
             }
             catch (Exception ex)
             {
@@ -384,6 +385,55 @@ namespace Telegram.Common
         /// or light by its own colour: the same theme has both - black strokes around cards,
         /// white ones in the panes - and only the dark ones show up as grime over glass.
         /// </summary>
+        /// <summary>
+        /// The radii the styles read from resources, as the settings have them: here, in this
+        /// dictionary itself, ahead of WinUI's own merged into it - and, for the ones WinUI
+        /// keeps per theme, in the theme's dictionary too. A template takes them as it is
+        /// applied, so what is already on screen keeps the old ones until it is made again.
+        /// </summary>
+        private void UpdateRadii(ResourceDictionary themed)
+        {
+            var appearance = AppSettings.Appearance;
+
+            foreach (var (key, id) in new[]
+            {
+                ("ControlCornerRadius", RadiusTree.Fields),
+                ("OverlayCornerRadius", RadiusTree.Overlays),
+                ("NavigationViewContentGridCornerRadius", RadiusTree.ContentFrame),
+                ("GlyphButtonCornerRadius", RadiusTree.GlyphButtons),
+                ("MessageServiceCornerRadius", RadiusTree.Service),
+                ("MessageOverlayCornerRadius", RadiusTree.MediaButtons),
+            })
+            {
+                var radius = new CornerRadius(appearance.GetRadius(id));
+                this[key] = radius;
+
+                if (themed != null)
+                {
+                    themed[key] = radius;
+                }
+            }
+        }
+
+        /// <summary>
+        /// A theme colour at the saturation the settings ask for, its lightness kept: towards
+        /// its own grey below 100%, away from it above, down to grey at nothing.
+        /// </summary>
+        public static Color Saturate(Color color)
+        {
+            var amount = AppSettings.Appearance.ThemeSaturation / 100d;
+            if (amount == 1)
+            {
+                return color;
+            }
+
+            var grey = 0.299 * color.R + 0.587 * color.G + 0.114 * color.B;
+
+            byte Channel(byte value) => (byte)Math.Clamp(Math.Round(grey + (value - grey) * amount), 0, 255);
+
+            return Color.FromArgb(color.A, Channel(color.R), Channel(color.G), Channel(color.B));
+        }
+
         private static (string Key, Color Fill)[] GetFieldFills(bool lightTheme)
         {
             var kind = AppSettings.Appearance.FieldGlass;
@@ -580,11 +630,11 @@ namespace Telegram.Common
                 {
                     if (shades != null && shades.TryGetValue(shade, out Color accent))
                     {
-                        return accent;
+                        return Saturate(accent);
                     }
                     else
                     {
-                        return SystemAccentPalette.GetShade(ThemeInfoBase.Accents[requested == TelegramTheme.Dark ? TelegramThemeType.Night : TelegramThemeType.Day], shade);
+                        return Saturate(SystemAccentPalette.GetShade(ThemeInfoBase.Accents[requested == TelegramTheme.Dark ? TelegramThemeType.Night : TelegramThemeType.Day], shade));
                     }
                 }
 
@@ -629,11 +679,11 @@ namespace Telegram.Common
                         }
                         else if (values != null && values.TryGetValue(item.Key, out Color themed))
                         {
-                            value = themed;
+                            value = Saturate(themed);
                         }
                         else
                         {
-                            value = item.Value.Color;
+                            value = Saturate(item.Value.Color);
                         }
 
                         if (themeParameters.ContainsKey(item.Key))
@@ -726,10 +776,26 @@ namespace Telegram.Common
                 AddOrUpdate<SolidColorBrush>(target, muxcCopy, "DividerStrokeColorDefaultBrush", create,
                     update => update.Color = dividerStroke);
 
-                // How round the buttons, fields and lists are, which WinUI's styles all read from
-                // one resource: here, ahead of the library's own. Templates take it as they are
-                // applied, so what is already on screen keeps the old one until made again.
-                target["ControlCornerRadius"] = new CornerRadius(AppSettings.Appearance.ControlRadius);
+                UpdateRadii(target);
+
+                // WinUI's accent resources, which its own brushes are made of, desaturated with
+                // the theme - and its own again when the theme is left at full colour.
+                foreach (var (key, shade) in new[]
+                {
+                    ("SystemAccentColor", AccentShade.Default),
+                    ("SystemAccentColorLight1", AccentShade.Light1), ("SystemAccentColorLight2", AccentShade.Light2), ("SystemAccentColorLight3", AccentShade.Light3),
+                    ("SystemAccentColorDark1", AccentShade.Dark1), ("SystemAccentColorDark2", AccentShade.Dark2), ("SystemAccentColorDark3", AccentShade.Dark3),
+                })
+                {
+                    if (AppSettings.Appearance.ThemeSaturation != 100)
+                    {
+                        target[key] = GetShade(shade);
+                    }
+                    else if (target.ContainsKey(key))
+                    {
+                        target.Remove(key);
+                    }
+                }
 
                 // The text fields' fills, WinUI's own unless a glass is chosen for them: then its
                 // tint, a little denser where the pointer is and denser still while typing.
