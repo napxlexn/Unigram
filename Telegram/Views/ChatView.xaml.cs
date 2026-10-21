@@ -943,7 +943,7 @@ namespace Telegram.Views
                     // UpdateClipperBackground. HeaderGlass rather than an element of its own over
                     // the header: it has to lie under the bars, or it would blur them away.
                     HeaderGlass.CornerRadius = new CornerRadius(16);
-                    SmoothGlass.Attach(HeaderGlass, headerKind, dark);
+                    SmoothGlass.Attach(HeaderGlass, headerKind, dark, rim: AppSettings.Appearance.RimOnPanels);
                     break;
 
                 case Services.Settings.ChatHeaderStyle.FadingGlass:
@@ -955,7 +955,7 @@ namespace Telegram.Views
             }
 
             // Every activation and theme change passes here, so the footer follows too.
-            SmoothGlass.Attach(ChatFooterGlass, footerKind, dark);
+            SmoothGlass.Attach(ChatFooterGlass, footerKind, dark, rim: AppSettings.Appearance.RimOnPanels);
 
 
             UpdateClipperBackground();

@@ -96,6 +96,41 @@ namespace Telegram.Services.Settings
     }
 
     /// <summary>
+    /// Where the rim takes its colour from.
+    /// </summary>
+    public enum RimColorMode
+    {
+        // The glass kind's own, or white light.
+        Auto,
+        Accent,
+        // The colour of what it rims - the bubble, the header - brightened.
+        Element,
+        Custom
+    }
+
+    /// <summary>
+    /// How the light falls along the rim.
+    /// </summary>
+    public enum RimLight
+    {
+        // As the rim style draws it: brighter at the top for most.
+        Style,
+        Even,
+        TopDown,
+        BottomUp,
+        Diagonal
+    }
+
+    public enum RimAnimation
+    {
+        None,
+        // Breathes, brighter and dimmer.
+        Pulse,
+        // A glint runs along it.
+        Shimmer
+    }
+
+    /// <summary>
     /// The chat's own header - the title bar over the messages together with the pinned message,
     /// the translate bar and the rest under it, as one element. The glass ones let the messages
     /// scroll beneath and blur them.
@@ -539,6 +574,63 @@ namespace Telegram.Services.Settings
         {
             get => (RimStyle)(_rimStyle ??= GetValueOrDefault("RimStyle", (int)RimStyle.Thin));
             set => AddOrUpdateValue(ref _rimStyle, "RimStyle", (int)value);
+        }
+
+        private static int? _rimColorMode;
+        public RimColorMode RimColorMode
+        {
+            get => (RimColorMode)(_rimColorMode ??= GetValueOrDefault("RimColorMode", (int)RimColorMode.Auto));
+            set => AddOrUpdateValue(ref _rimColorMode, "RimColorMode", (int)value);
+        }
+
+        public Windows.UI.Color RimCustomColor
+        {
+            get => GetColor("RimCustomColor", 0xFFB4C8FF);
+            set => SetColor("RimCustomColor", value);
+        }
+
+        private static int? _rimLight;
+        public RimLight RimLight
+        {
+            get => (RimLight)(_rimLight ??= GetValueOrDefault("RimLight", (int)RimLight.Style));
+            set => AddOrUpdateValue(ref _rimLight, "RimLight", (int)value);
+        }
+
+        private static int? _rimAnimation;
+        public RimAnimation RimAnimation
+        {
+            get => (RimAnimation)(_rimAnimation ??= GetValueOrDefault("RimAnimation", (int)RimAnimation.None));
+            set => AddOrUpdateValue(ref _rimAnimation, "RimAnimation", (int)value);
+        }
+
+        // Percent, 50-400, of the rim's usual thickness.
+        private static int? _rimWidth;
+        public int RimWidth
+        {
+            get => _rimWidth ??= Math.Clamp(GetValueOrDefault("RimWidth", 100), 50, 400);
+            set => AddOrUpdateValue(ref _rimWidth, "RimWidth", Math.Clamp(value, 50, 400));
+        }
+
+        // Which elements get a rim at all.
+        private static bool? _rimOnBubbles;
+        public bool RimOnBubbles
+        {
+            get => _rimOnBubbles ??= GetValueOrDefault("RimOnBubbles", true);
+            set => AddOrUpdateValue(ref _rimOnBubbles, "RimOnBubbles", value);
+        }
+
+        private static bool? _rimOnReactions;
+        public bool RimOnReactions
+        {
+            get => _rimOnReactions ??= GetValueOrDefault("RimOnReactions", true);
+            set => AddOrUpdateValue(ref _rimOnReactions, "RimOnReactions", value);
+        }
+
+        private static bool? _rimOnPanels;
+        public bool RimOnPanels
+        {
+            get => _rimOnPanels ??= GetValueOrDefault("RimOnPanels", true);
+            set => AddOrUpdateValue(ref _rimOnPanels, "RimOnPanels", value);
         }
 
         // Percents, 0-100, of the effects: how bright the rim, how strong the lamp glow and the

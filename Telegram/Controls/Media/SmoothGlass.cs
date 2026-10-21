@@ -51,7 +51,7 @@ namespace Telegram.Controls.Media
                 return;
             }
 
-            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, fill, rim);
+            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, tint, fill, rim);
 
             host.Tag = attachment;
             host.SizeChanged += attachment.OnSizeChanged;
@@ -133,7 +133,7 @@ namespace Telegram.Controls.Media
             private readonly SpriteVisual _rimGlow;
             private readonly CompositionVisualSurface _rimGlowSurface;
 
-            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, bool fill, bool rim)
+            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, Color? element, bool fill, bool rim)
             {
                 _compositor = compositor;
                 Root = compositor.CreateContainerVisual();
@@ -245,6 +245,16 @@ namespace Telegram.Controls.Media
                     ? Scale(own, 0.35)
                     : dark ? Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00);
 
+                // A colour of the user's choosing instead, as bright as the kinds' own rims.
+                if (Glass.GetRimColor(element, dark) is Color chosen)
+                {
+                    top = chosen;
+                    bottom = Scale(chosen, 0.35);
+                }
+
+                var width = appearance.RimWidth / 100f;
+                _light = appearance.RimLight;
+
                 top = Scale(top, strength);
                 bottom = Scale(bottom, strength);
 
@@ -253,8 +263,14 @@ namespace Telegram.Controls.Media
                 var geometries = new System.Collections.Generic.List<CompositionPathGeometry>();
                 var insets = new System.Collections.Generic.List<float>();
 
-                CompositionLinearGradientBrush Vertical(params (float Offset, Color Color)[] stops)
+                // The light along the rim: as the style has it, or as the setting turns it.
+                CompositionBrush Vertical(params (float Offset, Color Color)[] stops)
                 {
+                    if (_light == RimLight.Even)
+                    {
+                        return compositor.CreateColorBrush(stops[0].Color);
+                    }
+
                     var brush = compositor.CreateLinearGradientBrush();
                     brush.MappingMode = CompositionMappingMode.Absolute;
 
@@ -267,8 +283,19 @@ namespace Telegram.Controls.Media
                     return brush;
                 }
 
+                // A solid colour, lit along the rim unless the style keeps it even.
+                CompositionBrush Lit(Color color)
+                {
+                    return _light is RimLight.Style or RimLight.Even
+                        ? compositor.CreateColorBrush(color)
+                        : Vertical((0, color), (1, Scale(color, 0.3)));
+                }
+
                 void Stroke(CompositionBrush brush, float thickness, float inset)
                 {
+                    thickness *= width;
+                    inset *= width;
+
                     var geometry = compositor.CreatePathGeometry();
                     var shape = compositor.CreateSpriteShape(geometry);
                     shape.StrokeBrush = brush;
@@ -282,7 +309,7 @@ namespace Telegram.Controls.Media
                 switch (style)
                 {
                     case RimStyle.Soft:
-                        Stroke(compositor.CreateColorBrush(Scale(top, 0.5)), 1, 0.5f);
+                        Stroke(Lit(Scale(top, 0.5)), 1, 0.5f);
                         break;
 
                     case RimStyle.TopLight:
@@ -318,6 +345,22 @@ namespace Telegram.Controls.Media
                         break;
                 }
 
+                // A glint running along it: the outline again, lit only in a narrow band that
+                // Update slides across.
+                if (appearance.RimAnimation == RimAnimation.Shimmer)
+                {
+                    var glint = Scale(Colors.White, Math.Min(1, 0.9 * strength));
+                    var clear = Scale(glint, 0);
+
+                    _shimmer = compositor.CreateLinearGradientBrush();
+                    _shimmer.MappingMode = CompositionMappingMode.Absolute;
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.38f, clear));
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.5f, glint));
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.62f, clear));
+
+                    Stroke(_shimmer, 1.5f, 0.75f);
+                }
+
                 _rimGeometries = geometries.ToArray();
                 _rimInsets = insets.ToArray();
                 _verticals = verticals.ToArray();
@@ -332,7 +375,7 @@ namespace Telegram.Controls.Media
                     var glowGeometry = compositor.CreatePathGeometry();
                     var glowStroke = compositor.CreateSpriteShape(glowGeometry);
                     glowStroke.StrokeBrush = compositor.CreateColorBrush(glowColor);
-                    glowStroke.StrokeThickness = 3;
+                    glowStroke.StrokeThickness = 3 * width;
                     glowShape.Shapes.Add(glowStroke);
 
                     _rimGlowSurface = compositor.CreateVisualSurface();
@@ -363,7 +406,25 @@ namespace Telegram.Controls.Media
                 }
 
                 Root.Children.InsertAtTop(_rim);
+
+                // Breathing: the rim, and its glow, dim and come back.
+                if (appearance.RimAnimation == RimAnimation.Pulse)
+                {
+                    var pulse = compositor.CreateScalarKeyFrameAnimation();
+                    pulse.InsertKeyFrame(0, 1);
+                    pulse.InsertKeyFrame(0.5f, 0.3f);
+                    pulse.InsertKeyFrame(1, 1);
+                    pulse.Duration = TimeSpan.FromSeconds(2.6);
+                    pulse.IterationBehavior = AnimationIterationBehavior.Forever;
+
+                    _rim.StartAnimation("Opacity", pulse);
+                    _rimGlow?.StartAnimation("Opacity", pulse);
+                }
             }
+
+            private readonly RimLight _light;
+            private readonly CompositionLinearGradientBrush _shimmer;
+            private Vector2 _shimmerSize;
 
             private readonly ShapeVisual _rimGlowShape;
             private readonly CompositionPathGeometry _rimGlowGeometry;
@@ -435,8 +496,35 @@ namespace Telegram.Controls.Media
 
                 foreach (var vertical in _verticals)
                 {
-                    vertical.StartPoint = Vector2.Zero;
-                    vertical.EndPoint = new Vector2(0, size.Y);
+                    vertical.StartPoint = _light == RimLight.BottomUp ? new Vector2(0, size.Y) : Vector2.Zero;
+                    vertical.EndPoint = _light switch
+                    {
+                        RimLight.BottomUp => Vector2.Zero,
+                        RimLight.Diagonal => size,
+                        _ => new Vector2(0, size.Y)
+                    };
+                }
+
+                // The band spans the element corner to corner and slides from wholly before it to
+                // wholly past it, then rests; restarted for a new size.
+                if (_shimmer != null && size != _shimmerSize)
+                {
+                    _shimmerSize = size;
+
+                    Vector2KeyFrameAnimation Run(Vector2 from)
+                    {
+                        var run = _compositor.CreateVector2KeyFrameAnimation();
+                        run.InsertKeyFrame(0, from - size);
+                        run.InsertKeyFrame(0.6f, from + size);
+                        run.InsertKeyFrame(1, from + size);
+                        run.Duration = TimeSpan.FromSeconds(3.2);
+                        run.IterationBehavior = AnimationIterationBehavior.Forever;
+                        return run;
+                    }
+
+                    // Both ends together, so the band keeps its width on the way.
+                    _shimmer.StartAnimation("StartPoint", Run(Vector2.Zero));
+                    _shimmer.StartAnimation("EndPoint", Run(size));
                 }
 
                 if (_rimGlow != null)

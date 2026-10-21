@@ -2505,13 +2505,17 @@ namespace Telegram.Controls.Messages
                     {
                         _glassCornersTracked = true;
                         ContentPanel.RegisterPropertyChangedCallback(Grid.CornerRadiusProperty, (s, e) => GlassHost.CornerRadius = ContentPanel.CornerRadius);
+                        ContentPanel.RegisterPropertyChangedCallback(Grid.PaddingProperty, (s, e) => GlassHost.Margin = OutsetOf(ContentPanel.Padding));
                     }
 
                     var tint = GetBrush("MessageBackgroundBrush") is SolidColorBrush fill ? fill.Color : (Color?)null;
 
+                    // Over the whole bubble, its padding too: inside it, the rim ran 4px under the
+                    // top edge, crowding the first line, and a theme's gradient showed past it.
                     GlassHost.CornerRadius = ContentPanel.CornerRadius;
+                    GlassHost.Margin = OutsetOf(ContentPanel.Padding);
                     GlassHost.Visibility = Visibility.Visible;
-                    SmoothGlass.Attach(GlassHost, kind, dark, tint, fill: _brush == null);
+                    SmoothGlass.Attach(GlassHost, kind, dark, tint, fill: _brush == null, rim: AppSettings.Appearance.RimOnBubbles);
                 }
             }
             else if (GlassHost != null)
@@ -2538,6 +2542,11 @@ namespace Telegram.Controls.Messages
         }
 
         private bool _glassCornersTracked;
+
+        private static Thickness OutsetOf(Thickness padding)
+        {
+            return new Thickness(-padding.Left, -padding.Top, -padding.Right, -padding.Bottom);
+        }
         // Per bubble: brushes belong to the thread of the window that made them.
         private SolidColorBrush _hitTestBrush;
 

@@ -114,12 +114,14 @@ namespace Telegram.Common
             }
 
             var spec = Glass.Resolve(kind, dark);
-            if (spec.RimColor == null && appearance.RimStyle == RimStyle.None)
+            if (!appearance.RimOnReactions || (spec.RimColor == null && appearance.RimStyle == RimStyle.None))
             {
                 return Color.FromArgb(0, 0, 0, 0);
             }
 
-            var rim = spec.RimColor ?? (dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF));
+            var rim = Glass.GetRimColor(appearance.UseCustomMessageColors ? appearance.CustomReactionColor : null, dark)
+                ?? spec.RimColor
+                ?? (dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF));
             rim.A = (byte)Math.Clamp(rim.A * appearance.RimIntensity / 60, 0, 255);
             return rim;
         }

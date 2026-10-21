@@ -514,14 +514,49 @@
                     </Grid>
                 </controls:HeaderedControl>
 
-                <controls:HeaderedControl Header="Ефекти скла"
-                                          Footer="Діють на всі елементи зі склом: обідок — на капсули, шапки, нижню панель і бульбашки; сяйво — на внутрішнє світло та світіння тексту; розгортка — на ретро-термінали; розмиття — на все скло.">
-                    <controls:SettingsButton Content="Обідок скла"
+                <controls:HeaderedControl Header="Обідок"
+                                          Footer="Лінія по краю скла. Колір «елемента» — це колір бульбашки чи шапки, освітлений; анімація працює на всіх елементах з обідком, тож на слабкій відеокарті краще залишити її вимкненою.">
+                    <controls:SettingsButton Content="Стиль обідка"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimStyleOptions}"
                                                        AutomationProperties.Name="Обідок скла"
                                                        SelectedIndex="{x:Bind ViewModel.RimStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Колір обідка"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimColorOptions}"
+                                                       AutomationProperties.Name="Колір обідка"
+                                                       SelectedIndex="{x:Bind ViewModel.RimColorIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Власний колір обідка"
+                                             Tag="RimCustomColor"
+                                             Click="CustomColor_Click"
+                                             IsEnabled="{x:Bind ViewModel.IsRimCustom, Mode=OneWay}"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
+                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                    Background="{x:Bind ViewModel.RimCustomBrush, Mode=OneWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Світло на обідку"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimLightOptions}"
+                                                       AutomationProperties.Name="Світло на обідку"
+                                                       SelectedIndex="{x:Bind ViewModel.RimLightIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Анімація обідка"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimAnimationOptions}"
+                                                       AutomationProperties.Name="Анімація обідка"
+                                                       SelectedIndex="{x:Bind ViewModel.RimAnimationIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <Grid Background="{ThemeResource SettingsItemBackground}"
@@ -559,7 +594,60 @@
                                 IsThumbToolTipEnabled="False"
                                 Margin="12,6,16,6"
                                 Grid.Column="2" />
-                    </Grid>                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                    </Grid>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Товщина обідка', ViewModel.RimWidth), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.RimWidth, Mode=TwoWay}"
+                                AutomationProperties.Name="Товщина обідка"
+                                Minimum="50"
+                                Maximum="400"
+                                SmallChange="25"
+                                LargeChange="50"
+                                StepFrequency="25"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.RimOnBubbles, Mode=TwoWay}"
+                              AutomationProperties.Name="Обідок на бульбашках"
+                              Content="Обідок на бульбашках"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.RimOnReactions, Mode=TwoWay}"
+                              AutomationProperties.Name="Обідок на реакціях"
+                              Content="Обідок на реакціях"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.RimOnPanels, Mode=TwoWay}"
+                              AutomationProperties.Name="Обідок на шапках і панелях"
+                              Content="Обідок на шапках і панелях"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                </controls:HeaderedControl>
+
+                <controls:HeaderedControl Header="Ефекти скла"
+                                          Footer="Діють на всі елементи зі склом: сяйво — на внутрішнє світло та світіння тексту; розгортка — на ретро-термінали; розмиття — на все скло.">
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58" />
