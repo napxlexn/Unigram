@@ -304,6 +304,8 @@ namespace Telegram.Controls.Media
 
                 var geometries = new System.Collections.Generic.List<CompositionPathGeometry>();
                 var insets = new System.Collections.Generic.List<float>();
+                var shapes = new System.Collections.Generic.List<CompositionSpriteShape>();
+                var thicknesses = new System.Collections.Generic.List<float>();
 
                 // The light along the rim: as the style has it, or as the setting turns it.
                 CompositionBrush Vertical(params (float Offset, Color Color)[] stops)
@@ -346,6 +348,8 @@ namespace Telegram.Controls.Media
                     _rim.Shapes.Add(shape);
                     geometries.Add(geometry);
                     insets.Add(inset);
+                    shapes.Add(shape);
+                    thicknesses.Add(thickness);
                 }
 
                 switch (style)
@@ -486,6 +490,9 @@ namespace Telegram.Controls.Media
 
                 _rimGeometries = geometries.ToArray();
                 _rimInsets = insets.ToArray();
+                _rimDrawnInsets = insets.ToArray();
+                _rimShapes = shapes.ToArray();
+                _rimThicknesses = thicknesses.ToArray();
                 _verticals = verticals.ToArray();
 
                 // A rim that glows: the outline again, wider and blurred, light spilling both ways
@@ -539,18 +546,157 @@ namespace Telegram.Controls.Media
                     }
                 }
 
-                Root.Children.InsertAtTop(_rim);
+                _smoothing = appearance.RimSmoothing;
+                _rimDisplay = PresentRim(compositor);
 
                 // The ones that change the rim's brightness: eased between every step, so that
                 // nothing jumps; the glow follows unless the pointer has it.
                 if (CreateBrightness(compositor, appearance.RimAnimation) is ScalarKeyFrameAnimation brightness)
                 {
-                    _rim.StartAnimation("Opacity", brightness);
+                    _rimDisplay.StartAnimation("Opacity", brightness);
 
                     if (!hoverGlow)
                     {
                         _rimGlow?.StartAnimation("Opacity", brightness);
                     }
+                }
+            }
+
+            private readonly RimSmoothing _smoothing;
+            private readonly Visual _rimDisplay;
+            private readonly float[] _rimDrawnInsets;
+            private readonly CompositionSpriteShape[] _rimShapes;
+            private readonly float[] _rimThicknesses;
+
+            // The rim drawn into a surface first, for the smoothing that works on its pixels.
+            private ContainerVisual _rimHolder;
+            private CompositionVisualSurface _rimSurface;
+            private SpriteVisual _rimSprite;
+            private ShapeVisual _rimHalo;
+
+            // How far a softened rim may spread past the edge.
+            private const float Feather = 2;
+
+            private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, CompositionEffectFactory> _featherFactories = new();
+
+            /// <summary>
+            /// Puts the rim into the glass, smoothed as the setting asks, and returns the visual
+            /// that shows it.
+            /// </summary>
+            private Visual PresentRim(Compositor compositor)
+            {
+                switch (_smoothing)
+                {
+                    case RimSmoothing.Blend:
+                        {
+                            // The crisp line, and under it a blurred copy of it, mirrored from
+                            // the live one: the curves get a soft edge, the line stays sharp.
+                            Root.Children.InsertAtTop(_rim);
+
+                            _rimSurface = compositor.CreateVisualSurface();
+                            _rimSurface.SourceVisual = _rim;
+                            _rimSurface.SourceOffset = new Vector2(-Feather);
+
+                            var brush = CreateFeather(compositor, 1.1f);
+                            brush.SetSourceParameter("Rim", compositor.CreateSurfaceBrush(_rimSurface));
+
+                            _rimSprite = compositor.CreateSpriteVisual();
+                            _rimSprite.Brush = brush;
+                            _rimSprite.Opacity = 0.7f;
+                            _rimSprite.Offset = new Vector3(-Feather, -Feather, 0);
+                            Root.Children.InsertBelow(_rimSprite, _rim);
+
+                            // Both brighten and dim together under the animations.
+                            return _rim;
+                        }
+
+                    case RimSmoothing.Soft:
+                        {
+                            // A blur of under a pixel: the steps along the curves melt, the line
+                            // stays a line.
+                            _rim.Offset = new Vector3(Feather, Feather, 0);
+                            _rimHolder = compositor.CreateContainerVisual();
+                            _rimHolder.Children.InsertAtTop(_rim);
+
+                            _rimSurface = compositor.CreateVisualSurface();
+                            _rimSurface.SourceVisual = _rimHolder;
+
+                            var brush = CreateFeather(compositor, 0.7f);
+                            brush.SetSourceParameter("Rim", compositor.CreateSurfaceBrush(_rimSurface));
+
+                            _rimSprite = compositor.CreateSpriteVisual();
+                            _rimSprite.Brush = brush;
+                            _rimSprite.Offset = new Vector3(-Feather, -Feather, 0);
+                            Root.Children.InsertAtTop(_rimSprite);
+                            return _rimSprite;
+                        }
+
+                    case RimSmoothing.Halo:
+                        {
+                            // Under each line a wider, faint one along the same outline, which
+                            // fills in the half-covered pixels at its edges.
+                            _rimHalo = compositor.CreateShapeVisual();
+                            _rimHalo.Opacity = 0.3f;
+
+                            foreach (var shape in _rimShapes)
+                            {
+                                var halo = compositor.CreateSpriteShape(shape.Geometry);
+                                halo.StrokeBrush = shape.StrokeBrush;
+                                halo.StrokeThickness = shape.StrokeThickness + 1;
+                                _rimHalo.Shapes.Add(halo);
+                            }
+
+                            var both = compositor.CreateContainerVisual();
+                            both.Children.InsertAtTop(_rimHalo);
+                            both.Children.InsertAtTop(_rim);
+                            Root.Children.InsertAtTop(both);
+                            return both;
+                        }
+
+                    default:
+                        Root.Children.InsertAtTop(_rim);
+                        return _rim;
+                }
+            }
+
+            // A blur of the given amount over a rim surface; one compiled effect per compositor,
+            // the amount a property of each brush.
+            private static CompositionEffectBrush CreateFeather(Compositor compositor, float amount)
+            {
+                if (!_featherFactories.TryGetValue(compositor, out var factory))
+                {
+                    factory = compositor.CreateEffectFactory(new GaussianBlurEffect
+                    {
+                        Name = "Blur",
+                        BlurAmount = 1,
+                        Optimization = EffectOptimization.Quality,
+                        BorderMode = EffectBorderMode.Soft,
+                        Source = new CompositionEffectSourceParameter("Rim")
+                    }, new[] { "Blur.BlurAmount" });
+                    _featherFactories.Add(compositor, factory);
+                }
+
+                var brush = factory.CreateBrush();
+                brush.Properties.InsertScalar("Blur.BlurAmount", amount);
+                return brush;
+            }
+
+            /// <summary>
+            /// Lines of whole device pixels: the thickness rounded to them, at the scale the
+            /// window is drawn at, and the inset moved so that the outer edge stays where it was.
+            /// A one pixel line at 125% is otherwise 1.25 pixels, two of them half lit.
+            /// </summary>
+            private void SnapStrokes(Border host)
+            {
+                var scale = (float)(host.XamlRoot?.RasterizationScale ?? 1);
+
+                for (int i = 0; i < _rimShapes.Length; i++)
+                {
+                    var drawn = _rimThicknesses[i];
+                    var snapped = MathF.Max(1, MathF.Round(drawn * scale)) / scale;
+
+                    _rimShapes[i].StrokeThickness = snapped;
+                    _rimInsets[i] = _rimDrawnInsets[i] - drawn / 2 + snapped / 2;
                 }
             }
 
@@ -747,6 +893,21 @@ namespace Telegram.Controls.Media
                 }
 
                 _rim.Size = size;
+
+                if (_smoothing == RimSmoothing.PixelSnap)
+                {
+                    SnapStrokes(host);
+                }
+                else if (_smoothing is RimSmoothing.Blend or RimSmoothing.Soft)
+                {
+                    var padded = size + new Vector2(Feather * 2);
+                    _rimSurface.SourceSize = padded;
+                    _rimSprite.Size = padded;
+                }
+                else if (_rimHalo != null)
+                {
+                    _rimHalo.Size = size;
+                }
 
                 for (int i = 0; i < _rimGeometries.Length; i++)
                 {

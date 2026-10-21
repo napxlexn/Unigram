@@ -551,6 +551,14 @@
                                                        SelectedIndex="{x:Bind ViewModel.RimStyleIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
+                    <controls:SettingsButton Content="Згладжування обідка"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimSmoothingOptions}"
+                                                       AutomationProperties.Name="Згладжування обідка"
+                                                       SelectedIndex="{x:Bind ViewModel.RimSmoothingIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
                     <controls:SettingsButton Content="Колір обідка"
                                              Glyph="&#xE9E8;">
                         <controls:SettingsButton.Badge>

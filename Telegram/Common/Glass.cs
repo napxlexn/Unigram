@@ -123,6 +123,15 @@ namespace Telegram.Common
             new(RimAnimation.Rainbow, "Райдужний перелив"),
         };
 
+        public static List<SettingsOptionItem<RimSmoothing>> RimSmoothingOptions => new()
+        {
+            new(RimSmoothing.Standard, "Стандартне"),
+            new(RimSmoothing.PixelSnap, "Під пікселі екрана"),
+            new(RimSmoothing.Blend, "Чітке з м'яким краєм"),
+            new(RimSmoothing.Soft, "М'яке розмиття"),
+            new(RimSmoothing.Halo, "Подвійний контур"),
+        };
+
         public static List<SettingsOptionItem<RimHover>> RimHoverOptions => new()
         {
             new(RimHover.None, "Не реагує"),

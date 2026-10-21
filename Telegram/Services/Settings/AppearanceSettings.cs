@@ -139,6 +139,23 @@ namespace Telegram.Services.Settings
     }
 
     /// <summary>
+    /// How the rim's edges are smoothed - experiments, to be compared side by side.
+    /// </summary>
+    public enum RimSmoothing
+    {
+        // The shape as Composition antialiases it.
+        Standard,
+        // Thickness and inset on whole device pixels.
+        PixelSnap,
+        // The crisp line over a blurred copy of itself.
+        Blend,
+        // A blur of under a pixel.
+        Soft,
+        // A wider, faint line under each one.
+        Halo
+    }
+
+    /// <summary>
     /// What the glass does under the mouse.
     /// </summary>
     public enum RimHover
@@ -632,6 +649,13 @@ namespace Telegram.Services.Settings
         {
             get => _previewHaze ??= GetValueOrDefault("PreviewHaze", true);
             set => AddOrUpdateValue(ref _previewHaze, "PreviewHaze", value);
+        }
+
+        private static int? _rimSmoothing;
+        public RimSmoothing RimSmoothing
+        {
+            get => (RimSmoothing)(_rimSmoothing ??= GetValueOrDefault("RimSmoothing", (int)RimSmoothing.Standard));
+            set => AddOrUpdateValue(ref _rimSmoothing, "RimSmoothing", (int)value);
         }
 
         private static int? _rimHover;
