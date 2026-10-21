@@ -155,6 +155,10 @@ namespace Telegram.Controls.Media
                 _state.InsertVector2("Center", Vector2.Zero);
                 _state.InsertScalar("Reach", 0);
 
+                // How strongly the animations and the pointer effects show, 0 to 1.
+                _state.InsertScalar("Power", appearance.RimHoverIntensity / 100f);
+                _motion = appearance.RimAnimationIntensity / 100d;
+
                 _hover = appearance.RimHover;
                 _ease = compositor.CreateCubicBezierEasingFunction(new Vector2(0.37f, 0), new Vector2(0.63f, 1));
 
@@ -244,13 +248,13 @@ namespace Telegram.Controls.Media
                     var sheen = compositor.CreateRadialGradientBrush();
                     sheen.MappingMode = CompositionMappingMode.Absolute;
                     sheen.EllipseRadius = new Vector2(120);
-                    sheen.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(dark ? (byte)0x30 : (byte)0x70, 0xFF, 0xFF, 0xFF)));
+                    sheen.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(dark ? (byte)0x40 : (byte)0x80, 0xFF, 0xFF, 0xFF)));
                     sheen.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(0, 0xFF, 0xFF, 0xFF)));
 
                     FollowPointer(sheen);
 
                     var layer = CreateMasked(sheen);
-                    var opacity = compositor.CreateExpressionAnimation("s.Hover");
+                    var opacity = compositor.CreateExpressionAnimation("s.Hover * s.Power");
                     opacity.SetReferenceParameter("s", _state);
                     layer.StartAnimation("Opacity", opacity);
 
@@ -385,7 +389,7 @@ namespace Telegram.Controls.Media
 
                 // A glint running along it: the outline again, lit only in a narrow band that
                 // Update slides across.
-                var glint = Scale(Colors.White, Math.Min(1, 0.9 * strength));
+                var glint = Scale(Colors.White, Math.Min(1, 0.9 * strength) * _motion);
 
                 if (appearance.RimAnimation == RimAnimation.Shimmer)
                 {
@@ -435,7 +439,7 @@ namespace Telegram.Controls.Media
                         Color.FromArgb(0xFF, 0x9A, 0x7C, 0xFF), Color.FromArgb(0xFF, 0xFF, 0x6B, 0xD8)
                     };
 
-                    var alpha = Math.Min(1, 0.85 * strength);
+                    var alpha = Math.Min(1, 0.85 * strength) * _motion;
 
                     _rainbow = compositor.CreateLinearGradientBrush();
                     _rainbow.MappingMode = CompositionMappingMode.Absolute;
@@ -467,12 +471,13 @@ namespace Telegram.Controls.Media
                 {
                     var spot = compositor.CreateRadialGradientBrush();
                     spot.MappingMode = CompositionMappingMode.Absolute;
-                    spot.ColorStops.Add(compositor.CreateColorGradientStop(0, Scale(top, Math.Max(1, 2.2 / Math.Max(0.1, top.A / 255d)))));
+                    spot.ColorStops.Add(compositor.CreateColorGradientStop(0, Scale(Scale(top, Math.Max(1, 2.2 / Math.Max(0.1, top.A / 255d))), Math.Max(0.15, appearance.RimHoverIntensity / 100d))));
                     spot.ColorStops.Add(compositor.CreateColorGradientStop(1, Scale(top, 0)));
 
                     FollowPointer(spot);
 
-                    var radius = compositor.CreateExpressionAnimation("Vector2(1 + 110 * s.Hover, 1 + 110 * s.Hover)");
+                    // Stronger: brighter, and reaching further along the rim.
+                    var radius = compositor.CreateExpressionAnimation("Vector2(1 + (50 + 110 * s.Power) * s.Hover, 1 + (50 + 110 * s.Power) * s.Hover)");
                     radius.SetReferenceParameter("s", _state);
                     spot.StartAnimation("EllipseRadius", radius);
 
@@ -528,7 +533,7 @@ namespace Telegram.Controls.Media
                     // Under the pointer: a glowing rim at full strength, any other only then.
                     if (hoverGlow)
                     {
-                        var opacity = compositor.CreateExpressionAnimation(glows ? "0.55 + 0.45 * s.Hover" : "s.Hover");
+                        var opacity = compositor.CreateExpressionAnimation(glows ? "0.55 + 0.45 * s.Hover * s.Power" : "s.Hover * s.Power");
                         opacity.SetReferenceParameter("s", _state);
                         _rimGlow.StartAnimation("Opacity", opacity);
                     }
@@ -576,7 +581,8 @@ namespace Telegram.Controls.Media
 
                 foreach (var (progress, value) in frames)
                 {
-                    brightness.InsertKeyFrame(progress, value, _ease);
+                    // Weaker: the dips are shallower, down to none at all.
+                    brightness.InsertKeyFrame(progress, (float)(1 - (1 - value) * _motion), _ease);
                 }
 
                 brightness.Duration = TimeSpan.FromSeconds(seconds);
@@ -595,6 +601,7 @@ namespace Telegram.Controls.Media
             private readonly System.Collections.Generic.List<CompositionRadialGradientBrush> _followers = new();
 
             private readonly CompositionPropertySet _state;
+            private readonly double _motion;
             private readonly CompositionEasingFunction _ease;
             private readonly RimHover _hover;
             private readonly CompositionLinearGradientBrush _rainbow;

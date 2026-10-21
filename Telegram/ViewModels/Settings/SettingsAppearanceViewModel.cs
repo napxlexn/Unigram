@@ -711,7 +711,13 @@ namespace Telegram.ViewModels.Settings
         public int RimAnimationIndex
         {
             get => Math.Max(0, RimAnimationOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimAnimation));
-            set => SetRimOption(RimAnimationOptions, value, AppSettings.Appearance.RimAnimation, x => AppSettings.Appearance.RimAnimation = x);
+            set
+            {
+                if (SetRimOption(RimAnimationOptions, value, AppSettings.Appearance.RimAnimation, x => AppSettings.Appearance.RimAnimation = x))
+                {
+                    RaisePropertyChanged(nameof(IsRimAnimated));
+                }
+            }
         }
 
         public bool PreviewHaze
@@ -732,7 +738,13 @@ namespace Telegram.ViewModels.Settings
         public int RimHoverIndex
         {
             get => Math.Max(0, RimHoverOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimHover));
-            set => SetRimOption(RimHoverOptions, value, AppSettings.Appearance.RimHover, x => AppSettings.Appearance.RimHover = x);
+            set
+            {
+                if (SetRimOption(RimHoverOptions, value, AppSettings.Appearance.RimHover, x => AppSettings.Appearance.RimHover = x))
+                {
+                    RaisePropertyChanged(nameof(IsRimHovered));
+                }
+            }
         }
 
         private bool SetRimOption<T>(List<SettingsOptionItem<T>> options, int value, T current, Action<T> set, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
@@ -747,6 +759,22 @@ namespace Telegram.ViewModels.Settings
 
             return false;
         }
+
+        public double RimAnimationIntensity
+        {
+            get => AppSettings.Appearance.RimAnimationIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.RimAnimationIntensity, x => AppSettings.Appearance.RimAnimationIntensity = x);
+        }
+
+        public double RimHoverIntensity
+        {
+            get => AppSettings.Appearance.RimHoverIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.RimHoverIntensity, x => AppSettings.Appearance.RimHoverIntensity = x);
+        }
+
+        public bool IsRimAnimated => AppSettings.Appearance.RimAnimation != RimAnimation.None;
+
+        public bool IsRimHovered => AppSettings.Appearance.RimHover != RimHover.None;
 
         public double RimWidth
         {
