@@ -75,6 +75,17 @@ namespace Telegram.Views.Settings
 
                 Message1.Mockup(ViewModel.ClientService, Strings.FontSizePreviewLine1, user, Strings.FontSizePreviewReply, false, DateTime.Now.AddSeconds(-25));
                 Message2.Mockup(Strings.FontSizePreviewLine2, true, DateTime.Now);
+
+                // So that the reaction glass has something to show on.
+                Message1.MockupReactions(CreateMockupMessage(new MessageReactions(new[]
+                {
+                    new MessageReaction(new ReactionTypeEmoji("👍"), 12, true, null, Array.Empty<MessageSender>().ToVector()),
+                    new MessageReaction(new ReactionTypeEmoji("🔥"), 3, false, null, Array.Empty<MessageSender>().ToVector())
+                }.ToVector(), false, Array.Empty<PaidReactor>().ToVector(), false)));
+                Message2.MockupReactions(CreateMockupMessage(new MessageReactions(new[]
+                {
+                    new MessageReaction(new ReactionTypeEmoji("❤"), 2, false, null, Array.Empty<MessageSender>().ToVector())
+                }.ToVector(), false, Array.Empty<PaidReactor>().ToVector(), false)));
             }
 
         }
@@ -292,6 +303,19 @@ namespace Telegram.Views.Settings
         {
             var reaction = ViewModel.ClientService.DefaultReaction;
 
+            var senderId = new MessageSenderUser(ViewModel.ClientService.Options.MyId);
+            var viewModel = CreateMockupMessage(null);
+
+            Reaction.SetReaction(viewModel, new MessageReaction(reaction, 1, false, senderId, new MessageSender[] { }));
+
+            if (Reaction.IsLoaded)
+            {
+                Reaction.SetUnread(new UnreadReaction(reaction, senderId, false));
+            }
+        }
+
+        private MessageViewModel CreateMockupMessage(MessageReactions reactions)
+        {
             var clientService = ViewModel.ClientService;
             var senderId = new MessageSenderUser(clientService.Options.MyId);
 
@@ -302,12 +326,12 @@ namespace Telegram.Views.Settings
             var delegato = new ChatMessageDelegate(clientService, settings, null);
             var viewModel = new MessageViewModel(clientService, delegato, null, null, null, message, true);
 
-            Reaction.SetReaction(viewModel, new MessageReaction(reaction, 1, false, senderId, new MessageSender[] { }));
-
-            if (Reaction.IsLoaded)
+            if (reactions != null)
             {
-                Reaction.SetUnread(new UnreadReaction(reaction, senderId, false));
+                viewModel.InteractionInfo = new MessageInteractionInfo(0, 0, null, reactions);
             }
+
+            return viewModel;
         }
 
         private void Reaction_Click(object sender, RoutedEventArgs e)
