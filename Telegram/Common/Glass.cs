@@ -95,6 +95,30 @@ namespace Telegram.Common
             new(RimStyle.Iridescent, "Райдужний"),
         };
 
+        public static List<SettingsOptionItem<RimColorMode>> RimColorOptions => new()
+        {
+            new(RimColorMode.Auto, "Як у скла"),
+            new(RimColorMode.Accent, "Акцент теми"),
+            new(RimColorMode.Element, "Колір елемента"),
+            new(RimColorMode.Custom, "Власний"),
+        };
+
+        public static List<SettingsOptionItem<RimLight>> RimLightOptions => new()
+        {
+            new(RimLight.Style, "Як у стилю"),
+            new(RimLight.Even, "Рівне"),
+            new(RimLight.TopDown, "Згори"),
+            new(RimLight.BottomUp, "Знизу"),
+            new(RimLight.Diagonal, "З кута"),
+        };
+
+        public static List<SettingsOptionItem<RimAnimation>> RimAnimationOptions => new()
+        {
+            new(RimAnimation.None, "Без анімації"),
+            new(RimAnimation.Pulse, "Дихання"),
+            new(RimAnimation.Shimmer, "Відблиск, що біжить"),
+        };
+
         private static readonly Color Green = Color.FromArgb(0xFF, 0x4C, 0xFF, 0x7A);
         private static readonly Color AmberColor = Color.FromArgb(0xFF, 0xFF, 0xB0, 0x3A);
         private static readonly Color Warm = Color.FromArgb(0xFF, 0xFF, 0xE0, 0xA8);
@@ -130,6 +154,43 @@ namespace Telegram.Common
                 GlassKind.Solid => new GlassSpec { Tint = Pick(0xFF1C1C1C, 0xFFF6F6F6), Blur = 0 },
                 _ => new GlassSpec { IsOriginal = true },
             };
+        }
+
+        /// <summary>
+        /// The rim's colour when the setting picks one - the theme's accent, the element's own
+        /// colour brightened, or the user's - or null to keep the kind's and the style's.
+        /// </summary>
+        /// <param name="element">The colour of what is rimmed, where it has one; without one the
+        /// accent stands in.</param>
+        public static Color? GetRimColor(Color? element, bool dark)
+        {
+            var appearance = AppSettings.Appearance;
+            var accent = dark ? Theme.AccentDark.Default : Theme.AccentLight.Default;
+
+            Color? color = appearance.RimColorMode switch
+            {
+                RimColorMode.Accent => accent,
+                RimColorMode.Element => element is Color own ? Brighten(own) : accent,
+                RimColorMode.Custom => appearance.RimCustomColor,
+                _ => null
+            };
+
+            if (color is Color value)
+            {
+                value.A = dark ? (byte)0xC0 : (byte)0xE6;
+                return value;
+            }
+
+            return null;
+        }
+
+        // Halfway to white: an edge catching the light of the colour under it.
+        private static Color Brighten(Color color)
+        {
+            return Color.FromArgb(0xFF,
+                (byte)(color.R + (255 - color.R) / 2),
+                (byte)(color.G + (255 - color.G) / 2),
+                (byte)(color.B + (255 - color.B) / 2));
         }
 
         /// <summary>

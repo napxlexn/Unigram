@@ -695,7 +695,7 @@ namespace Telegram.Controls
                     header.CornerRadius = new CornerRadius(14);
                     header.Margin = new Thickness(12, 6, 12, 0);
                     header.Height = height - 4;
-                    SmoothGlass.Attach(header, kind == GlassKind.Original ? GlassKind.Clear : kind, theme != ElementTheme.Light);
+                    SmoothGlass.Attach(header, kind == GlassKind.Original ? GlassKind.Clear : kind, theme != ElementTheme.Light, rim: AppSettings.Appearance.RimOnPanels);
                     break;
 
                 default:

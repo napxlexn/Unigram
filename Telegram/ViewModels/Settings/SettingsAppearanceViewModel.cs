@@ -680,6 +680,87 @@ namespace Telegram.ViewModels.Settings
             set => SetIntensity((int)value, AppSettings.Appearance.RimIntensity, x => AppSettings.Appearance.RimIntensity = x);
         }
 
+        public List<SettingsOptionItem<RimColorMode>> RimColorOptions { get; } = Glass.RimColorOptions;
+
+        public int RimColorIndex
+        {
+            get => Math.Max(0, RimColorOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimColorMode));
+            set
+            {
+                if (SetRimOption(RimColorOptions, value, AppSettings.Appearance.RimColorMode, x => AppSettings.Appearance.RimColorMode = x))
+                {
+                    RaisePropertyChanged(nameof(IsRimCustom));
+                }
+            }
+        }
+
+        public bool IsRimCustom => AppSettings.Appearance.RimColorMode == RimColorMode.Custom;
+
+        public Windows.UI.Xaml.Media.SolidColorBrush RimCustomBrush => new(AppSettings.Appearance.RimCustomColor);
+
+        public List<SettingsOptionItem<RimLight>> RimLightOptions { get; } = Glass.RimLightOptions;
+
+        public int RimLightIndex
+        {
+            get => Math.Max(0, RimLightOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimLight));
+            set => SetRimOption(RimLightOptions, value, AppSettings.Appearance.RimLight, x => AppSettings.Appearance.RimLight = x);
+        }
+
+        public List<SettingsOptionItem<RimAnimation>> RimAnimationOptions { get; } = Glass.RimAnimationOptions;
+
+        public int RimAnimationIndex
+        {
+            get => Math.Max(0, RimAnimationOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimAnimation));
+            set => SetRimOption(RimAnimationOptions, value, AppSettings.Appearance.RimAnimation, x => AppSettings.Appearance.RimAnimation = x);
+        }
+
+        private bool SetRimOption<T>(List<SettingsOptionItem<T>> options, int value, T current, Action<T> set, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
+        {
+            if (value >= 0 && value < options.Count && !EqualityComparer<T>.Default.Equals(current, options[value].Value))
+            {
+                set(options[value].Value);
+                ApplyGlass();
+                RaisePropertyChanged(propertyName);
+                return true;
+            }
+
+            return false;
+        }
+
+        public double RimWidth
+        {
+            get => AppSettings.Appearance.RimWidth;
+            set => SetIntensity((int)value, AppSettings.Appearance.RimWidth, x => AppSettings.Appearance.RimWidth = x);
+        }
+
+        public bool RimOnBubbles
+        {
+            get => AppSettings.Appearance.RimOnBubbles;
+            set => SetRimTarget(value, AppSettings.Appearance.RimOnBubbles, x => AppSettings.Appearance.RimOnBubbles = x);
+        }
+
+        public bool RimOnReactions
+        {
+            get => AppSettings.Appearance.RimOnReactions;
+            set => SetRimTarget(value, AppSettings.Appearance.RimOnReactions, x => AppSettings.Appearance.RimOnReactions = x);
+        }
+
+        public bool RimOnPanels
+        {
+            get => AppSettings.Appearance.RimOnPanels;
+            set => SetRimTarget(value, AppSettings.Appearance.RimOnPanels, x => AppSettings.Appearance.RimOnPanels = x);
+        }
+
+        private void SetRimTarget(bool value, bool current, Action<bool> set, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
+        {
+            if (value != current)
+            {
+                set(value);
+                ApplyGlass();
+                RaisePropertyChanged(propertyName);
+            }
+        }
+
         public double GlowIntensity
         {
             get => AppSettings.Appearance.GlowIntensity;
@@ -823,6 +904,14 @@ namespace Telegram.ViewModels.Settings
                     AppSettings.Appearance.CustomReactionColor = color;
                     RaisePropertyChanged(nameof(CustomReactionBrush));
                     break;
+                case nameof(AppearanceSettings.RimCustomColor):
+                    AppSettings.Appearance.RimCustomColor = color;
+                    RaisePropertyChanged(nameof(RimCustomBrush));
+
+                    // The rim is glass, not a message colour: everything with glass redraws.
+                    _rimColorDebouncer ??= new DebouncedProperty<int>(120, _ => ApplyGlass());
+                    _rimColorDebouncer.Set(Environment.TickCount);
+                    return;
                 default:
                     return;
             }
@@ -841,10 +930,12 @@ namespace Telegram.ViewModels.Settings
             nameof(AppearanceSettings.CustomOutgoingColor) => AppSettings.Appearance.CustomOutgoingColor,
             nameof(AppearanceSettings.CustomIncomingTextColor) => AppSettings.Appearance.CustomIncomingTextColor,
             nameof(AppearanceSettings.CustomOutgoingTextColor) => AppSettings.Appearance.CustomOutgoingTextColor,
+            nameof(AppearanceSettings.RimCustomColor) => AppSettings.Appearance.RimCustomColor,
             _ => AppSettings.Appearance.CustomReactionColor
         };
 
         private DebouncedProperty<int> _customColorDebouncer;
+        private DebouncedProperty<int> _rimColorDebouncer;
 
         public List<SettingsOptionItem<HeaderStyle>> HeaderStyleOptions { get; } = new()
         {
