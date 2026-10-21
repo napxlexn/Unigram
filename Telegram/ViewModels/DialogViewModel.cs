@@ -480,6 +480,17 @@ namespace Telegram.ViewModels
         {
             get
             {
+                // A chat opened without reading says so, where it cannot be missed: writing
+                // in it would read it after all, as sending always does.
+                var subtitle = SubtitleCore;
+                return _openedWithoutReading ? (string.IsNullOrEmpty(subtitle) ? "без прочитання" : "без прочитання · " + subtitle) : subtitle;
+            }
+        }
+
+        private string SubtitleCore
+        {
+            get
+            {
                 var chat = _chat;
                 if (chat == null)
                 {
@@ -2524,6 +2535,12 @@ namespace Telegram.ViewModels
             _upgradedFromResolved = false;
 
             Chat = chat;
+
+            // Taken over from the chat list's "open without reading", and given back on the way
+            // out - see OnNavigatedFrom.
+            _openedWithoutReading = ClientService.IsOpenWithoutReading(chat.Id);
+            RaisePropertyChanged(nameof(Subtitle));
+
             IsForum = Type == DialogType.History && ClientService.IsForum(chat);
             IsDirectMessagesGroup = Type == DialogType.History && ClientService.IsDirectMessagesGroup(chat);
 
@@ -2874,6 +2891,8 @@ namespace Telegram.ViewModels
 
         private bool _navigatedFrom;
 
+        private bool _openedWithoutReading;
+
         protected override void OnNavigatedFrom(NavigationState suspensionState, bool suspending)
         {
             _navigatedFrom = true;
@@ -2882,6 +2901,12 @@ namespace Telegram.ViewModels
             if (chat == null)
             {
                 return;
+            }
+
+            if (_openedWithoutReading)
+            {
+                _openedWithoutReading = false;
+                ClientService.EndOpenWithoutReading(chat.Id);
             }
 
             ClearPendingMessages();
