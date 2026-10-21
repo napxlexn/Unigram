@@ -5,9 +5,15 @@
 // file LICENSE or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
 //
 
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.Geometry;
+using System;
 using System.Numerics;
 using Telegram.Common;
 using Telegram.Navigation;
+using Telegram.Services;
+using Telegram.Services.Settings;
 using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -17,25 +23,35 @@ using Windows.UI.Xaml.Hosting;
 namespace Telegram.Controls.Media
 {
     /// <summary>
-    /// A rounded pane of glass with light along its rim, with smooth corners.
+    /// A pane of any <see cref="GlassKind"/>, with smooth corners: the blur and its tint, a wash
+    /// of colour, light from inside, scanlines and the rim, each as <see cref="Glass.Resolve"/>
+    /// and the intensity settings say.
     ///
     /// A composition brush set as the background of a rounded XAML element is cut to the corners
     /// without antialiasing, and a XAML border drawn over it is antialiased - so the glass showed
-    /// in steps outside the rim at every corner. Here both are Composition: the glass is masked by
-    /// a rounded rectangle drawn as a shape, which is antialiased, rendered once into a surface the
-    /// way <see cref="SolidGaussianBrush.CreateCircleBrush"/> does its circle; the rim is the same
-    /// shape stroked, half a pixel in so that the line lands on whole pixels.
+    /// in steps outside the rim at every corner. Here everything is Composition: the layers are
+    /// masked by the element's outline drawn as a shape, which is antialiased, rendered once
+    /// into a surface; the rim is the same outline stroked, half a pixel in so that a one pixel
+    /// line lands on whole pixels. Each corner keeps its own radius, so a bubble's shape holds.
     ///
     /// The host is an empty Border behind the content; its CornerRadius is the glass's.
     /// </summary>
     public static class SmoothGlass
     {
-        public static void Attach(Border host, Color tint, Color rimTop, Color rimBottom)
+        /// <param name="tint">The element's own colour, for kinds that take it.</param>
+        /// <param name="fill">False to leave the fill to the element - a gradient bubble - and draw
+        /// only what goes over it.</param>
+        public static void Attach(Border host, GlassKind kind, bool dark, Color? tint = null, bool fill = true, bool rim = true)
         {
             Detach(host);
 
-            var compositor = BootStrapper.Current.Compositor;
-            var attachment = new Attachment(compositor, tint, rimTop, rimBottom);
+            var spec = Glass.Resolve(kind, dark);
+            if (spec.IsOriginal)
+            {
+                return;
+            }
+
+            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, fill, rim);
 
             host.Tag = attachment;
             host.SizeChanged += attachment.OnSizeChanged;
@@ -59,19 +75,40 @@ namespace Telegram.Controls.Media
         }
 
         /// <summary>
-        /// The glass of the channel footer and the capsules: a strong blur under a tint that is
-        /// dark on dark and light on light, and light catching the rim from above.
+        /// An outline with a radius per corner, as a composition path.
         /// </summary>
-        public static void AttachDefault(Border host, ElementTheme theme)
+        private static CompositionPath CreateOutline(Vector2 origin, Vector2 size, CornerRadius radius)
         {
-            if (theme == ElementTheme.Light)
-            {
-                Attach(host, Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF), Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF), Color.FromArgb(0x14, 0x00, 0x00, 0x00));
-            }
-            else
-            {
-                Attach(host, Color.FromArgb(0x8C, 0x16, 0x16, 0x16), Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF), Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
-            }
+            float Clamp(double value) => (float)Math.Max(0, Math.Min(value, Math.Min(size.X, size.Y) / 2));
+
+            var tl = Clamp(radius.TopLeft);
+            var tr = Clamp(radius.TopRight);
+            var br = Clamp(radius.BottomRight);
+            var bl = Clamp(radius.BottomLeft);
+
+            float x = origin.X, y = origin.Y, w = size.X, h = size.Y;
+
+            using var builder = new CanvasPathBuilder(CanvasDevice.GetSharedDevice());
+            builder.BeginFigure(x + tl, y);
+            builder.AddLine(x + w - tr, y);
+            if (tr > 0) builder.AddArc(new Vector2(x + w, y + tr), tr, tr, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            builder.AddLine(x + w, y + h - br);
+            if (br > 0) builder.AddArc(new Vector2(x + w - br, y + h), br, br, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            builder.AddLine(x + bl, y + h);
+            if (bl > 0) builder.AddArc(new Vector2(x, y + h - bl), bl, bl, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            builder.AddLine(x, y + tl);
+            if (tl > 0) builder.AddArc(new Vector2(x + tl, y), tl, tl, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            builder.EndFigure(CanvasFigureLoop.Closed);
+
+            return new CompositionPath(CanvasGeometry.CreatePath(builder));
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, CompositionEffectFactory> _rimGlowFactories = new();
+
+        private static Color Scale(Color color, double factor)
+        {
+            color.A = (byte)Math.Clamp(color.A * factor, 0, 255);
+            return color;
         }
 
         private sealed class Attachment
@@ -79,20 +116,29 @@ namespace Telegram.Controls.Media
             public readonly ContainerVisual Root;
             public long Token;
 
-            private readonly CompositionRoundedRectangleGeometry _maskGeometry;
+            private readonly Compositor _compositor;
+
+            private readonly CompositionPathGeometry _maskGeometry;
             private readonly ShapeVisual _maskShape;
             private readonly CompositionVisualSurface _maskSurface;
-            private readonly SpriteVisual _glass;
+            private readonly CompositionSurfaceBrush _mask;
 
-            private readonly CompositionRoundedRectangleGeometry _rimGeometry;
+            private readonly SpriteVisual[] _layers;
+            private readonly CompositionLinearGradientBrush[] _verticals;
+
             private readonly ShapeVisual _rim;
-            private readonly CompositionLinearGradientBrush _rimBrush;
+            private readonly CompositionPathGeometry[] _rimGeometries;
+            private readonly float[] _rimInsets;
 
-            public Attachment(Compositor compositor, Color tint, Color rimTop, Color rimBottom)
+            private readonly SpriteVisual _rimGlow;
+            private readonly CompositionVisualSurface _rimGlowSurface;
+
+            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, bool fill, bool rim)
             {
+                _compositor = compositor;
                 Root = compositor.CreateContainerVisual();
 
-                _maskGeometry = compositor.CreateRoundedRectangleGeometry();
+                _maskGeometry = compositor.CreatePathGeometry();
 
                 var maskFill = compositor.CreateSpriteShape(_maskGeometry);
                 maskFill.FillBrush = compositor.CreateColorBrush(Colors.White);
@@ -102,35 +148,238 @@ namespace Telegram.Controls.Media
 
                 _maskSurface = compositor.CreateVisualSurface();
                 _maskSurface.SourceVisual = _maskShape;
+                _mask = compositor.CreateSurfaceBrush(_maskSurface);
 
-                var fallback = tint;
-                fallback.A = 0xF0;
+                var appearance = AppSettings.Appearance;
+                var layers = new System.Collections.Generic.List<SpriteVisual>();
+                var verticals = new System.Collections.Generic.List<CompositionLinearGradientBrush>();
 
-                var masked = compositor.CreateMaskBrush();
-                masked.Mask = compositor.CreateSurfaceBrush(_maskSurface);
-                masked.Source = PowerSavingPolicy.AreMaterialsEnabled
-                    ? SolidGaussianBrush.CreateBrush(compositor, tint)
-                    : compositor.CreateColorBrush(fallback);
+                // The pane itself.
+                if (fill && tint is Color color)
+                {
+                    var blur = Glass.ScaleBlur(spec.Blur);
+                    CompositionBrush source;
 
-                _glass = compositor.CreateSpriteVisual();
-                _glass.Brush = masked;
-                Root.Children.InsertAtTop(_glass);
+                    if (blur > 0 && PowerSavingPolicy.AreMaterialsEnabled)
+                    {
+                        source = SolidGaussianBrush.CreateBrush(compositor, color, blur, spec.Saturation);
+                    }
+                    else
+                    {
+                        var opaque = color;
+                        opaque.A = blur > 0 ? (byte)Math.Max(color.A, (byte)0xF0) : color.A;
+                        source = compositor.CreateColorBrush(opaque);
+                    }
 
-                _rimBrush = compositor.CreateLinearGradientBrush();
-                _rimBrush.MappingMode = CompositionMappingMode.Absolute;
-                _rimBrush.ColorStops.Add(compositor.CreateColorGradientStop(0, rimTop));
-                _rimBrush.ColorStops.Add(compositor.CreateColorGradientStop(1, rimBottom));
+                    layers.Add(CreateMasked(source));
+                }
 
-                _rimGeometry = compositor.CreateRoundedRectangleGeometry();
-                _rimGeometry.Offset = new Vector2(0.5f);
+                // A wash of colour across it, corner to corner.
+                if (spec.Wash is Color[] wash && wash.Length > 1)
+                {
+                    var gradient = compositor.CreateLinearGradientBrush();
+                    gradient.StartPoint = Vector2.Zero;
+                    gradient.EndPoint = Vector2.One;
 
-                var rimStroke = compositor.CreateSpriteShape(_rimGeometry);
-                rimStroke.StrokeBrush = _rimBrush;
-                rimStroke.StrokeThickness = 1;
+                    for (int i = 0; i < wash.Length; i++)
+                    {
+                        gradient.ColorStops.Add(compositor.CreateColorGradientStop(i / (float)(wash.Length - 1), wash[i]));
+                    }
+
+                    layers.Add(CreateMasked(gradient));
+                }
+
+                // Light from inside: a lamp behind the glass, brightest in the middle.
+                if (spec.InnerLight is Color light && appearance.GlowIntensity > 0)
+                {
+                    var radial = compositor.CreateRadialGradientBrush();
+                    radial.EllipseCenter = new Vector2(0.5f, 0.55f);
+                    radial.EllipseRadius = new Vector2(0.75f, 0.9f);
+                    radial.ColorStops.Add(compositor.CreateColorGradientStop(0, Scale(light, 0.55 * appearance.GlowIntensity / 100)));
+                    radial.ColorStops.Add(compositor.CreateColorGradientStop(1, Scale(light, 0)));
+
+                    layers.Add(CreateMasked(radial));
+                }
+
+                // A CRT's scanlines: a dark line every third pixel.
+                if (spec.Scanlines && appearance.ScanlineIntensity > 0)
+                {
+                    var alpha = (byte)(0x40 * appearance.ScanlineIntensity / 100);
+
+                    var lines = compositor.CreateLinearGradientBrush();
+                    lines.MappingMode = CompositionMappingMode.Absolute;
+                    lines.ExtendMode = CompositionGradientExtendMode.Wrap;
+                    lines.StartPoint = Vector2.Zero;
+                    lines.EndPoint = new Vector2(0, 3);
+                    lines.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(0, 0, 0, 0)));
+                    lines.ColorStops.Add(compositor.CreateColorGradientStop(0.62f, Color.FromArgb(0, 0, 0, 0)));
+                    lines.ColorStops.Add(compositor.CreateColorGradientStop(0.66f, Color.FromArgb(alpha, 0, 0, 0)));
+                    lines.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(alpha, 0, 0, 0)));
+
+                    layers.Add(CreateMasked(lines));
+                }
+
+                _layers = layers.ToArray();
+
+                foreach (var layer in _layers)
+                {
+                    Root.Children.InsertAtTop(layer);
+                }
+
+                // The rim: the style setting, unless the kind brings its own.
+                var strength = appearance.RimIntensity / 60d;
+                var style = spec.RimColor != null && appearance.RimStyle is RimStyle.None or RimStyle.Thin or RimStyle.Soft
+                    ? RimStyle.Thin
+                    : appearance.RimStyle;
+
+                if (!rim || strength <= 0 || (style == RimStyle.None && spec.RimColor == null))
+                {
+                    _rimGeometries = Array.Empty<CompositionPathGeometry>();
+                    _rimInsets = Array.Empty<float>();
+                    _verticals = Array.Empty<CompositionLinearGradientBrush>();
+                    return;
+                }
+
+                var top = spec.RimColor ?? (dark ? Color.FromArgb(0x60, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF));
+                var bottom = spec.RimColor is Color own
+                    ? Scale(own, 0.35)
+                    : dark ? Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00);
+
+                top = Scale(top, strength);
+                bottom = Scale(bottom, strength);
 
                 _rim = compositor.CreateShapeVisual();
-                _rim.Shapes.Add(rimStroke);
+
+                var geometries = new System.Collections.Generic.List<CompositionPathGeometry>();
+                var insets = new System.Collections.Generic.List<float>();
+
+                CompositionLinearGradientBrush Vertical(params (float Offset, Color Color)[] stops)
+                {
+                    var brush = compositor.CreateLinearGradientBrush();
+                    brush.MappingMode = CompositionMappingMode.Absolute;
+
+                    foreach (var (offset, stop) in stops)
+                    {
+                        brush.ColorStops.Add(compositor.CreateColorGradientStop(offset, stop));
+                    }
+
+                    verticals.Add(brush);
+                    return brush;
+                }
+
+                void Stroke(CompositionBrush brush, float thickness, float inset)
+                {
+                    var geometry = compositor.CreatePathGeometry();
+                    var shape = compositor.CreateSpriteShape(geometry);
+                    shape.StrokeBrush = brush;
+                    shape.StrokeThickness = thickness;
+
+                    _rim.Shapes.Add(shape);
+                    geometries.Add(geometry);
+                    insets.Add(inset);
+                }
+
+                switch (style)
+                {
+                    case RimStyle.Soft:
+                        Stroke(compositor.CreateColorBrush(Scale(top, 0.5)), 1, 0.5f);
+                        break;
+
+                    case RimStyle.TopLight:
+                        Stroke(Vertical((0, top), (0.45f, Scale(top, 0))), 1, 0.5f);
+                        break;
+
+                    case RimStyle.Double:
+                        // A dark edge outside, a light one just inside it: thick glass.
+                        Stroke(compositor.CreateColorBrush(Scale(Color.FromArgb(0x50, 0, 0, 0), strength)), 1, 0.5f);
+                        Stroke(Vertical((0, top), (1, bottom)), 1, 1.5f);
+                        break;
+
+                    case RimStyle.Bold:
+                        Stroke(Vertical((0, Scale(top, 1.4)), (1, Scale(bottom, 1.4))), 1.5f, 0.75f);
+                        break;
+
+                    case RimStyle.Iridescent:
+                        {
+                            var rainbow = compositor.CreateLinearGradientBrush();
+                            rainbow.StartPoint = Vector2.Zero;
+                            rainbow.EndPoint = new Vector2(1, 0.4f);
+                            var a = top.A;
+                            rainbow.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(a, 0xFF, 0x9C, 0xE0)));
+                            rainbow.ColorStops.Add(compositor.CreateColorGradientStop(0.35f, Color.FromArgb(a, 0x9C, 0xD8, 0xFF)));
+                            rainbow.ColorStops.Add(compositor.CreateColorGradientStop(0.7f, Color.FromArgb(a, 0xC8, 0xFF, 0xB0)));
+                            rainbow.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(a, 0xFF, 0xE0, 0x9C)));
+                            Stroke(rainbow, 1, 0.5f);
+                        }
+                        break;
+
+                    default:
+                        Stroke(Vertical((0, top), (1, bottom)), 1, 0.5f);
+                        break;
+                }
+
+                _rimGeometries = geometries.ToArray();
+                _rimInsets = insets.ToArray();
+                _verticals = verticals.ToArray();
+
+                // A rim that glows: the outline again, wider and blurred, light spilling both ways
+                // from the edge.
+                if (style == RimStyle.Glowing || spec.RimGlows)
+                {
+                    var glowColor = Scale(spec.RimColor ?? top, spec.RimGlows ? 1.6 : 1.1);
+
+                    var glowShape = compositor.CreateShapeVisual();
+                    var glowGeometry = compositor.CreatePathGeometry();
+                    var glowStroke = compositor.CreateSpriteShape(glowGeometry);
+                    glowStroke.StrokeBrush = compositor.CreateColorBrush(glowColor);
+                    glowStroke.StrokeThickness = 3;
+                    glowShape.Shapes.Add(glowStroke);
+
+                    _rimGlowSurface = compositor.CreateVisualSurface();
+                    _rimGlowSurface.SourceVisual = glowShape;
+
+                    if (!_rimGlowFactories.TryGetValue(compositor, out var factory))
+                    {
+                        var blurred = new GaussianBlurEffect
+                        {
+                            BlurAmount = 4,
+                            BorderMode = EffectBorderMode.Soft,
+                            Source = new CompositionEffectSourceParameter("Rim")
+                        };
+
+                        factory = compositor.CreateEffectFactory(blurred);
+                        _rimGlowFactories.Add(compositor, factory);
+                    }
+
+                    var brush = factory.CreateBrush();
+                    brush.SetSourceParameter("Rim", compositor.CreateSurfaceBrush(_rimGlowSurface));
+
+                    _rimGlow = compositor.CreateSpriteVisual();
+                    _rimGlow.Brush = brush;
+                    _rimGlowShape = glowShape;
+                    _rimGlowGeometry = glowGeometry;
+
+                    Root.Children.InsertAtTop(_rimGlow);
+                }
+
                 Root.Children.InsertAtTop(_rim);
+            }
+
+            private readonly ShapeVisual _rimGlowShape;
+            private readonly CompositionPathGeometry _rimGlowGeometry;
+
+            // How far the glowing rim may spill past the edge.
+            private const float Spill = 8;
+
+            private SpriteVisual CreateMasked(CompositionBrush source)
+            {
+                var masked = _compositor.CreateMaskBrush();
+                masked.Source = source;
+                masked.Mask = _mask;
+
+                var sprite = _compositor.CreateSpriteVisual();
+                sprite.Brush = masked;
+                return sprite;
             }
 
             public void OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -151,24 +400,55 @@ namespace Telegram.Controls.Media
                 }
 
                 var size = host.ActualSize;
-                var radius = (float)host.CornerRadius.TopLeft;
+                if (size.X < 1 || size.Y < 1)
+                {
+                    return;
+                }
 
-                // Never more than half the height: a pill, not a broken shape.
-                radius = System.Math.Min(radius, System.Math.Min(size.X, size.Y) / 2);
+                var radius = host.CornerRadius;
 
-                _maskGeometry.Size = size;
-                _maskGeometry.CornerRadius = new Vector2(radius);
+                _maskGeometry.Path = CreateOutline(Vector2.Zero, size, radius);
                 _maskShape.Size = size;
                 _maskSurface.SourceSize = size;
-                _glass.Size = size;
 
-                // Before the first layout the size is zero, and the rim's would be negative.
-                _rimGeometry.Size = Vector2.Max(size - Vector2.One, Vector2.Zero);
-                _rimGeometry.CornerRadius = new Vector2(System.Math.Max(0, radius - 0.5f));
+                foreach (var layer in _layers)
+                {
+                    layer.Size = size;
+                }
+
+                if (_rim == null)
+                {
+                    return;
+                }
+
                 _rim.Size = size;
 
-                _rimBrush.StartPoint = Vector2.Zero;
-                _rimBrush.EndPoint = new Vector2(0, System.Math.Max(1, size.Y));
+                for (int i = 0; i < _rimGeometries.Length; i++)
+                {
+                    var inset = _rimInsets[i];
+                    var inner = new CornerRadius(
+                        Math.Max(0, radius.TopLeft - inset), Math.Max(0, radius.TopRight - inset),
+                        Math.Max(0, radius.BottomRight - inset), Math.Max(0, radius.BottomLeft - inset));
+
+                    _rimGeometries[i].Path = CreateOutline(new Vector2(inset), Vector2.Max(size - new Vector2(inset * 2), Vector2.Zero), inner);
+                }
+
+                foreach (var vertical in _verticals)
+                {
+                    vertical.StartPoint = Vector2.Zero;
+                    vertical.EndPoint = new Vector2(0, size.Y);
+                }
+
+                if (_rimGlow != null)
+                {
+                    var padded = size + new Vector2(Spill * 2);
+
+                    _rimGlowGeometry.Path = CreateOutline(new Vector2(Spill + 1), Vector2.Max(size - new Vector2(2), Vector2.Zero), radius);
+                    _rimGlowShape.Size = padded;
+                    _rimGlowSurface.SourceSize = padded;
+                    _rimGlow.Size = padded;
+                    _rimGlow.Offset = new Vector3(-Spill, -Spill, 0);
+                }
             }
         }
     }

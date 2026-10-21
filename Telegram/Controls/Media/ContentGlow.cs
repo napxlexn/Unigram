@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Telegram.Common;
 using Telegram.Navigation;
+using Telegram.Services;
 using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -36,20 +37,23 @@ namespace Telegram.Controls.Media
         // How far past a source the halo may reach, so that it is not cut at the edge.
         private const float Bleed = 10;
 
-        private static CompositionEffectFactory _glowFactory;
-        private static CompositionEffectFactory _terminalFactory;
+        // Per compositor - a factory belongs to the one that made it - and per phosphor colour.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, Dictionary<Color, CompositionEffectFactory>> _factories = new();
 
-        public static void Attach(FrameworkElement host, Func<IEnumerable<(FrameworkElement Element, float Strength)>> sources, bool terminal)
+        /// <param name="phosphor">The glow's colour: transparent for each source's own, any other
+        /// for a monochrome phosphor - green or amber - whatever the text is.</param>
+        public static void Attach(FrameworkElement host, Func<IEnumerable<(FrameworkElement Element, float Strength)>> sources, Color phosphor)
         {
             Detach(host);
 
-            if (!PowerSavingPolicy.AreMaterialsEnabled)
+            var intensity = AppSettings.Appearance.GlowIntensity;
+            if (!PowerSavingPolicy.AreMaterialsEnabled || intensity == 0)
             {
                 return;
             }
 
             var root = BootStrapper.Current.Compositor.CreateContainerVisual();
-            var attachment = new Attachment(host, sources, terminal, root);
+            var attachment = new Attachment(host, sources, phosphor, intensity / 60f, root);
 
             host.SizeChanged += attachment.OnSizeChanged;
             host.Tag = attachment;
@@ -70,36 +74,44 @@ namespace Telegram.Controls.Media
             }
         }
 
-        private static CompositionEffectFactory GetFactory(Compositor compositor, bool terminal)
+        private static CompositionEffectFactory GetFactory(Compositor compositor, Color phosphor)
         {
-            ref var factory = ref terminal ? ref _terminalFactory : ref _glowFactory;
-            if (factory != null)
+            var factories = _factories.GetValue(compositor, _ => new Dictionary<Color, CompositionEffectFactory>());
+            if (factories.TryGetValue(phosphor, out var factory))
             {
                 return factory;
             }
 
-            // The terminal's is the tighter, fainter one: a phosphor halo that sits close around
-            // the letters, so that it reads as the screen glowing rather than the text smudging.
+            // A tight halo: one that sits close around the letters reads as the screen glowing,
+            // a wide one as the text smudging.
             var blur = new GaussianBlurEffect
             {
-                BlurAmount = terminal ? 3.5f : 6,
+                BlurAmount = 4,
                 BorderMode = EffectBorderMode.Soft,
                 Optimization = EffectOptimization.Balanced,
                 Source = new CompositionEffectSourceParameter("Content")
             };
 
-            // The halo is the content's own colour, brightened: a plain blur at full strength
-            // reads as smudge, at a fraction of it as nothing.
-            var gain = terminal ? 1.1f : 1.3f;
-            var alpha = terminal ? 0.55f : 0.9f;
-            var boost = new ColorMatrixEffect
+            // The halo is the content's own colour, brightened - or, for a phosphor, its
+            // brightness in the phosphor's colour.
+            Matrix5x4 matrix;
+            if (phosphor.A == 0)
             {
-                ColorMatrix = new Matrix5x4
+                matrix = new Matrix5x4 { M11 = 1.2f, M22 = 1.2f, M33 = 1.2f, M44 = 0.8f };
+            }
+            else
+            {
+                float r = phosphor.R / 255f * 1.3f, g = phosphor.G / 255f * 1.3f, b = phosphor.B / 255f * 1.3f;
+                matrix = new Matrix5x4
                 {
-                    M11 = gain, M22 = gain, M33 = gain, M44 = alpha,
-                },
-                Source = blur
-            };
+                    M11 = 0.3f * r, M21 = 0.59f * r, M31 = 0.11f * r,
+                    M12 = 0.3f * g, M22 = 0.59f * g, M32 = 0.11f * g,
+                    M13 = 0.3f * b, M23 = 0.59f * b, M33 = 0.11f * b,
+                    M44 = 0.8f,
+                };
+            }
+
+            var boost = new ColorMatrixEffect { ColorMatrix = matrix, Source = blur };
 
             var screen = new BlendEffect
             {
@@ -108,23 +120,25 @@ namespace Telegram.Controls.Media
                 Foreground = boost
             };
 
-            return factory = compositor.CreateEffectFactory(screen);
+            return factories[phosphor] = compositor.CreateEffectFactory(screen);
         }
 
         private sealed class Attachment
         {
             private readonly FrameworkElement _host;
             private readonly Func<IEnumerable<(FrameworkElement Element, float Strength)>> _sources;
-            private readonly bool _terminal;
+            private readonly Color _phosphor;
+            private readonly float _intensity;
             private readonly ContainerVisual _root;
 
             private readonly Dictionary<FrameworkElement, Glow> _glows = new();
 
-            public Attachment(FrameworkElement host, Func<IEnumerable<(FrameworkElement Element, float Strength)>> sources, bool terminal, ContainerVisual root)
+            public Attachment(FrameworkElement host, Func<IEnumerable<(FrameworkElement Element, float Strength)>> sources, Color phosphor, float intensity, ContainerVisual root)
             {
                 _host = host;
                 _sources = sources;
-                _terminal = terminal;
+                _phosphor = phosphor;
+                _intensity = intensity;
                 _root = root;
             }
 
@@ -152,13 +166,13 @@ namespace Telegram.Controls.Media
 
                     if (!_glows.TryGetValue(source, out var glow))
                     {
-                        _glows[source] = glow = new Glow(source, _terminal, _root, Refresh);
+                        _glows[source] = glow = new Glow(source, _phosphor, _root, Refresh);
                     }
 
                     try
                     {
                         var origin = source.TransformToVisual(_host).TransformPoint(default);
-                        glow.Place(new Vector2((float)origin.X, (float)origin.Y), source.ActualSize, strength);
+                        glow.Place(new Vector2((float)origin.X, (float)origin.Y), source.ActualSize, Math.Min(1, strength * _intensity));
                     }
                     catch
                     {
@@ -197,7 +211,7 @@ namespace Telegram.Controls.Media
             private readonly CompositionVisualSurface _surface;
             private readonly SpriteVisual _glow;
 
-            public Glow(FrameworkElement source, bool terminal, ContainerVisual root, Action refresh)
+            public Glow(FrameworkElement source, Color phosphor, ContainerVisual root, Action refresh)
             {
                 var compositor = root.Compositor;
 
@@ -214,7 +228,7 @@ namespace Telegram.Controls.Media
                 copy.HorizontalAlignmentRatio = 0;
                 copy.VerticalAlignmentRatio = 0;
 
-                var brush = GetFactory(compositor, terminal).CreateBrush();
+                var brush = GetFactory(compositor, phosphor).CreateBrush();
                 brush.SetSourceParameter("Content", copy);
                 brush.SetSourceParameter("Backdrop", compositor.CreateBackdropBrush());
 
@@ -239,58 +253,5 @@ namespace Telegram.Controls.Media
                 root.Children.Remove(_glow);
             }
         }
-
-        #region Scanlines
-
-        /// <summary>
-        /// A CRT's scanlines, for the terminal style: a faint dark line every third pixel across
-        /// the host. The host goes behind the content, over the bubble's fill only - lines drawn
-        /// through the letters themselves cost more legibility than they bring atmosphere.
-        /// </summary>
-        public static void AttachScanlines(FrameworkElement host)
-        {
-            DetachScanlines(host);
-
-            var compositor = BootStrapper.Current.Compositor;
-
-            var gradient = compositor.CreateLinearGradientBrush();
-            gradient.MappingMode = CompositionMappingMode.Absolute;
-            gradient.ExtendMode = CompositionGradientExtendMode.Wrap;
-            gradient.StartPoint = new Vector2(0, 0);
-            gradient.EndPoint = new Vector2(0, 3);
-            gradient.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(0, 0, 0, 0)));
-            gradient.ColorStops.Add(compositor.CreateColorGradientStop(0.62f, Color.FromArgb(0, 0, 0, 0)));
-            gradient.ColorStops.Add(compositor.CreateColorGradientStop(0.66f, Color.FromArgb(0x1C, 0, 0, 0)));
-            gradient.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(0x1C, 0, 0, 0)));
-
-            var lines = compositor.CreateSpriteVisual();
-            lines.Brush = gradient;
-            lines.Size = host.ActualSize;
-
-            void OnSizeChanged(object sender, SizeChangedEventArgs args)
-            {
-                lines.Size = host.ActualSize;
-            }
-
-            host.SizeChanged += OnSizeChanged;
-            host.Tag = new Scanlines(OnSizeChanged);
-
-            ElementCompositionPreview.SetElementChildVisual(host, lines);
-        }
-
-        public static void DetachScanlines(FrameworkElement host)
-        {
-            if (host?.Tag is Scanlines scanlines)
-            {
-                host.SizeChanged -= scanlines.Handler;
-                host.Tag = null;
-
-                ElementCompositionPreview.SetElementChildVisual(host, null);
-            }
-        }
-
-        private sealed record Scanlines(SizeChangedEventHandler Handler);
-
-        #endregion
     }
 }

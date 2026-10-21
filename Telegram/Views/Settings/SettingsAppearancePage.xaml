@@ -231,12 +231,12 @@
                                                        SelectedIndex="{x:Bind ViewModel.WindowMaterialIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
-                    <controls:SettingsButton Content="Матеріал бічної панелі"
+                    <controls:SettingsButton Content="Скло бічної панелі"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.PaneMaterialOptions}"
-                                                       AutomationProperties.Name="Матеріал бічної панелі"
-                                                       SelectedIndex="{x:Bind ViewModel.PaneMaterialIndex, Mode=TwoWay}" />
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Скло бічної панелі"
+                                                       SelectedIndex="{x:Bind ViewModel.PaneGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Розташування папок"
@@ -263,7 +263,14 @@
                                                        SelectedIndex="{x:Bind ViewModel.HeaderStyleIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
-                    <controls:SettingsButton Content="Шапка чату"
+                    <controls:SettingsButton Content="Скло шапки сторінок"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Скло шапки сторінок"
+                                                       SelectedIndex="{x:Bind ViewModel.HeaderGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>                    <controls:SettingsButton Content="Шапка чату"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ChatHeaderStyleOptions}"
@@ -271,7 +278,21 @@
                                                        SelectedIndex="{x:Bind ViewModel.ChatHeaderStyleIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
-                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                    <controls:SettingsButton Content="Скло шапки чату"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Скло шапки чату"
+                                                       SelectedIndex="{x:Bind ViewModel.ChatHeaderGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>                    <controls:SettingsButton Content="Скло нижньої панелі каналу"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Скло нижньої панелі каналу"
+                                                       SelectedIndex="{x:Bind ViewModel.FooterGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>                    <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58" />
@@ -350,6 +371,158 @@
                                 Grid.Column="2" />
                     </Grid>
                 </controls:HeaderedControl>
+
+                <controls:HeaderedControl Header="Ефекти скла"
+                                          Footer="Діють на всі елементи зі склом: обідок — на капсули, шапки, нижню панель і бульбашки; сяйво — на внутрішнє світло та світіння тексту; розгортка — на ретро-термінали; розмиття — на все скло.">
+                    <controls:SettingsButton Content="Обідок скла"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimStyleOptions}"
+                                                       AutomationProperties.Name="Обідок скла"
+                                                       SelectedIndex="{x:Bind ViewModel.RimStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Яскравість обідка', ViewModel.RimIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.RimIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Яскравість обідка"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Сила сяйва', ViewModel.GlowIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.GlowIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Сила сяйва"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Лінії розгортки', ViewModel.ScanlineIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.ScanlineIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Лінії розгортки"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Сила розмиття', ViewModel.BlurIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.BlurIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Сила розмиття"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>                </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Майданчик"
                                           Footer="Живий приклад: шпалери, бульбашки, реакції, дати й шапка змінюються разом із налаштуваннями нижче. Прокрутіть його, щоб побачити, як повідомлення заходять під шапку.">
@@ -533,9 +706,9 @@
                     <controls:SettingsButton Content="Бульбашки"
                                              Glyph="&#xE9E8;">
                         <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.BubbleStyleOptions}"
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Бульбашки"
-                                                       SelectedIndex="{x:Bind ViewModel.BubbleStyleIndex, Mode=TwoWay}" />
+                                                       SelectedIndex="{x:Bind ViewModel.BubbleGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <Grid Background="{ThemeResource SettingsItemBackground}"
@@ -579,17 +752,17 @@
                     <controls:SettingsButton Content="Капсули реакцій"
                                              Glyph="&#xE9E8;">
                         <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ReactionStyleOptions}"
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Капсули реакцій"
-                                                       SelectedIndex="{x:Bind ViewModel.ReactionStyleIndex, Mode=TwoWay}" />
+                                                       SelectedIndex="{x:Bind ViewModel.ReactionGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Дати й сервісні повідомлення"
                                              Glyph="&#xE9E8;">
                         <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ServiceStyleOptions}"
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Сервісні капсули"
-                                                       SelectedIndex="{x:Bind ViewModel.ServiceStyleIndex, Mode=TwoWay}" />
+                                                       SelectedIndex="{x:Bind ViewModel.ServiceGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Текст у повідомленнях"

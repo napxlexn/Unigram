@@ -541,13 +541,6 @@
                 Grid.ColumnSpan="2"
                 Canvas.ZIndex="2" />
 
-        <!-- The floating glass capsule of the capsule header style; collapsed otherwise. -->
-        <Border x:Name="HeaderCapsule"
-                Visibility="Collapsed"
-                IsHitTestVisible="False"
-                Grid.ColumnSpan="2"
-                Canvas.ZIndex="2" />
-
         <Grid x:Name="Header"
               Height="{StaticResource NavigationViewTopPaneHeight}"
               Grid.ColumnSpan="2"
