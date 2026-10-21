@@ -184,16 +184,16 @@ namespace Telegram.Common
         /// </summary>
         /// <param name="element">The colour of what is rimmed, where it has one; without one the
         /// accent stands in.</param>
-        public static Color? GetRimColor(Color? element, bool dark)
+        public static Color? GetRimColor(Color? element, bool dark, RimProfile rim = null)
         {
-            var appearance = AppSettings.Appearance;
+            rim ??= AppSettings.Appearance.SharedRim;
             var accent = dark ? Theme.AccentDark.Default : Theme.AccentLight.Default;
 
-            Color? color = appearance.RimColorMode switch
+            Color? color = rim.ColorMode switch
             {
                 RimColorMode.Accent => accent,
                 RimColorMode.Element => element is Color own ? Brighten(own) : accent,
-                RimColorMode.Custom => appearance.RimCustomColor,
+                RimColorMode.Custom => rim.CustomColor,
                 _ => null
             };
 

@@ -11,25 +11,29 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
 using Telegram.Common;
+using Telegram.Controls.Media;
 using Telegram.Controls.Views;
 using Telegram.Converters;
 using Telegram.Native.Controls;
-using Telegram.Navigation;
 using Telegram.Navigation.Services;
+using Telegram.Navigation;
+using Telegram.Services.Settings;
+using Telegram.Services;
 using Telegram.Streams;
 using Telegram.Td.Api;
 using Telegram.ViewModels;
 using Telegram.Views.Popups;
 using Windows.Foundation;
 using Windows.UI.Text;
-using Windows.UI.Xaml;
 using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media.Imaging;
+using Windows.UI.Xaml;
+using Windows.UI;
 
 namespace Telegram.Controls.Messages
 {
@@ -45,7 +49,65 @@ namespace Telegram.Controls.Messages
             DefaultStyleKey = typeof(ReactionButton);
 
             Click += OnClick;
+
+            Loaded += OnGlowLoaded;
+            Unloaded += OnGlowUnloaded;
         }
+
+        #region Glow
+
+        private Border GlowHost;
+
+        private void OnGlowLoaded(object sender, RoutedEventArgs e)
+        {
+            AppearanceSettings.GlassChanged += OnGlassChanged;
+            UpdateGlow();
+        }
+
+        private void OnGlowUnloaded(object sender, RoutedEventArgs e)
+        {
+            AppearanceSettings.GlassChanged -= OnGlassChanged;
+            ContentGlow.Detach(GlowHost);
+        }
+
+        private void OnGlassChanged(object sender, EventArgs e)
+        {
+            this.BeginOnUIThread(UpdateGlow);
+        }
+
+        /// <summary>
+        /// Under the phosphor kinds - the terminals, neon, the lamps - the emoji and the count
+        /// glow as the text in the bubbles does, not only the capsule behind them.
+        /// </summary>
+        private void UpdateGlow()
+        {
+            if (GlowHost == null || Icon == null || Count == null)
+            {
+                return;
+            }
+
+            var kind = AppSettings.Appearance.ReactionGlass;
+            var phosphor = kind != GlassKind.Original
+                ? Glass.Resolve(kind, ActualTheme != ElementTheme.Light).Phosphor
+                : null;
+
+            if (phosphor is Color color && AppSettings.Appearance.ReactionGlowIntensity > 0)
+            {
+                ContentGlow.Attach(GlowHost, GetGlowSources, color, AppSettings.Appearance.ReactionGlowIntensity);
+            }
+            else
+            {
+                ContentGlow.Detach(GlowHost);
+            }
+        }
+
+        private IEnumerable<(FrameworkElement Element, float Strength)> GetGlowSources()
+        {
+            yield return (Icon, 1);
+            yield return (Count, 1);
+        }
+
+        #endregion
 
         protected override AutomationPeer OnCreateAutomationPeer()
         {
@@ -243,6 +305,7 @@ namespace Telegram.Controls.Messages
             Count = GetTemplateChild(nameof(Count)) as AnimatedTextBlock;
             Overlay = GetTemplateChild(nameof(Overlay)) as Popup;
             Icon = GetTemplateChild(nameof(Icon)) as CustomEmojiIcon;
+            GlowHost = GetTemplateChild(nameof(GlowHost)) as Border;
             Icon.Ready += OnReady;
             Icon.Paused += OnPaused;
 
@@ -252,6 +315,11 @@ namespace Telegram.Controls.Messages
             }
 
             SetUnread(_unread);
+
+            if (IsLoaded)
+            {
+                UpdateGlow();
+            }
 
             base.OnApplyTemplate();
         }

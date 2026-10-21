@@ -3069,8 +3069,10 @@
                                                  Margin="0,1,8,2"
                                                  Grid.Column="1" />
 
-                        <!-- The glass rim and the lamp glow, drawn over both columns so they take no room: clear unless the reaction style asks for them. -->
-                        <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
+                        <!-- The glass rim and the lamp glow, drawn over both columns so they take no room: clear unless the reaction style asks for them.
+                             Also the host of the phosphor glow of the emoji and the count, which it lies over without containing. -->
+                        <Border x:Name="GlowHost"
+                                BorderBrush="{ThemeResource MessageReactionBorderBrush}"
                                 Background="{ThemeResource MessageReactionGlowBrush}"
                                 BorderThickness="1"
                                 CornerRadius="{TemplateBinding CornerRadius}"

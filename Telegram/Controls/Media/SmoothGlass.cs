@@ -43,7 +43,8 @@ namespace Telegram.Controls.Media
         /// <param name="tint">The element's own colour, for kinds that take it.</param>
         /// <param name="fill">False to leave the fill to the element - a gradient bubble - and draw
         /// only what goes over it.</param>
-        public static void Attach(Border host, GlassKind kind, bool dark, Color? tint = null, bool fill = true, bool rim = true)
+        /// <param name="bubble">A message bubble, which may have a rim of its own.</param>
+        public static void Attach(Border host, GlassKind kind, bool dark, Color? tint = null, bool fill = true, bool rim = true, bool bubble = false)
         {
             Detach(host);
 
@@ -53,7 +54,7 @@ namespace Telegram.Controls.Media
                 return;
             }
 
-            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, tint, fill, rim);
+            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, tint, fill, rim, AppSettings.Appearance.RimFor(bubble));
 
             host.Tag = attachment;
             host.SizeChanged += attachment.OnSizeChanged;
@@ -138,7 +139,7 @@ namespace Telegram.Controls.Media
             private readonly SpriteVisual _rimGlow;
             private readonly CompositionVisualSurface _rimGlowSurface;
 
-            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, Color? element, bool fill, bool rim)
+            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, Color? element, bool fill, bool rim, RimProfile profile)
             {
                 _compositor = compositor;
                 Root = compositor.CreateContainerVisual();
@@ -156,10 +157,10 @@ namespace Telegram.Controls.Media
                 _state.InsertScalar("Reach", 0);
 
                 // How strongly the animations and the pointer effects show, 0 to 1.
-                _state.InsertScalar("Power", appearance.RimHoverIntensity / 100f);
-                _motion = appearance.RimAnimationIntensity / 100d;
+                _state.InsertScalar("Power", profile.HoverIntensity / 100f);
+                _motion = profile.AnimationIntensity / 100d;
 
-                _hover = appearance.RimHover;
+                _hover = profile.Hover;
                 _ease = compositor.CreateCubicBezierEasingFunction(new Vector2(0.37f, 0), new Vector2(0.63f, 1));
 
                 _maskGeometry = compositor.CreatePathGeometry();
@@ -269,10 +270,10 @@ namespace Telegram.Controls.Media
                 }
 
                 // The rim: the style setting, unless the kind brings its own.
-                var strength = appearance.RimIntensity / 60d;
-                var style = spec.RimColor != null && appearance.RimStyle is RimStyle.None or RimStyle.Thin or RimStyle.Soft
+                var strength = profile.Intensity / 60d;
+                var style = spec.RimColor != null && profile.Style is RimStyle.None or RimStyle.Thin or RimStyle.Soft
                     ? RimStyle.Thin
-                    : appearance.RimStyle;
+                    : profile.Style;
 
                 if (!rim || strength <= 0 || (style == RimStyle.None && spec.RimColor == null))
                 {
@@ -288,14 +289,14 @@ namespace Telegram.Controls.Media
                     : dark ? Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00);
 
                 // A colour of the user's choosing instead, as bright as the kinds' own rims.
-                if (Glass.GetRimColor(element, dark) is Color chosen)
+                if (Glass.GetRimColor(element, dark, profile) is Color chosen)
                 {
                     top = chosen;
                     bottom = Scale(chosen, 0.35);
                 }
 
-                var width = appearance.RimWidth / 100f;
-                _light = appearance.RimLight;
+                var width = profile.Width / 100f;
+                _light = profile.Light;
 
                 top = Scale(top, strength);
                 bottom = Scale(bottom, strength);
@@ -395,7 +396,7 @@ namespace Telegram.Controls.Media
                 // Update slides across.
                 var glint = Scale(Colors.White, Math.Min(1, 0.9 * strength) * _motion);
 
-                if (appearance.RimAnimation == RimAnimation.Shimmer)
+                if (profile.Animation == RimAnimation.Shimmer)
                 {
                     // Soft at both sides of the band, so it never shows an edge as it moves.
                     _shimmer = compositor.CreateLinearGradientBrush();
@@ -408,7 +409,7 @@ namespace Telegram.Controls.Media
 
                     Stroke(_shimmer, 1.5f, 0.75f);
                 }
-                else if (appearance.RimAnimation == RimAnimation.Rotate)
+                else if (profile.Animation == RimAnimation.Rotate)
                 {
                     // Lit from one side, the light fading across; the side turns round the middle.
                     var rotor = compositor.CreateLinearGradientBrush();
@@ -433,7 +434,7 @@ namespace Telegram.Controls.Media
 
                     Stroke(rotor, 1.5f, 0.75f);
                 }
-                else if (appearance.RimAnimation == RimAnimation.Rainbow)
+                else if (profile.Animation == RimAnimation.Rainbow)
                 {
                     // Corner to corner, each stop going round the colours a step behind the last.
                     var hues = new[]
@@ -475,7 +476,7 @@ namespace Telegram.Controls.Media
                 {
                     var spot = compositor.CreateRadialGradientBrush();
                     spot.MappingMode = CompositionMappingMode.Absolute;
-                    spot.ColorStops.Add(compositor.CreateColorGradientStop(0, Scale(Scale(top, Math.Max(1, 2.2 / Math.Max(0.1, top.A / 255d))), Math.Max(0.15, appearance.RimHoverIntensity / 100d))));
+                    spot.ColorStops.Add(compositor.CreateColorGradientStop(0, Scale(Scale(top, Math.Max(1, 2.2 / Math.Max(0.1, top.A / 255d))), Math.Max(0.15, profile.HoverIntensity / 100d))));
                     spot.ColorStops.Add(compositor.CreateColorGradientStop(1, Scale(top, 0)));
 
                     FollowPointer(spot);
@@ -502,7 +503,7 @@ namespace Telegram.Controls.Media
 
                 if (glows || hoverGlow)
                 {
-                    var glowColor = Scale(spec.RimColor ?? top, spec.RimGlows ? 1.6 : hoverGlow && !glows ? 2.2 : 1.1);
+                    var glowColor = Scale(spec.RimColor ?? top, (spec.RimGlows ? 1.6 : hoverGlow && !glows ? 2.2 : 1.1) * appearance.RimGlowIntensity / 60);
 
                     var glowShape = compositor.CreateShapeVisual();
                     var glowGeometry = compositor.CreatePathGeometry();
@@ -546,12 +547,12 @@ namespace Telegram.Controls.Media
                     }
                 }
 
-                _smoothing = appearance.RimSmoothing;
+                _smoothing = profile.Smoothing;
                 _rimDisplay = PresentRim(compositor);
 
                 // The ones that change the rim's brightness: eased between every step, so that
                 // nothing jumps; the glow follows unless the pointer has it.
-                if (CreateBrightness(compositor, appearance.RimAnimation) is ScalarKeyFrameAnimation brightness)
+                if (CreateBrightness(compositor, profile.Animation) is ScalarKeyFrameAnimation brightness)
                 {
                     _rimDisplay.StartAnimation("Opacity", brightness);
 

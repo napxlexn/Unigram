@@ -67,8 +67,29 @@ namespace Telegram.Common
                 };
             }
 
+            // A screen of one phosphor - the terminals, the candle - draws the count in it too,
+            // and a chosen reaction lit in it rather than in the theme's colour.
+            var phosphor = appearance.ReactionGlass != GlassKind.Original
+                && Glass.Resolve(appearance.ReactionGlass, dark).Phosphor is Color mono
+                && mono.A > 0
+                    ? mono
+                    : (Color?)null;
+
             switch (key)
             {
+                case "MessageReactionForegroundBrush" or "MessageReactionChosenForegroundBrush" when phosphor is Color lit:
+                    color = lit;
+                    break;
+
+                case "MessageReactionChosenBackgroundBrush" when phosphor is Color lit:
+                    color = WithAlpha(lit, 0x48);
+                    break;
+
+                // Neon is lit by its tube, the rim: a chosen capsule only takes on its colour.
+                case "MessageReactionChosenBackgroundBrush" when appearance.ReactionGlass == GlassKind.Neon:
+                    color = WithAlpha(color, 0x50);
+                    break;
+
                 case "MessageBackgroundBrush" when appearance.BubbleGlass != GlassKind.Original:
                     color.A = (byte)(color.A * appearance.BubbleOpacity / 100);
                     break;
@@ -114,15 +135,17 @@ namespace Telegram.Common
             }
 
             var spec = Glass.Resolve(kind, dark);
-            if (!appearance.RimOnReactions || (spec.RimColor == null && appearance.RimStyle == RimStyle.None))
+            // The reactions belong to the messages: their rim is the bubbles'.
+            var profile = appearance.RimFor(true);
+            if (!appearance.RimOnReactions || (spec.RimColor == null && profile.Style == RimStyle.None))
             {
                 return Color.FromArgb(0, 0, 0, 0);
             }
 
-            var rim = Glass.GetRimColor(appearance.UseCustomMessageColors ? appearance.CustomReactionColor : null, dark)
+            var rim = Glass.GetRimColor(appearance.UseCustomMessageColors ? appearance.CustomReactionColor : null, dark, profile)
                 ?? spec.RimColor
                 ?? (dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF));
-            rim.A = (byte)Math.Clamp(rim.A * appearance.RimIntensity / 60, 0, 255);
+            rim.A = (byte)Math.Clamp(rim.A * profile.Intensity / 60, 0, 255);
             return rim;
         }
 
@@ -174,7 +197,7 @@ namespace Telegram.Common
                     : null;
 
                 brush.GradientStops[0].Color = light is Color color
-                    ? WithAlpha(color, (byte)(0xA0 * appearance.GlowIntensity / 100))
+                    ? WithAlpha(color, (byte)(0xA0 * appearance.ReactionGlowIntensity / 100))
                     : Color.FromArgb(0, 0xFF, 0xFF, 0xFF);
             }
         }

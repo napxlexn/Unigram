@@ -619,7 +619,9 @@ namespace Telegram.Controls.Messages
 
             if (message.Delegate != null && message.Delegate.IsDialog)
             {
-                var top = isFirst ? 8 : 2;
+                // Glass bubbles, each with its rim, need a little more room between them than flat
+                // ones that run together.
+                var top = isFirst ? 8 : MessageStyle.BubbleKind != GlassKind.Original ? 5 : 2;
                 var action = message.IsSaved || message.CanBeShared;
 
                 if (message.IsSaved || (chat != null && (chat.Type is ChatTypeBasicGroup || chat.Type is ChatTypeSupergroup)) && !message.IsChannelPost)
@@ -685,14 +687,7 @@ namespace Telegram.Controls.Messages
             _bottomLeft = bottomLeft;
 
             var radius = topLeft == 0 && topRight == 0 && bottomRight == 0 && bottomLeft == 0;
-            if (radius)
-            {
-                ShadowCaster.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                ShadowCaster.Visibility = Visibility.Visible;
-            }
+            UpdateShadowCaster();
 
             radius |= bottomLeft != 0 && bottomRight != 0;
             radius |= true;
@@ -2515,7 +2510,7 @@ namespace Telegram.Controls.Messages
                     GlassHost.CornerRadius = ContentPanel.CornerRadius;
                     GlassHost.Margin = OutsetOf(ContentPanel.Padding);
                     GlassHost.Visibility = Visibility.Visible;
-                    SmoothGlass.Attach(GlassHost, kind, dark, tint, fill: _brush == null, rim: AppSettings.Appearance.RimOnBubbles);
+                    SmoothGlass.Attach(GlassHost, kind, dark, tint, fill: _brush == null, rim: AppSettings.Appearance.RimOnBubbles, bubble: true);
                 }
             }
             else if (GlassHost != null)
@@ -2524,6 +2519,8 @@ namespace Telegram.Controls.Messages
                 GlassHost.Visibility = Visibility.Collapsed;
             }
 
+            UpdateShadowCaster();
+
             // The glowing kinds: the text itself glows inside the glass.
             if (MessageStyle.GetBubblePhosphor(dark) is Color phosphor)
             {
@@ -2531,7 +2528,7 @@ namespace Telegram.Controls.Messages
                 if (GlowHost != null)
                 {
                     GlowHost.Visibility = Visibility.Visible;
-                    ContentGlow.Attach(GlowHost, GetGlowSources, phosphor);
+                    ContentGlow.Attach(GlowHost, GetGlowSources, phosphor, AppSettings.Appearance.BubbleGlowIntensity);
                 }
             }
             else if (GlowHost != null)
@@ -2542,6 +2539,23 @@ namespace Telegram.Controls.Messages
         }
 
         private bool _glassCornersTracked;
+
+        /// <summary>
+        /// The line of elevation under a bubble; not under glass, which it shows through as a
+        /// band of the theme's colour along the bottom and round the corners.
+        /// </summary>
+        private void UpdateShadowCaster()
+        {
+            if (ShadowCaster == null)
+            {
+                return;
+            }
+
+            var flat = _topLeft == 0 && _topRight == 0 && _bottomRight == 0 && _bottomLeft == 0;
+            ShadowCaster.Visibility = flat || MessageStyle.BubbleKind != GlassKind.Original
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        }
 
         private static Thickness OutsetOf(Thickness padding)
         {
@@ -3865,7 +3879,7 @@ namespace Telegram.Controls.Messages
 
             if (margin)
             {
-                Margin = new Thickness(outgoing ? 50 : 12, first ? 8 : 2, outgoing ? 12 : 50, 0);
+                Margin = new Thickness(outgoing ? 50 : 12, first ? 8 : MessageStyle.BubbleKind != GlassKind.Original ? 5 : 2, outgoing ? 12 : 50, 0);
             }
 
             Message.SetFontSize(AppSettings.Appearance.MessageFontSize);

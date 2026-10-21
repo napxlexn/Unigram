@@ -658,16 +658,76 @@ namespace Telegram.ViewModels.Settings
 
         public bool IsBubbleGlass => AppSettings.Appearance.BubbleGlass != GlassKind.Original;
 
+        public bool SeparateBubbleRim
+        {
+            get => AppSettings.Appearance.SeparateBubbleRim;
+            set
+            {
+                if (AppSettings.Appearance.SeparateBubbleRim != value)
+                {
+                    AppSettings.Appearance.SeparateBubbleRim = value;
+                    _rimTarget = value ? 1 : 0;
+
+                    ApplyGlass();
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(RimTargetIndex));
+                    RaiseRimChanged();
+                }
+            }
+        }
+
+        public List<SettingsOptionItem<int>> RimTargetOptions { get; } = new()
+        {
+            new SettingsOptionItem<int>(0, "Шапки й панелі"),
+            new SettingsOptionItem<int>(1, "Повідомлення"),
+        };
+
+        private int _rimTarget = AppSettings.Appearance.SeparateBubbleRim ? 1 : 0;
+
+        /// <summary>
+        /// Whose rim the controls below edit, while the bubbles have one of their own.
+        /// </summary>
+        public int RimTargetIndex
+        {
+            get => _rimTarget;
+            set
+            {
+                if (value is 0 or 1 && _rimTarget != value)
+                {
+                    _rimTarget = value;
+                    RaisePropertyChanged();
+                    RaiseRimChanged();
+                }
+            }
+        }
+
+        private RimProfile EditedRim => _rimTarget == 1 && AppSettings.Appearance.SeparateBubbleRim
+            ? AppSettings.Appearance.BubbleRim
+            : AppSettings.Appearance.SharedRim;
+
+        private void RaiseRimChanged()
+        {
+            foreach (var name in new[]
+            {
+                nameof(RimStyleIndex), nameof(RimIntensity), nameof(RimColorIndex), nameof(IsRimCustom), nameof(RimCustomBrush),
+                nameof(RimLightIndex), nameof(RimAnimationIndex), nameof(RimAnimationIntensity), nameof(IsRimAnimated),
+                nameof(RimHoverIndex), nameof(RimHoverIntensity), nameof(IsRimHovered), nameof(RimSmoothingIndex), nameof(RimWidth)
+            })
+            {
+                RaisePropertyChanged(name);
+            }
+        }
+
         public List<SettingsOptionItem<RimStyle>> RimStyleOptions { get; } = Glass.RimOptions;
 
         public int RimStyleIndex
         {
-            get => Math.Max(0, RimStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimStyle));
+            get => Math.Max(0, RimStyleOptions.FindIndex(x => x.Value == EditedRim.Style));
             set
             {
-                if (value >= 0 && value < RimStyleOptions.Count && AppSettings.Appearance.RimStyle != RimStyleOptions[value].Value)
+                if (value >= 0 && value < RimStyleOptions.Count && EditedRim.Style != RimStyleOptions[value].Value)
                 {
-                    AppSettings.Appearance.RimStyle = RimStyleOptions[value].Value;
+                    EditedRim.Style = RimStyleOptions[value].Value;
                     ApplyGlass();
                     RaisePropertyChanged();
                 }
@@ -676,44 +736,44 @@ namespace Telegram.ViewModels.Settings
 
         public double RimIntensity
         {
-            get => AppSettings.Appearance.RimIntensity;
-            set => SetIntensity((int)value, AppSettings.Appearance.RimIntensity, x => AppSettings.Appearance.RimIntensity = x);
+            get => EditedRim.Intensity;
+            set => SetIntensity((int)value, EditedRim.Intensity, x => EditedRim.Intensity = x);
         }
 
         public List<SettingsOptionItem<RimColorMode>> RimColorOptions { get; } = Glass.RimColorOptions;
 
         public int RimColorIndex
         {
-            get => Math.Max(0, RimColorOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimColorMode));
+            get => Math.Max(0, RimColorOptions.FindIndex(x => x.Value == EditedRim.ColorMode));
             set
             {
-                if (SetRimOption(RimColorOptions, value, AppSettings.Appearance.RimColorMode, x => AppSettings.Appearance.RimColorMode = x))
+                if (SetRimOption(RimColorOptions, value, EditedRim.ColorMode, x => EditedRim.ColorMode = x))
                 {
                     RaisePropertyChanged(nameof(IsRimCustom));
                 }
             }
         }
 
-        public bool IsRimCustom => AppSettings.Appearance.RimColorMode == RimColorMode.Custom;
+        public bool IsRimCustom => EditedRim.ColorMode == RimColorMode.Custom;
 
-        public Windows.UI.Xaml.Media.SolidColorBrush RimCustomBrush => new(AppSettings.Appearance.RimCustomColor);
+        public Windows.UI.Xaml.Media.SolidColorBrush RimCustomBrush => new(EditedRim.CustomColor);
 
         public List<SettingsOptionItem<RimLight>> RimLightOptions { get; } = Glass.RimLightOptions;
 
         public int RimLightIndex
         {
-            get => Math.Max(0, RimLightOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimLight));
-            set => SetRimOption(RimLightOptions, value, AppSettings.Appearance.RimLight, x => AppSettings.Appearance.RimLight = x);
+            get => Math.Max(0, RimLightOptions.FindIndex(x => x.Value == EditedRim.Light));
+            set => SetRimOption(RimLightOptions, value, EditedRim.Light, x => EditedRim.Light = x);
         }
 
         public List<SettingsOptionItem<RimAnimation>> RimAnimationOptions { get; } = Glass.RimAnimationOptions;
 
         public int RimAnimationIndex
         {
-            get => Math.Max(0, RimAnimationOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimAnimation));
+            get => Math.Max(0, RimAnimationOptions.FindIndex(x => x.Value == EditedRim.Animation));
             set
             {
-                if (SetRimOption(RimAnimationOptions, value, AppSettings.Appearance.RimAnimation, x => AppSettings.Appearance.RimAnimation = x))
+                if (SetRimOption(RimAnimationOptions, value, EditedRim.Animation, x => EditedRim.Animation = x))
                 {
                     RaisePropertyChanged(nameof(IsRimAnimated));
                 }
@@ -737,18 +797,18 @@ namespace Telegram.ViewModels.Settings
 
         public int RimSmoothingIndex
         {
-            get => Math.Max(0, RimSmoothingOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimSmoothing));
-            set => SetRimOption(RimSmoothingOptions, value, AppSettings.Appearance.RimSmoothing, x => AppSettings.Appearance.RimSmoothing = x);
+            get => Math.Max(0, RimSmoothingOptions.FindIndex(x => x.Value == EditedRim.Smoothing));
+            set => SetRimOption(RimSmoothingOptions, value, EditedRim.Smoothing, x => EditedRim.Smoothing = x);
         }
 
         public List<SettingsOptionItem<RimHover>> RimHoverOptions { get; } = Glass.RimHoverOptions;
 
         public int RimHoverIndex
         {
-            get => Math.Max(0, RimHoverOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimHover));
+            get => Math.Max(0, RimHoverOptions.FindIndex(x => x.Value == EditedRim.Hover));
             set
             {
-                if (SetRimOption(RimHoverOptions, value, AppSettings.Appearance.RimHover, x => AppSettings.Appearance.RimHover = x))
+                if (SetRimOption(RimHoverOptions, value, EditedRim.Hover, x => EditedRim.Hover = x))
                 {
                     RaisePropertyChanged(nameof(IsRimHovered));
                 }
@@ -770,24 +830,24 @@ namespace Telegram.ViewModels.Settings
 
         public double RimAnimationIntensity
         {
-            get => AppSettings.Appearance.RimAnimationIntensity;
-            set => SetIntensity((int)value, AppSettings.Appearance.RimAnimationIntensity, x => AppSettings.Appearance.RimAnimationIntensity = x);
+            get => EditedRim.AnimationIntensity;
+            set => SetIntensity((int)value, EditedRim.AnimationIntensity, x => EditedRim.AnimationIntensity = x);
         }
 
         public double RimHoverIntensity
         {
-            get => AppSettings.Appearance.RimHoverIntensity;
-            set => SetIntensity((int)value, AppSettings.Appearance.RimHoverIntensity, x => AppSettings.Appearance.RimHoverIntensity = x);
+            get => EditedRim.HoverIntensity;
+            set => SetIntensity((int)value, EditedRim.HoverIntensity, x => EditedRim.HoverIntensity = x);
         }
 
-        public bool IsRimAnimated => AppSettings.Appearance.RimAnimation != RimAnimation.None;
+        public bool IsRimAnimated => EditedRim.Animation != RimAnimation.None;
 
-        public bool IsRimHovered => AppSettings.Appearance.RimHover != RimHover.None;
+        public bool IsRimHovered => EditedRim.Hover != RimHover.None;
 
         public double RimWidth
         {
-            get => AppSettings.Appearance.RimWidth;
-            set => SetIntensity((int)value, AppSettings.Appearance.RimWidth, x => AppSettings.Appearance.RimWidth = x);
+            get => EditedRim.Width;
+            set => SetIntensity((int)value, EditedRim.Width, x => EditedRim.Width = x);
         }
 
         public bool RimOnBubbles
@@ -816,6 +876,24 @@ namespace Telegram.ViewModels.Settings
                 ApplyGlass();
                 RaisePropertyChanged(propertyName);
             }
+        }
+
+        public double BubbleGlowIntensity
+        {
+            get => AppSettings.Appearance.BubbleGlowIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.BubbleGlowIntensity, x => AppSettings.Appearance.BubbleGlowIntensity = x);
+        }
+
+        public double ReactionGlowIntensity
+        {
+            get => AppSettings.Appearance.ReactionGlowIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.ReactionGlowIntensity, x => AppSettings.Appearance.ReactionGlowIntensity = x);
+        }
+
+        public double RimGlowIntensity
+        {
+            get => AppSettings.Appearance.RimGlowIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.RimGlowIntensity, x => AppSettings.Appearance.RimGlowIntensity = x);
         }
 
         public double GlowIntensity
@@ -962,7 +1040,7 @@ namespace Telegram.ViewModels.Settings
                     RaisePropertyChanged(nameof(CustomReactionBrush));
                     break;
                 case nameof(AppearanceSettings.RimCustomColor):
-                    AppSettings.Appearance.RimCustomColor = color;
+                    EditedRim.CustomColor = color;
                     RaisePropertyChanged(nameof(RimCustomBrush));
 
                     // The rim is glass, not a message colour: everything with glass redraws.
@@ -987,7 +1065,7 @@ namespace Telegram.ViewModels.Settings
             nameof(AppearanceSettings.CustomOutgoingColor) => AppSettings.Appearance.CustomOutgoingColor,
             nameof(AppearanceSettings.CustomIncomingTextColor) => AppSettings.Appearance.CustomIncomingTextColor,
             nameof(AppearanceSettings.CustomOutgoingTextColor) => AppSettings.Appearance.CustomOutgoingTextColor,
-            nameof(AppearanceSettings.RimCustomColor) => AppSettings.Appearance.RimCustomColor,
+            nameof(AppearanceSettings.RimCustomColor) => EditedRim.CustomColor,
             _ => AppSettings.Appearance.CustomReactionColor
         };
 

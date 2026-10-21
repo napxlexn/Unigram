@@ -262,6 +262,134 @@ namespace Telegram.Services.Settings
         public int Version { get; set; }
     }
 
+    /// <summary>
+    /// Every setting of a rim, as one: the one the elements share, or - prefixed - the bubbles'
+    /// own, where a setting never changed falls back to the shared one.
+    /// </summary>
+    public sealed class RimProfile
+    {
+        private readonly AppearanceSettings _owner;
+        private readonly string _prefix;
+        private readonly System.Collections.Generic.Dictionary<string, int> _cache = new();
+
+        public RimProfile(AppearanceSettings owner, string prefix)
+        {
+            _owner = owner;
+            _prefix = prefix;
+        }
+
+        private bool IsShared => _prefix == null;
+
+        private int Get(string key, int fallback)
+        {
+            if (_cache.TryGetValue(key, out var value))
+            {
+                return value;
+            }
+
+            value = _owner.GetValueOrDefault(_prefix + key, int.MinValue);
+            if (value == int.MinValue)
+            {
+                return fallback;
+            }
+
+            _cache[key] = value;
+            return value;
+        }
+
+        private void Set(string key, int value)
+        {
+            _cache[key] = value;
+            _owner.AddOrUpdateValue(_prefix + key, value);
+        }
+
+        public RimStyle Style
+        {
+            get => IsShared ? _owner.RimStyle : (RimStyle)Get("RimStyle", (int)_owner.RimStyle);
+            set { if (IsShared) _owner.RimStyle = value; else Set("RimStyle", (int)value); }
+        }
+
+        public int Intensity
+        {
+            get => IsShared ? _owner.RimIntensity : Math.Clamp(Get("RimIntensity", _owner.RimIntensity), 0, 200);
+            set { if (IsShared) _owner.RimIntensity = value; else Set("RimIntensity", Math.Clamp(value, 0, 200)); }
+        }
+
+        public RimColorMode ColorMode
+        {
+            get => IsShared ? _owner.RimColorMode : (RimColorMode)Get("RimColorMode", (int)_owner.RimColorMode);
+            set { if (IsShared) _owner.RimColorMode = value; else Set("RimColorMode", (int)value); }
+        }
+
+        public Windows.UI.Color CustomColor
+        {
+            get
+            {
+                if (IsShared)
+                {
+                    return _owner.RimCustomColor;
+                }
+
+                var shared = _owner.RimCustomColor;
+                var value = unchecked((uint)Get("RimCustomColor", unchecked((int)((uint)shared.A << 24 | (uint)shared.R << 16 | (uint)shared.G << 8 | shared.B))));
+                return Windows.UI.Color.FromArgb((byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value);
+            }
+            set
+            {
+                if (IsShared)
+                {
+                    _owner.RimCustomColor = value;
+                }
+                else
+                {
+                    Set("RimCustomColor", unchecked((int)((uint)value.A << 24 | (uint)value.R << 16 | (uint)value.G << 8 | value.B)));
+                }
+            }
+        }
+
+        public RimLight Light
+        {
+            get => IsShared ? _owner.RimLight : (RimLight)Get("RimLight", (int)_owner.RimLight);
+            set { if (IsShared) _owner.RimLight = value; else Set("RimLight", (int)value); }
+        }
+
+        public RimAnimation Animation
+        {
+            get => IsShared ? _owner.RimAnimation : (RimAnimation)Get("RimAnimation", (int)_owner.RimAnimation);
+            set { if (IsShared) _owner.RimAnimation = value; else Set("RimAnimation", (int)value); }
+        }
+
+        public int AnimationIntensity
+        {
+            get => IsShared ? _owner.RimAnimationIntensity : Math.Clamp(Get("RimAnimationIntensity", _owner.RimAnimationIntensity), 0, 100);
+            set { if (IsShared) _owner.RimAnimationIntensity = value; else Set("RimAnimationIntensity", Math.Clamp(value, 0, 100)); }
+        }
+
+        public int Width
+        {
+            get => IsShared ? _owner.RimWidth : Math.Clamp(Get("RimWidth", _owner.RimWidth), 50, 400);
+            set { if (IsShared) _owner.RimWidth = value; else Set("RimWidth", Math.Clamp(value, 50, 400)); }
+        }
+
+        public RimSmoothing Smoothing
+        {
+            get => IsShared ? _owner.RimSmoothing : (RimSmoothing)Get("RimSmoothing", (int)_owner.RimSmoothing);
+            set { if (IsShared) _owner.RimSmoothing = value; else Set("RimSmoothing", (int)value); }
+        }
+
+        public RimHover Hover
+        {
+            get => IsShared ? _owner.RimHover : (RimHover)Get("RimHover", (int)_owner.RimHover);
+            set { if (IsShared) _owner.RimHover = value; else Set("RimHover", (int)value); }
+        }
+
+        public int HoverIntensity
+        {
+            get => IsShared ? _owner.RimHoverIntensity : Math.Clamp(Get("RimHoverIntensity", _owner.RimHoverIntensity), 0, 100);
+            set { if (IsShared) _owner.RimHoverIntensity = value; else Set("RimHoverIntensity", Math.Clamp(value, 0, 100)); }
+        }
+    }
+
     public partial class AppearanceSettings : SettingsServiceBase
     {
         public AppearanceSettings()
@@ -643,6 +771,29 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _rimAnimation, "RimAnimation", (int)value);
         }
 
+        // The bubbles' rim set apart from the one the headers and panels share.
+        private static bool? _separateBubbleRim;
+        public bool SeparateBubbleRim
+        {
+            get => _separateBubbleRim ??= GetValueOrDefault("SeparateBubbleRim", false);
+            set => AddOrUpdateValue(ref _separateBubbleRim, "SeparateBubbleRim", value);
+        }
+
+        private RimProfile _sharedRim;
+        private RimProfile _bubbleRim;
+
+        public RimProfile SharedRim => _sharedRim ??= new RimProfile(this, null);
+
+        public RimProfile BubbleRim => _bubbleRim ??= new RimProfile(this, "Bubble");
+
+        /// <summary>
+        /// The rim an element is drawn with: the bubbles' own when they have one.
+        /// </summary>
+        public RimProfile RimFor(bool bubbles)
+        {
+            return bubbles && SeparateBubbleRim ? BubbleRim : SharedRim;
+        }
+
         // The settings card under the appearance preview.
         private static bool? _previewHaze;
         public bool PreviewHaze
@@ -715,8 +866,8 @@ namespace Telegram.Services.Settings
         private static int? _rimIntensity;
         public int RimIntensity
         {
-            get => _rimIntensity ??= Math.Clamp(GetValueOrDefault("RimIntensity", 60), 0, 100);
-            set => AddOrUpdateValue(ref _rimIntensity, "RimIntensity", Math.Clamp(value, 0, 100));
+            get => _rimIntensity ??= Math.Clamp(GetValueOrDefault("RimIntensity", 60), 0, 200);
+            set => AddOrUpdateValue(ref _rimIntensity, "RimIntensity", Math.Clamp(value, 0, 200));
         }
 
         private static int? _glowIntensity;
@@ -724,6 +875,29 @@ namespace Telegram.Services.Settings
         {
             get => _glowIntensity ??= Math.Clamp(GetValueOrDefault("GlowIntensity", 50), 0, 100);
             set => AddOrUpdateValue(ref _glowIntensity, "GlowIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        // Percents, 0-100, of each glow on its own: of the text in the bubbles, of the emoji and
+        // the count in the reaction capsules, of the glowing rims - neon and the glowing style.
+        private static int? _bubbleGlowIntensity;
+        public int BubbleGlowIntensity
+        {
+            get => _bubbleGlowIntensity ??= Math.Clamp(GetValueOrDefault("BubbleGlowIntensity", GlowIntensity), 0, 100);
+            set => AddOrUpdateValue(ref _bubbleGlowIntensity, "BubbleGlowIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        private static int? _reactionGlowIntensity;
+        public int ReactionGlowIntensity
+        {
+            get => _reactionGlowIntensity ??= Math.Clamp(GetValueOrDefault("ReactionGlowIntensity", 70), 0, 100);
+            set => AddOrUpdateValue(ref _reactionGlowIntensity, "ReactionGlowIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        private static int? _rimGlowIntensity;
+        public int RimGlowIntensity
+        {
+            get => _rimGlowIntensity ??= Math.Clamp(GetValueOrDefault("RimGlowIntensity", 60), 0, 100);
+            set => AddOrUpdateValue(ref _rimGlowIntensity, "RimGlowIntensity", Math.Clamp(value, 0, 100));
         }
 
         private static int? _scanlineIntensity;
