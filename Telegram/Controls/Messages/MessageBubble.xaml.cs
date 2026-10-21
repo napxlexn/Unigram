@@ -20,6 +20,7 @@ using Telegram.Converters;
 using Telegram.Native.Controls;
 using Telegram.Navigation;
 using Telegram.Services;
+using Telegram.Services.Settings;
 using Telegram.Td;
 using Telegram.Td.Api;
 using Telegram.ViewModels;
@@ -172,7 +173,7 @@ namespace Telegram.Controls.Messages
 
         private Border BackgroundPanel;
         private Border GlowHost;
-        private Border ScanlineHost;
+        private Border GlassHost;
 
         private Grid HeaderPanel;
         private TextBlock HeaderLabel;
@@ -2471,6 +2472,9 @@ namespace Telegram.Controls.Messages
             _brush?.RefreshStops();
 
             var light = _currentState is "LightState" or "LightStateOut";
+            var kind = MessageStyle.BubbleKind;
+            var dark = ActualTheme != ElementTheme.Light;
+
             if (light)
             {
                 ContentPanel.Background = null;
@@ -2479,37 +2483,51 @@ namespace Telegram.Controls.Messages
             {
                 ContentPanel.Background = _brush;
             }
-            else if (MessageStyle.IsFrosted && GetBrush("MessageBackgroundBrush") is SolidColorBrush fill)
+            else if (kind != GlassKind.Original)
             {
-                // The theme colour, already made translucent by the style, over a blur of what
-                // is behind the bubble.
-                ContentPanel.Background = MessageStyle.GetFrostedBrush(fill.Color);
+                // The glass draws the fill, smooth at the corners; see below. Clear rather than
+                // none, so that the bubble still takes clicks between its words.
+                ContentPanel.Background = _hitTestBrush ??= new SolidColorBrush(Colors.Transparent);
             }
             else
             {
                 ContentPanel.ClearValue(Grid.BackgroundProperty);
             }
 
-            // The rim only where there is a bubble to rim; media drawn without one has none.
-            if (MessageStyle.IsLiquid && !light)
+            // The glass only where there is a bubble to make of it; media drawn without one has
+            // none. A gradient bubble keeps its gradient and gets the rest - rim, light, lines.
+            if (kind != GlassKind.Original && !light)
             {
-                ContentPanel.BorderBrush = MessageStyle.GetLiquidRimBrush(ActualTheme != ElementTheme.Light);
-                ContentPanel.BorderThickness = new Thickness(1);
+                GlassHost ??= GetTemplateChild(nameof(GlassHost)) as Border;
+                if (GlassHost != null)
+                {
+                    if (!_glassCornersTracked)
+                    {
+                        _glassCornersTracked = true;
+                        ContentPanel.RegisterPropertyChangedCallback(Grid.CornerRadiusProperty, (s, e) => GlassHost.CornerRadius = ContentPanel.CornerRadius);
+                    }
+
+                    var tint = GetBrush("MessageBackgroundBrush") is SolidColorBrush fill ? fill.Color : (Color?)null;
+
+                    GlassHost.CornerRadius = ContentPanel.CornerRadius;
+                    GlassHost.Visibility = Visibility.Visible;
+                    SmoothGlass.Attach(GlassHost, kind, dark, tint, fill: _brush == null);
+                }
             }
-            else if (ContentPanel.BorderBrush != null)
+            else if (GlassHost != null)
             {
-                ContentPanel.BorderBrush = null;
-                ContentPanel.BorderThickness = default;
+                SmoothGlass.Detach(GlassHost);
+                GlassHost.Visibility = Visibility.Collapsed;
             }
 
-            // The lamp styles: the content itself glows inside the glass.
-            if (MessageStyle.IsGlowing)
+            // The glowing kinds: the text itself glows inside the glass.
+            if (MessageStyle.GetBubblePhosphor(dark) is Color phosphor)
             {
                 GlowHost ??= GetTemplateChild(nameof(GlowHost)) as Border;
                 if (GlowHost != null)
                 {
                     GlowHost.Visibility = Visibility.Visible;
-                    ContentGlow.Attach(GlowHost, GetGlowSources, MessageStyle.IsTerminal);
+                    ContentGlow.Attach(GlowHost, GetGlowSources, phosphor);
                 }
             }
             else if (GlowHost != null)
@@ -2517,23 +2535,11 @@ namespace Telegram.Controls.Messages
                 ContentGlow.Detach(GlowHost);
                 GlowHost.Visibility = Visibility.Collapsed;
             }
-
-            // Scanlines only where there is a bubble fill for them to sit on.
-            if (MessageStyle.IsTerminal && !light)
-            {
-                ScanlineHost ??= GetTemplateChild(nameof(ScanlineHost)) as Border;
-                if (ScanlineHost != null)
-                {
-                    ScanlineHost.Visibility = Visibility.Visible;
-                    ContentGlow.AttachScanlines(ScanlineHost);
-                }
-            }
-            else if (ScanlineHost != null)
-            {
-                ContentGlow.DetachScanlines(ScanlineHost);
-                ScanlineHost.Visibility = Visibility.Collapsed;
-            }
         }
+
+        private bool _glassCornersTracked;
+        // Per bubble: brushes belong to the thread of the window that made them.
+        private SolidColorBrush _hitTestBrush;
 
         /// <summary>
         /// What glows under the lamp styles: the text, the reactions, the time, the sender's name

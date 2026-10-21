@@ -20,50 +20,68 @@ namespace Telegram.Controls.Media
     {
         protected override CompositionBrush OnUpdateBrush()
         {
-            return CreateBrush(BootStrapper.Current.Compositor, TintColor);
+            return CreateBrush(BootStrapper.Current.Compositor, TintColor, BlurAmount, Saturation);
         }
+
+        /// <summary>
+        /// How far the blur reaches; read when the effect is built.
+        /// </summary>
+        public float BlurAmount { get; set; } = 30;
+
+        public float Saturation { get; set; } = 1.7f;
 
         /// <summary>
         /// The same effect graph this brush paints with, for callers drawing into Composition
         /// directly rather than through XAML.
         /// </summary>
-        public static CompositionBrush CreateBrush(Compositor compositor, Color tintColor)
+        public static CompositionBrush CreateBrush(Compositor compositor, Color tintColor, float blurAmount = 30, float saturation = 1.7f)
         {
-            var gaussianBlur = new GaussianBlurEffect
+            // One factory per compositor, with the three values as properties of the brush:
+            // compiling the effect is the expensive part, and every glass bubble, capsule and
+            // pane asks for one of these.
+            if (!_factories.TryGetValue(compositor, out var effectFactory))
             {
-                Name = "Blur",
-                BlurAmount = 30,
-                Optimization = EffectOptimization.Speed,
-                BorderMode = EffectBorderMode.Hard,
-                Source = new CompositionEffectSourceParameter("Backdrop"),
-            };
+                var gaussianBlur = new GaussianBlurEffect
+                {
+                    Name = "Blur",
+                    BlurAmount = 30,
+                    Optimization = EffectOptimization.Speed,
+                    BorderMode = EffectBorderMode.Hard,
+                    Source = new CompositionEffectSourceParameter("Backdrop"),
+                };
 
-            var saturationEffect = new SaturationEffect
-            {
-                Name = "Saturation",
-                Saturation = 1.7f,
-                Source = gaussianBlur
-            };
+                var saturationEffect = new SaturationEffect
+                {
+                    Name = "Saturation",
+                    Saturation = 1.7f,
+                    Source = gaussianBlur
+                };
 
-            var tintColorEffect = new ColorSourceEffect
-            {
-                Name = "TintColor",
-                Color = tintColor
-            };
+                var tintColorEffect = new ColorSourceEffect
+                {
+                    Name = "TintColor",
+                    Color = Colors.Transparent
+                };
 
-            var compositeEffect = new CompositeEffect();
-            compositeEffect.Mode = CanvasComposite.SourceOver;
-            compositeEffect.Sources.Add(saturationEffect);
-            compositeEffect.Sources.Add(tintColorEffect);
+                var compositeEffect = new CompositeEffect();
+                compositeEffect.Mode = CanvasComposite.SourceOver;
+                compositeEffect.Sources.Add(saturationEffect);
+                compositeEffect.Sources.Add(tintColorEffect);
 
-            var effectFactory = compositor.CreateEffectFactory(compositeEffect);
-            var backdrop = compositor.CreateBackdropBrush();
+                effectFactory = compositor.CreateEffectFactory(compositeEffect, new[] { "Blur.BlurAmount", "Saturation.Saturation", "TintColor.Color" });
+                _factories.Add(compositor, effectFactory);
+            }
 
             var brush = effectFactory.CreateBrush();
-            brush.SetSourceParameter("Backdrop", backdrop);
+            brush.SetSourceParameter("Backdrop", compositor.CreateBackdropBrush());
+            brush.Properties.InsertScalar("Blur.BlurAmount", blurAmount);
+            brush.Properties.InsertScalar("Saturation.Saturation", saturation);
+            brush.Properties.InsertColor("TintColor.Color", tintColor);
 
             return brush;
         }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, CompositionEffectFactory> _factories = new();
 
         /// <summary>
         /// A circular brush for a SpriteVisual of the same diameter, frosted where materials are

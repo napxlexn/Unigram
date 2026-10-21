@@ -631,7 +631,7 @@ namespace Telegram.Controls
             }
 
             var style = AppSettings.Appearance.HeaderStyle;
-            ApplyHeaderStyle(DetailHeaderBackground, style, ActualTheme, _headerBackground, _headerBorder, _headerHeight);
+            ApplyHeaderStyle(DetailHeaderBackground, style, AppSettings.Appearance.HeaderGlass, ActualTheme, _headerBackground, _headerBorder, _headerHeight);
 
             if (_properties != null)
             {
@@ -663,12 +663,12 @@ namespace Telegram.Controls
         }
 
         /// <summary>
-        /// Puts one of the header styles on a header background. Shared with the appearance
+        /// Puts a header shape and its glass on a header background. Shared with the appearance
         /// page's playground, so that it shows exactly what the pages get.
         /// </summary>
-        public static void ApplyHeaderStyle(Border header, HeaderStyle style, ElementTheme theme, Brush original, Thickness originalBorder, double height)
+        public static void ApplyHeaderStyle(Border header, HeaderStyle style, GlassKind kind, ElementTheme theme, Brush original, Thickness originalBorder, double height)
         {
-            // Only the capsule is drawn by SmoothGlass; any other style takes it off again.
+            // Only the capsule is drawn by SmoothGlass; any other shape takes it off again.
             if (style != HeaderStyle.Capsule)
             {
                 SmoothGlass.Detach(header);
@@ -679,7 +679,7 @@ namespace Telegram.Controls
                 case HeaderStyle.Glass:
                     // Taller than the bar, so that the fade happens below the title rather than
                     // through it, and no hairline: the edge is the gradient.
-                    header.Background = CreateGlassHeaderBrush(theme);
+                    header.Background = CreateGlassHeaderBrush(kind, theme);
                     header.BorderThickness = new Thickness(0);
                     header.CornerRadius = default;
                     header.Margin = default;
@@ -687,20 +687,15 @@ namespace Telegram.Controls
                     break;
 
                 case HeaderStyle.Capsule:
-                    // Floating, rounded and inset like the settings cards, and glass all the way
-                    // through: the same blur as the glass header, held to the capsule's edge
-                    // instead of fading, with light catching the rim.
-                    // Drawn by SmoothGlass rather than as the background and border: XAML cuts a
-                    // composition background to rounded corners without smoothing them.
+                    // Floating, rounded and inset like the settings cards. Drawn by SmoothGlass
+                    // rather than as the background and border: XAML cuts a composition
+                    // background to rounded corners without smoothing them.
                     header.Background = null;
                     header.BorderThickness = new Thickness(0);
                     header.CornerRadius = new CornerRadius(14);
-                    SmoothGlass.Attach(header,
-                        theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x40, 0xF6, 0xF6, 0xF6) : Windows.UI.Color.FromArgb(0x38, 0x28, 0x28, 0x28),
-                        theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF),
-                        theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x14, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
                     header.Margin = new Thickness(12, 6, 12, 0);
                     header.Height = height - 4;
+                    SmoothGlass.Attach(header, kind == GlassKind.Original ? GlassKind.Clear : kind, theme != ElementTheme.Light);
                     break;
 
                 default:
@@ -715,19 +710,20 @@ namespace Telegram.Controls
         }
 
         /// <summary>
-        /// The window is glass already, so the header adds no tint of its own to speak of - a
-        /// darker band is exactly what it replaces. What it does is blur what scrolls beneath
-        /// it, strongly enough to read the title over, and fade that blur out below the title,
-        /// so content slides into the glass instead of under a bar. Shared with the appearance
-        /// page's playground, which is why it is a factory.
+        /// Glass that blurs what scrolls beneath the header, strongly enough to read the title
+        /// over, and fades out below the title, so content slides into the glass instead of under
+        /// a bar. The original kind keeps the faint tint this had before the kinds existed: the
+        /// window is glass already, and a darker band is what it replaces.
         /// </summary>
-        public static Brush CreateGlassHeaderBrush(ElementTheme theme)
+        public static Brush CreateGlassHeaderBrush(GlassKind kind, ElementTheme theme)
         {
-            var tint = theme == ElementTheme.Light
+            var spec = Glass.Resolve(kind, theme != ElementTheme.Light);
+            var tint = spec.Tint ?? (theme == ElementTheme.Light
                 ? Windows.UI.Color.FromArgb(0x18, 0xF3, 0xF3, 0xF3)
-                : Windows.UI.Color.FromArgb(0x14, 0x20, 0x20, 0x20);
+                : Windows.UI.Color.FromArgb(0x14, 0x20, 0x20, 0x20));
 
-            return new FadingGlassBrush { TintColor = tint, BlurAmount = 32, SolidUntil = 0.6 };
+            var blur = spec.IsOriginal ? 32 : Glass.ScaleBlur(spec.Blur);
+            return new FadingGlassBrush { TintColor = tint, BlurAmount = blur, SolidUntil = 0.6 };
         }
 
         #endregion

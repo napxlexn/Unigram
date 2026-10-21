@@ -594,32 +594,138 @@ namespace Telegram.ViewModels.Settings
 
         #region Message styles
 
-        public List<SettingsOptionItem<BubbleStyle>> BubbleStyleOptions { get; } = new()
-        {
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Original, "Оригінал"),
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glass, "Скло"),
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Frosted, "Матове скло"),
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Liquid, "Рідке скло"),
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glow, "Лампове сяйво"),
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Terminal, "Ретро-термінал"),
-        };
+        #region Glass
 
-        public int BubbleStyleIndex
+        /// <summary>
+        /// The one list every glass setting chooses from.
+        /// </summary>
+        public List<SettingsOptionItem<GlassKind>> GlassOptions { get; } = Glass.Options;
+
+        private int IndexOf(GlassKind kind) => Math.Max(0, GlassOptions.FindIndex(x => x.Value == kind));
+
+        private void SetGlass(int index, GlassKind current, Action<GlassKind> set, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
         {
-            get => Math.Max(0, BubbleStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.BubbleStyle));
+            if (index >= 0 && index < GlassOptions.Count && current != GlassOptions[index].Value)
+            {
+                set(GlassOptions[index].Value);
+                ApplyGlass();
+                RaisePropertyChanged(propertyName);
+                RaisePropertyChanged(nameof(IsBubbleGlass));
+            }
+        }
+
+        public int PaneGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.PaneGlass);
+            set => SetGlass(value, AppSettings.Appearance.PaneGlass, x => AppSettings.Appearance.PaneGlass = x);
+        }
+
+        public int HeaderGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.HeaderGlass);
+            set => SetGlass(value, AppSettings.Appearance.HeaderGlass, x => AppSettings.Appearance.HeaderGlass = x);
+        }
+
+        public int ChatHeaderGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.ChatHeaderGlass);
+            set => SetGlass(value, AppSettings.Appearance.ChatHeaderGlass, x => AppSettings.Appearance.ChatHeaderGlass = x);
+        }
+
+        public int FooterGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.FooterGlass);
+            set => SetGlass(value, AppSettings.Appearance.FooterGlass, x => AppSettings.Appearance.FooterGlass = x);
+        }
+
+        public int BubbleGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.BubbleGlass);
+            set => SetGlass(value, AppSettings.Appearance.BubbleGlass, x => AppSettings.Appearance.BubbleGlass = x);
+        }
+
+        public int ReactionGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.ReactionGlass);
+            set => SetGlass(value, AppSettings.Appearance.ReactionGlass, x => AppSettings.Appearance.ReactionGlass = x);
+        }
+
+        public int ServiceGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.ServiceGlass);
+            set => SetGlass(value, AppSettings.Appearance.ServiceGlass, x => AppSettings.Appearance.ServiceGlass = x);
+        }
+
+        public bool IsBubbleGlass => AppSettings.Appearance.BubbleGlass != GlassKind.Original;
+
+        public List<SettingsOptionItem<RimStyle>> RimStyleOptions { get; } = Glass.RimOptions;
+
+        public int RimStyleIndex
+        {
+            get => Math.Max(0, RimStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimStyle));
             set
             {
-                if (value >= 0 && value < BubbleStyleOptions.Count && AppSettings.Appearance.BubbleStyle != BubbleStyleOptions[value].Value)
+                if (value >= 0 && value < RimStyleOptions.Count && AppSettings.Appearance.RimStyle != RimStyleOptions[value].Value)
                 {
-                    AppSettings.Appearance.BubbleStyle = BubbleStyleOptions[value].Value;
-                    ApplyMessageStyle();
+                    AppSettings.Appearance.RimStyle = RimStyleOptions[value].Value;
+                    ApplyGlass();
                     RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(IsBubbleGlass));
                 }
             }
         }
 
-        public bool IsBubbleGlass => AppSettings.Appearance.BubbleStyle != BubbleStyle.Original;
+        public double RimIntensity
+        {
+            get => AppSettings.Appearance.RimIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.RimIntensity, x => AppSettings.Appearance.RimIntensity = x);
+        }
+
+        public double GlowIntensity
+        {
+            get => AppSettings.Appearance.GlowIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.GlowIntensity, x => AppSettings.Appearance.GlowIntensity = x);
+        }
+
+        public double ScanlineIntensity
+        {
+            get => AppSettings.Appearance.ScanlineIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.ScanlineIntensity, x => AppSettings.Appearance.ScanlineIntensity = x);
+        }
+
+        public double BlurIntensity
+        {
+            get => AppSettings.Appearance.BlurIntensity;
+            set => SetIntensity((int)value, AppSettings.Appearance.BlurIntensity, x => AppSettings.Appearance.BlurIntensity = x);
+        }
+
+        // A slider reports every step of a drag; the glass is rebuilt once it settles.
+        private void SetIntensity(int value, int current, Action<int> set, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
+        {
+            if (value != current)
+            {
+                set(value);
+                RaisePropertyChanged(propertyName);
+
+                _glassDebouncer ??= new DebouncedProperty<int>(150, _ => ApplyGlass());
+                _glassDebouncer.Set(value);
+            }
+        }
+
+        private DebouncedProperty<int> _glassDebouncer;
+
+        /// <summary>
+        /// Everything that draws glass draws it again: the chat's colours and fills, the headers,
+        /// the footer, the side pane.
+        /// </summary>
+        private static void ApplyGlass()
+        {
+            ApplyMessageStyle();
+            AppearanceSettings.RaiseGlassHeaderChanged();
+            AppearanceSettings.RaisePaneMaterialChanged();
+            AppearanceSettings.RaiseGlassChanged();
+        }
+
+        #endregion
 
         public double BubbleOpacity
         {
@@ -638,49 +744,6 @@ namespace Telegram.ViewModels.Settings
         }
 
         private DebouncedProperty<int> _bubbleOpacityDebouncer;
-
-        public List<SettingsOptionItem<ReactionStyle>> ReactionStyleOptions { get; } = new()
-        {
-            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Original, "Оригінал"),
-            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glass, "Скло"),
-            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glow, "Лампове сяйво"),
-        };
-
-        public int ReactionStyleIndex
-        {
-            get => Math.Max(0, ReactionStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.ReactionStyle));
-            set
-            {
-                if (value >= 0 && value < ReactionStyleOptions.Count && AppSettings.Appearance.ReactionStyle != ReactionStyleOptions[value].Value)
-                {
-                    AppSettings.Appearance.ReactionStyle = ReactionStyleOptions[value].Value;
-                    ApplyMessageStyle();
-                    RaisePropertyChanged();
-                }
-            }
-        }
-
-        public List<SettingsOptionItem<ServiceStyle>> ServiceStyleOptions { get; } = new()
-        {
-            new SettingsOptionItem<ServiceStyle>(ServiceStyle.Original, "Оригінал"),
-            new SettingsOptionItem<ServiceStyle>(ServiceStyle.DarkGlass, "Темне скло"),
-            new SettingsOptionItem<ServiceStyle>(ServiceStyle.LightGlass, "Світле скло"),
-            new SettingsOptionItem<ServiceStyle>(ServiceStyle.ClearGlass, "Прозоре скло"),
-        };
-
-        public int ServiceStyleIndex
-        {
-            get => Math.Max(0, ServiceStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.ServiceStyle));
-            set
-            {
-                if (value >= 0 && value < ServiceStyleOptions.Count && AppSettings.Appearance.ServiceStyle != ServiceStyleOptions[value].Value)
-                {
-                    AppSettings.Appearance.ServiceStyle = ServiceStyleOptions[value].Value;
-                    ApplyMessageStyle();
-                    RaisePropertyChanged();
-                }
-            }
-        }
 
         public List<SettingsOptionItem<MessageTextStyle>> MessageTextStyleOptions { get; } = new()
         {
@@ -806,28 +869,6 @@ namespace Telegram.ViewModels.Settings
 
         #endregion
 
-        public List<SettingsOptionItem<PaneMaterial>> PaneMaterialOptions { get; } = new()
-        {
-            new SettingsOptionItem<PaneMaterial>(PaneMaterial.Original, "Оригінал"),
-            new SettingsOptionItem<PaneMaterial>(PaneMaterial.FrostedGlass, "Матове скло"),
-            new SettingsOptionItem<PaneMaterial>(PaneMaterial.LightGlass, "Легке скло"),
-            new SettingsOptionItem<PaneMaterial>(PaneMaterial.Solid, "Суцільний"),
-        };
-
-        public int PaneMaterialIndex
-        {
-            get => Math.Max(0, PaneMaterialOptions.FindIndex(x => x.Value == AppSettings.Appearance.PaneMaterial));
-            set
-            {
-                if (value >= 0 && value < PaneMaterialOptions.Count && AppSettings.Appearance.PaneMaterial != PaneMaterialOptions[value].Value)
-                {
-                    AppSettings.Appearance.PaneMaterial = PaneMaterialOptions[value].Value;
-                    AppearanceSettings.RaisePaneMaterialChanged();
-                    RaisePropertyChanged();
-                }
-            }
-        }
-
         public List<SettingsOptionItem<SeparatorMode>> SeparatorModeOptions { get; } = new()
         {
             new SettingsOptionItem<SeparatorMode>(SeparatorMode.Original, "Як у темі"),
@@ -853,7 +894,7 @@ namespace Telegram.ViewModels.Settings
         public List<SettingsOptionItem<ChatHeaderStyle>> ChatHeaderStyleOptions { get; } = new()
         {
             new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Original, "Оригінал"),
-            new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Glass, "Скло"),
+            new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Glass, "Суцільна"),
             new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.FadingGlass, "Скло з переходом"),
             new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Capsule, "Капсула"),
         };

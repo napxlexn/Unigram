@@ -200,8 +200,8 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <!-- The terminal style's scanlines, over the bubble's fill and under everything in it. -->
-                            <Border x:Name="ScanlineHost"
+                            <!-- The bubble's glass, drawn by SmoothGlass under everything in it; empty and unloaded under the original style. -->
+                            <Border x:Name="GlassHost"
                                     x:Load="False"
                                     IsHitTestVisible="False"
                                     Grid.ColumnSpan="3"

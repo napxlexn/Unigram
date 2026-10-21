@@ -130,23 +130,25 @@ namespace Telegram.Views.Host
         {
             _originalPaneBackground ??= Navigation.PaneBackground;
 
-            var tint = ActualTheme == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(0xFF, 0x20, 0x20, 0x20)
-                : Windows.UI.Color.FromArgb(0xFF, 0xF3, 0xF3, 0xF3);
-
-            Navigation.PaneBackground = AppSettings.Appearance.PaneMaterial switch
+            var spec = Glass.Resolve(AppSettings.Appearance.PaneGlass, ActualTheme != ElementTheme.Light);
+            if (spec.IsOriginal || spec.Tint is not Windows.UI.Color tint)
             {
-                PaneMaterial.FrostedGlass => new SolidGaussianBrush { TintColor = WithAlpha(tint, 0xC8), FallbackColor = tint },
-                PaneMaterial.LightGlass => new SolidGaussianBrush { TintColor = WithAlpha(tint, 0x78), FallbackColor = tint },
-                PaneMaterial.Solid => new SolidColorBrush(tint),
-                _ => _originalPaneBackground
-            };
-        }
+                Navigation.PaneBackground = _originalPaneBackground;
+                return;
+            }
 
-        private static Windows.UI.Color WithAlpha(Windows.UI.Color color, byte alpha)
-        {
-            color.A = alpha;
-            return color;
+            // The pane lies over the chat list it is read against, so even the clearest glass
+            // keeps some body. A pane has no rim and no inner light; the blur and tint are what
+            // it takes of the kind.
+            tint.A = Math.Max(tint.A, (byte)0x70);
+
+            var fallback = tint;
+            fallback.A = 0xFF;
+
+            var blur = Glass.ScaleBlur(spec.Blur);
+            Navigation.PaneBackground = blur > 0
+                ? new SolidGaussianBrush { TintColor = tint, FallbackColor = fallback, BlurAmount = blur, Saturation = spec.Saturation }
+                : new SolidColorBrush(tint);
         }
 
         #endregion

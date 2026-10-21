@@ -22,11 +22,10 @@ namespace Telegram.Common
     ///
     /// Most of it rides on the per-direction message brushes, which <see cref="MessageBrushes"/>
     /// recolours in place on every theme pass: <see cref="Adjust"/> is applied there, so a
-    /// change shows on every visible bubble at once. What a colour cannot express - the blur
-    /// under a frosted bubble, the rim of a liquid one, the glow of a lamp one - is handed to
-    /// the bubble by <see cref="GetFrostedBrush"/>, <see cref="GetLiquidRimBrush"/> and
-    /// <see cref="ContentGlow"/> and picked up as bubbles are realized, which is when the chat
-    /// is opened or scrolled.
+    /// change shows on every visible bubble at once. What a colour cannot express - the blur,
+    /// the rim, the light, the glow of the text - is drawn by <see cref="SmoothGlass"/> and
+    /// <see cref="ContentGlow"/> on each bubble, picked up as bubbles are realized, which is
+    /// when the chat is opened or scrolled.
     /// </summary>
     public static class MessageStyle
     {
@@ -38,8 +37,6 @@ namespace Telegram.Common
         public static void Invalidate()
         {
             Version++;
-            _frosted.Clear();
-            _glow.Clear();
             ApplyServiceStyle();
         }
 
@@ -72,22 +69,23 @@ namespace Telegram.Common
 
             switch (key)
             {
-                case "MessageBackgroundBrush" when appearance.BubbleStyle != BubbleStyle.Original:
+                case "MessageBackgroundBrush" when appearance.BubbleGlass != GlassKind.Original:
                     color.A = (byte)(color.A * appearance.BubbleOpacity / 100);
                     break;
 
-                case "MessageReactionBackgroundBrush" when appearance.ReactionStyle != ReactionStyle.Original:
-                    color.A = (byte)(color.A * 0.55);
+                case "MessageReactionBackgroundBrush" when appearance.ReactionGlass != GlassKind.Original:
+                    // Glass of its own colour where the kind has one; the theme's, thinned, where not.
+                    color = Glass.HasOwnTint(appearance.ReactionGlass) && Glass.Resolve(appearance.ReactionGlass, dark).Tint is Color own
+                        ? own
+                        : WithAlpha(color, (byte)(color.A * 0.55));
                     break;
 
-                case "MessageReactionChosenBackgroundBrush" when appearance.ReactionStyle != ReactionStyle.Original:
+                case "MessageReactionChosenBackgroundBrush" when appearance.ReactionGlass != GlassKind.Original:
                     color.A = (byte)(color.A * 0.8);
                     break;
 
                 case "MessageReactionBorderBrush":
-                    // No hard rim on any style: the glowing one lights the capsule from inside
-                    // instead (MessageReactionGlowBrush, see ApplyReactionGlow).
-                    color = Color.FromArgb(0, 0, 0, 0);
+                    color = GetReactionRim(appearance, dark);
                     break;
 
                 case "MessageForegroundBrush" when appearance.MessageTextStyle == MessageTextStyle.Brighter:
@@ -102,6 +100,30 @@ namespace Telegram.Common
             return color;
         }
 
+        /// <summary>
+        /// The reaction capsules' rim: the kind's own where it has one - neon, ice, liquid - and
+        /// otherwise the light rim of the rim style, scaled by its intensity. A XAML border on a
+        /// solid fill, which XAML smooths, unlike a composition fill.
+        /// </summary>
+        private static Color GetReactionRim(AppearanceSettings appearance, bool dark)
+        {
+            var kind = appearance.ReactionGlass;
+            if (kind == GlassKind.Original)
+            {
+                return Color.FromArgb(0, 0, 0, 0);
+            }
+
+            var spec = Glass.Resolve(kind, dark);
+            if (spec.RimColor == null && appearance.RimStyle == RimStyle.None)
+            {
+                return Color.FromArgb(0, 0, 0, 0);
+            }
+
+            var rim = spec.RimColor ?? (dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF));
+            rim.A = (byte)Math.Clamp(rim.A * appearance.RimIntensity / 60, 0, 255);
+            return rim;
+        }
+
         private static Color WithAlpha(Color color, byte alpha)
         {
             color.A = alpha;
@@ -110,59 +132,19 @@ namespace Telegram.Common
 
         #region Bubbles
 
-        private static readonly Dictionary<Color, Brush> _frosted = new();
-        private static readonly Dictionary<bool, Brush> _glow = new();
-
-        public static bool IsFrosted => AppSettings.Appearance.BubbleStyle is BubbleStyle.Frosted or BubbleStyle.Liquid;
-
-        public static bool IsLiquid => AppSettings.Appearance.BubbleStyle == BubbleStyle.Liquid;
+        /// <summary>
+        /// The bubbles' glass. Anything but the original is drawn by SmoothGlass behind the
+        /// content - see MessageBubble.UpdateContentPanelState.
+        /// </summary>
+        public static GlassKind BubbleKind => AppSettings.Appearance.BubbleGlass;
 
         /// <summary>
-        /// The lamp styles, whose content glows - see <see cref="ContentGlow"/>.
+        /// The colour the content of a bubble glows in under the bubbles' glass, or null for none:
+        /// transparent for the content's own colour.
         /// </summary>
-        public static bool IsGlowing => AppSettings.Appearance.BubbleStyle is BubbleStyle.Glow or BubbleStyle.Terminal;
-
-        public static bool IsTerminal => AppSettings.Appearance.BubbleStyle == BubbleStyle.Terminal;
-
-        /// <summary>
-        /// A blur of what is behind the bubble under its own translucent colour. One brush per
-        /// colour, shared by every bubble of that colour: the blur still runs per bubble, but
-        /// the effect graph is built once.
-        /// </summary>
-        public static Brush GetFrostedBrush(Color tint)
+        public static Color? GetBubblePhosphor(bool dark)
         {
-            if (!_frosted.TryGetValue(tint, out var brush))
-            {
-                var fallback = tint;
-                fallback.A = 0xFF;
-
-                _frosted[tint] = brush = new SolidGaussianBrush { TintColor = tint, FallbackColor = fallback };
-            }
-
-            return brush;
-        }
-
-        /// <summary>
-        /// Liquid glass: light caught by the top edge of a thick pane, gone by the middle, and
-        /// a hint of it again at the bottom where the light leaves.
-        /// </summary>
-        public static Brush GetLiquidRimBrush(bool dark)
-        {
-            if (!_glow.TryGetValue(dark, out var brush))
-            {
-                var top = dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF);
-                var bottom = dark ? Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF);
-
-                var gradient = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
-                gradient.GradientStops.Add(new GradientStop { Color = top, Offset = 0 });
-                gradient.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, 0xFF, 0xFF, 0xFF), Offset = 0.45 });
-                gradient.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, 0xFF, 0xFF, 0xFF), Offset = 0.7 });
-                gradient.GradientStops.Add(new GradientStop { Color = bottom, Offset = 1 });
-
-                _glow[dark] = brush = gradient;
-            }
-
-            return brush;
+            return BubbleKind == GlassKind.Original ? null : Glass.Resolve(BubbleKind, dark).Phosphor;
         }
 
         #endregion
@@ -174,8 +156,9 @@ namespace Telegram.Common
         private static readonly Dictionary<SolidGaussianBrush, Color> _serviceOriginal = new();
 
         /// <summary>
-        /// The lamp glow of the reaction capsules: one brush shared by all of them, its stops
-        /// set in place - warm light in the middle, fading out well before the edge.
+        /// The light inside the reaction capsules, for kinds that have one: one brush shared by
+        /// all of them, its stops set in place - light in the middle, fading out well before the
+        /// edge, as strong as the glow setting says.
         /// </summary>
         private static void ApplyReactionGlow()
         {
@@ -183,8 +166,13 @@ namespace Telegram.Common
                 && resource is Microsoft.UI.Xaml.Media.RadialGradientBrush brush
                 && brush.GradientStops.Count == 2)
             {
-                brush.GradientStops[0].Color = AppSettings.Appearance.ReactionStyle == ReactionStyle.Glow
-                    ? Color.FromArgb(0x62, 0xFF, 0xE4, 0xB0)
+                var appearance = AppSettings.Appearance;
+                var light = appearance.ReactionGlass != GlassKind.Original
+                    ? Glass.Resolve(appearance.ReactionGlass, true).InnerLight
+                    : null;
+
+                brush.GradientStops[0].Color = light is Color color
+                    ? WithAlpha(color, (byte)(0xA0 * appearance.GlowIntensity / 100))
                     : Color.FromArgb(0, 0xFF, 0xFF, 0xFF);
             }
         }
@@ -193,6 +181,8 @@ namespace Telegram.Common
         {
             ApplyReactionGlow();
 
+            var kind = AppSettings.Appearance.ServiceGlass;
+
             foreach (var (theme, brush) in FindServiceBrushes())
             {
                 if (!_serviceOriginal.TryGetValue(brush, out var original))
@@ -200,14 +190,9 @@ namespace Telegram.Common
                     _serviceOriginal[brush] = original = brush.TintColor;
                 }
 
-                var light = theme == "Light";
-                brush.TintColor = AppSettings.Appearance.ServiceStyle switch
-                {
-                    ServiceStyle.DarkGlass => Color.FromArgb(0x99, 0x10, 0x10, 0x10),
-                    ServiceStyle.LightGlass => light ? Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF),
-                    ServiceStyle.ClearGlass => Color.FromArgb(0x24, 0x80, 0x80, 0x80),
-                    _ => original
-                };
+                brush.TintColor = kind == GlassKind.Original
+                    ? original
+                    : Glass.Resolve(kind, theme != "Light").Tint ?? original;
             }
         }
 

@@ -642,7 +642,7 @@ namespace Telegram.Controls.Chats
             var step = 1f / (count - 1);
 
             // A glass bubble style makes the gradient as translucent as a solid fill would be.
-            var alpha = AppSettings.Appearance.BubbleStyle != Services.Settings.BubbleStyle.Original
+            var alpha = AppSettings.Appearance.BubbleGlass != Services.Settings.GlassKind.Original
                 ? (byte)(255 * AppSettings.Appearance.BubbleOpacity / 100)
                 : (byte)255;
 

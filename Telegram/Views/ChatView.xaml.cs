@@ -909,90 +909,65 @@ namespace Telegram.Views
             Grid.SetRowSpan(RootGrid, glass ? 3 : 2);
 
             _headerInset = glass ? (float)Header.Height : 0;
-            ClipperOuter.Margin = new Thickness(0, _headerInset, 0, 0);
+
+            // Inside the capsule the bars are inset from its rounded sides.
+            var inset = style == Services.Settings.ChatHeaderStyle.Capsule ? 12 : 0;
+            ClipperOuter.Margin = new Thickness(inset, _headerInset, inset, 0);
 
             HeaderSeparator.Visibility = glass ? Visibility.Collapsed : Visibility.Visible;
 
             // The glass styles paint HeaderGlass instead; the clipper's own band goes clear.
             ClipperBackground.Background = glass ? null : _clipperBackground;
 
+            // The chat header's glass and the footer's, from the one list; the original kind
+            // means the glass these had before there was a choice.
+            var dark = theme != ElementTheme.Light;
+            var headerKind = AppSettings.Appearance.ChatHeaderGlass is var chosen && chosen != Services.Settings.GlassKind.Original ? chosen : Services.Settings.GlassKind.Frosted;
+            var footerKind = AppSettings.Appearance.FooterGlass is var footer && footer != Services.Settings.GlassKind.Original ? footer : Services.Settings.GlassKind.Frosted;
+
+            SmoothGlass.Detach(HeaderGlass);
+            HeaderGlass.CornerRadius = default;
+            HeaderGlass.Background = null;
+            HeaderGlass.BorderThickness = default;
+
             switch (style)
             {
                 case Services.Settings.ChatHeaderStyle.Glass:
-                    HeaderGlass.Background = CreateHeaderGlassBrush(theme);
-                    HeaderGlass.BorderBrush = new SolidColorBrush(theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF));
-                    HeaderGlass.BorderThickness = new Thickness(0, 0, 0, 1);
+                    // Edge to edge, behind the header and the bars as one; no rim, the window's
+                    // edges are its edges.
+                    SmoothGlass.Attach(HeaderGlass, headerKind, dark, rim: false);
+                    break;
+
+                case Services.Settings.ChatHeaderStyle.Capsule:
+                    // One rounded capsule around the header and the bars, sized in
+                    // UpdateClipperBackground. HeaderGlass rather than an element of its own over
+                    // the header: it has to lie under the bars, or it would blur them away.
+                    HeaderGlass.CornerRadius = new CornerRadius(16);
+                    SmoothGlass.Attach(HeaderGlass, headerKind, dark);
                     break;
 
                 case Services.Settings.ChatHeaderStyle.FadingGlass:
                     // Fades out below the bars, so the messages slide into the glass. Sized,
                     // and given its fade point, in UpdateClipperBackground.
-                    HeaderGlass.Background = CreateFadingHeaderBrush(theme, 0.7);
+                    HeaderGlass.Background = CreateFadingHeaderBrush(headerKind, theme, 0.7);
                     HeaderGlass.Height = double.NaN;
-                    HeaderGlass.BorderThickness = default;
-                    break;
-
-                case Services.Settings.ChatHeaderStyle.Capsule:
-                    // The header floats; only the bars under it, if any, keep a band of glass.
-                    HeaderGlass.Background = CreateHeaderGlassBrush(theme);
-                    HeaderGlass.BorderBrush = new SolidColorBrush(theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF));
-                    HeaderGlass.BorderThickness = new Thickness(0, 0, 0, 1);
-                    break;
-
-                default:
-                    HeaderGlass.Background = null;
-                    HeaderGlass.BorderThickness = default;
                     break;
             }
 
-            // The footer's glass follows the theme here too: this runs on every activation and
-            // theme change.
-            SmoothGlass.AttachDefault(ChatFooterGlass, theme);
+            // Every activation and theme change passes here, so the footer follows too.
+            SmoothGlass.Attach(ChatFooterGlass, footerKind, dark);
 
-            if (style == Services.Settings.ChatHeaderStyle.Capsule)
-            {
-                // Centred on the header's own middle, so the title and the buttons sit in the
-                // middle of the capsule rather than above it.
-                HeaderCapsule.CornerRadius = new CornerRadius(16);
-                SmoothGlass.AttachDefault(HeaderCapsule, theme);
-                HeaderCapsule.Margin = new Thickness(8, 4, 8, 4);
-                HeaderCapsule.Height = Header.Height - 8;
-                HeaderCapsule.VerticalAlignment = VerticalAlignment.Top;
-                HeaderCapsule.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                SmoothGlass.Detach(HeaderCapsule);
-                HeaderCapsule.Visibility = Visibility.Collapsed;
-            }
 
             UpdateClipperBackground();
             UpdateMessagesHeaderPadding();
         }
 
-        /// <summary>
-        /// The glass of the channel footer: a strong blur of the messages beneath, tinted dark on
-        /// dark and light on light.
-        /// </summary>
-        private static Brush CreateHeaderGlassBrush(ElementTheme theme)
+        private static Brush CreateFadingHeaderBrush(Services.Settings.GlassKind kind, ElementTheme theme, double solidUntil)
         {
-            var tint = theme == ElementTheme.Light
-                ? Windows.UI.Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF)
-                : Windows.UI.Color.FromArgb(0x8C, 0x16, 0x16, 0x16);
+            var spec = Glass.Resolve(kind, theme != ElementTheme.Light);
+            var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
 
-            var fallback = tint;
-            fallback.A = 0xFF;
-
-            return new SolidGaussianBrush { TintColor = tint, FallbackColor = fallback };
-        }
-
-        private static Brush CreateFadingHeaderBrush(ElementTheme theme, double solidUntil)
-        {
-            var tint = theme == ElementTheme.Light
-                ? Windows.UI.Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF)
-                : Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
-
-            return new FadingGlassBrush { TintColor = tint, BlurAmount = 30, SolidUntil = solidUntil };
+            return new FadingGlassBrush { TintColor = tint, BlurAmount = Glass.ScaleBlur(spec.Blur), SolidUntil = solidUntil };
         }
 
         private void UpdateClipperBackground()
@@ -1003,7 +978,7 @@ namespace Telegram.Views
             // Up through the header: the bars start right below it.
             ClipperBackground.Margin = new Thickness(-width, -height - 48, -72, 0);
 
-            if (_headerInset == 0 || HeaderGlass.Background == null)
+            if (_headerInset == 0)
             {
                 HeaderGlass.Visibility = Visibility.Collapsed;
                 return;
@@ -1013,10 +988,16 @@ namespace Telegram.Views
             switch (AppSettings.Appearance.ChatHeaderStyle)
             {
                 case Services.Settings.ChatHeaderStyle.Capsule:
-                    // Behind the bars only; with none, nothing at all.
-                    HeaderGlass.Margin = new Thickness(-width, _headerInset, 0, 0);
-                    HeaderGlass.Height = Math.Max(0, height);
-                    HeaderGlass.Visibility = height > 1 ? Visibility.Visible : Visibility.Collapsed;
+                    // One capsule around the header and the bars under it - the pinned message,
+                    // the translate bar and the rest - as the one element they are: the bars
+                    // are inset to sit inside it, and the capsule grows to hold them.
+                    // Centred on the header's own middle when alone, so the title and the
+                    // buttons sit in the middle of it; with bars, down past them.
+                    HeaderGlass.Margin = new Thickness(8, 4, 8, 0);
+                    HeaderGlass.Height = height > 1
+                        ? _headerInset - 4 + height + 4
+                        : Header.Height - 8;
+                    HeaderGlass.Visibility = Visibility.Visible;
                     break;
 
                 case Services.Settings.ChatHeaderStyle.FadingGlass:
@@ -1028,7 +1009,7 @@ namespace Telegram.Views
 
                     if (HeaderGlass.Height != total)
                     {
-                        HeaderGlass.Background = CreateFadingHeaderBrush(ActualTheme, solid / total);
+                        HeaderGlass.Background = CreateFadingHeaderBrush(AppSettings.Appearance.ChatHeaderGlass is var kind && kind != Services.Settings.GlassKind.Original ? kind : Services.Settings.GlassKind.Frosted, ActualTheme, solid / total);
                     }
 
                     HeaderGlass.Margin = new Thickness(-width, 0, 0, 0);

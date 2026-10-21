@@ -54,36 +54,51 @@ namespace Telegram.Services.Settings
     }
 
     /// <summary>
-    /// What the side navigation pane is painted with. Original is the framework's own brush;
-    /// the glass ones blur whatever of the window lies under the open pane.
+    /// One list of glass for every part of the window that can wear it - the side pane, the
+    /// headers, the channel footer, bubbles, reactions and service pills - so that a name means
+    /// the same everywhere. Glass.Resolve says what each is made of; an element that cannot show
+    /// part of it (a pane has no rim, a pill no scanlines) shows the rest. Stored as numbers, so
+    /// new ones go last.
     /// </summary>
-    public enum PaneMaterial
+    public enum GlassKind
     {
         Original,
-        FrostedGlass,
-        LightGlass,
-        Solid
-    }
-
-    /// <summary>
-    /// Message bubbles. Glass is the theme colour made translucent; Frosted also blurs what is
-    /// behind the bubble; Glow is glass whose content softly glows, as phosphor on an old tube
-    /// monitor; Liquid is frosted glass with light caught along its top; Terminal is the glow
-    /// with the faint scanlines of a CRT. Stored as numbers, so new ones go last.
-    /// </summary>
-    public enum BubbleStyle
-    {
-        Original,
-        Glass,
+        Clear,
         Frosted,
-        Glow,
         Liquid,
-        Terminal
+        Dark,
+        Light,
+        Smoke,
+        Ice,
+        Glow,
+        Terminal,
+        Amber,
+        Neon,
+        Aurora,
+        Solid,
+        Pearl,
+        Candle
     }
 
     /// <summary>
-    /// The chat's own header - the title bar over the messages, with the pinned message and
-    /// the other bars under it. The glass ones let the messages scroll beneath and blur them.
+    /// The light along the edge of the glass, for every element that has one.
+    /// </summary>
+    public enum RimStyle
+    {
+        None,
+        Thin,
+        Soft,
+        TopLight,
+        Double,
+        Glowing,
+        Bold,
+        Iridescent
+    }
+
+    /// <summary>
+    /// The chat's own header - the title bar over the messages together with the pinned message,
+    /// the translate bar and the rest under it, as one element. The glass ones let the messages
+    /// scroll beneath and blur them.
     /// </summary>
     public enum ChatHeaderStyle
     {
@@ -105,30 +120,14 @@ namespace Telegram.Services.Settings
         DarkToLight
     }
 
+    /// <summary>
+    /// The shape of the header over a page; what it is made of is a GlassKind of its own.
+    /// </summary>
     public enum HeaderStyle
     {
         Original,
         Glass,
         Capsule
-    }
-
-    public enum ReactionStyle
-    {
-        Original,
-        Glass,
-        Glow
-    }
-
-    /// <summary>
-    /// The pills floating over the chat - dates and service notices. They are frosted already;
-    /// the options change how dark their tint is.
-    /// </summary>
-    public enum ServiceStyle
-    {
-        Original,
-        DarkGlass,
-        LightGlass,
-        ClearGlass
     }
 
     public enum MessageTextStyle
@@ -456,21 +455,135 @@ namespace Telegram.Services.Settings
             PaneMaterialChanged?.Invoke(null, EventArgs.Empty);
         }
 
-        private static int? _paneMaterial;
-        public PaneMaterial PaneMaterial
+        #region Glass
+
+        // Each element's glass. The keys are new; the first read carries over what the earlier,
+        // per-element lists had chosen, mapped onto the one list.
+
+        private static int? _paneGlass;
+        public GlassKind PaneGlass
         {
-            get => (PaneMaterial)(_paneMaterial ??= GetValueOrDefault("PaneMaterial", (int)PaneMaterial.Original));
-            set => AddOrUpdateValue(ref _paneMaterial, "PaneMaterial", (int)value);
+            get => (GlassKind)(_paneGlass ??= GetValueOrDefault("PaneGlass", (int)(GetValueOrDefault("PaneMaterial", 0) switch
+            {
+                1 => GlassKind.Frosted,
+                2 => GlassKind.Clear,
+                3 => GlassKind.Solid,
+                _ => GlassKind.Original
+            })));
+            set => AddOrUpdateValue(ref _paneGlass, "PaneGlass", (int)value);
         }
+
+        private static int? _headerGlass;
+        public GlassKind HeaderGlass
+        {
+            get => (GlassKind)(_headerGlass ??= GetValueOrDefault("HeaderGlass", (int)GlassKind.Clear));
+            set => AddOrUpdateValue(ref _headerGlass, "HeaderGlass", (int)value);
+        }
+
+        private static int? _chatHeaderGlass;
+        public GlassKind ChatHeaderGlass
+        {
+            get => (GlassKind)(_chatHeaderGlass ??= GetValueOrDefault("ChatHeaderGlass", (int)GlassKind.Frosted));
+            set => AddOrUpdateValue(ref _chatHeaderGlass, "ChatHeaderGlass", (int)value);
+        }
+
+        private static int? _footerGlass;
+        public GlassKind FooterGlass
+        {
+            get => (GlassKind)(_footerGlass ??= GetValueOrDefault("FooterGlass", (int)GlassKind.Frosted));
+            set => AddOrUpdateValue(ref _footerGlass, "FooterGlass", (int)value);
+        }
+
+        private static int? _bubbleGlass;
+        public GlassKind BubbleGlass
+        {
+            get => (GlassKind)(_bubbleGlass ??= GetValueOrDefault("BubbleGlass", (int)(GetValueOrDefault("BubbleStyle", 0) switch
+            {
+                1 => GlassKind.Clear,
+                2 => GlassKind.Frosted,
+                3 => GlassKind.Glow,
+                4 => GlassKind.Liquid,
+                5 => GlassKind.Terminal,
+                _ => GlassKind.Original
+            })));
+            set => AddOrUpdateValue(ref _bubbleGlass, "BubbleGlass", (int)value);
+        }
+
+        private static int? _reactionGlass;
+        public GlassKind ReactionGlass
+        {
+            get => (GlassKind)(_reactionGlass ??= GetValueOrDefault("ReactionGlass", (int)(GetValueOrDefault("ReactionStyle", 0) switch
+            {
+                1 => GlassKind.Clear,
+                2 => GlassKind.Glow,
+                _ => GlassKind.Original
+            })));
+            set => AddOrUpdateValue(ref _reactionGlass, "ReactionGlass", (int)value);
+        }
+
+        private static int? _serviceGlass;
+        public GlassKind ServiceGlass
+        {
+            get => (GlassKind)(_serviceGlass ??= GetValueOrDefault("ServiceGlass", (int)(GetValueOrDefault("ServiceStyle", 0) switch
+            {
+                1 => GlassKind.Dark,
+                2 => GlassKind.Light,
+                3 => GlassKind.Clear,
+                _ => GlassKind.Original
+            })));
+            set => AddOrUpdateValue(ref _serviceGlass, "ServiceGlass", (int)value);
+        }
+
+        private static int? _rimStyle;
+        public RimStyle RimStyle
+        {
+            get => (RimStyle)(_rimStyle ??= GetValueOrDefault("RimStyle", (int)RimStyle.Thin));
+            set => AddOrUpdateValue(ref _rimStyle, "RimStyle", (int)value);
+        }
+
+        // Percents, 0-100, of the effects: how bright the rim, how strong the lamp glow and the
+        // inner light, how visible the scanlines, how far the blur reaches.
+        private static int? _rimIntensity;
+        public int RimIntensity
+        {
+            get => _rimIntensity ??= Math.Clamp(GetValueOrDefault("RimIntensity", 60), 0, 100);
+            set => AddOrUpdateValue(ref _rimIntensity, "RimIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        private static int? _glowIntensity;
+        public int GlowIntensity
+        {
+            get => _glowIntensity ??= Math.Clamp(GetValueOrDefault("GlowIntensity", 50), 0, 100);
+            set => AddOrUpdateValue(ref _glowIntensity, "GlowIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        private static int? _scanlineIntensity;
+        public int ScanlineIntensity
+        {
+            get => _scanlineIntensity ??= Math.Clamp(GetValueOrDefault("ScanlineIntensity", 40), 0, 100);
+            set => AddOrUpdateValue(ref _scanlineIntensity, "ScanlineIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        private static int? _blurIntensity;
+        public int BlurIntensity
+        {
+            get => _blurIntensity ??= Math.Clamp(GetValueOrDefault("BlurIntensity", 60), 0, 100);
+            set => AddOrUpdateValue(ref _blurIntensity, "BlurIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        /// <summary>
+        /// Raised for any glass change, element or effect; whatever draws glass redraws it.
+        /// </summary>
+        public static event EventHandler GlassChanged;
+
+        public static void RaiseGlassChanged()
+        {
+            GlassChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        #endregion
 
         #region Message styles
-
-        private static int? _bubbleStyle;
-        public BubbleStyle BubbleStyle
-        {
-            get => (BubbleStyle)(_bubbleStyle ??= GetValueOrDefault("BubbleStyle", (int)BubbleStyle.Original));
-            set => AddOrUpdateValue(ref _bubbleStyle, "BubbleStyle", (int)value);
-        }
 
         // Percent, 20-100, of a glass bubble's fill.
         private static int? _bubbleOpacity;
@@ -478,20 +591,6 @@ namespace Telegram.Services.Settings
         {
             get => _bubbleOpacity ??= Math.Clamp(GetValueOrDefault("BubbleOpacity", 70), 20, 100);
             set => AddOrUpdateValue(ref _bubbleOpacity, "BubbleOpacity", Math.Clamp(value, 20, 100));
-        }
-
-        private static int? _reactionStyle;
-        public ReactionStyle ReactionStyle
-        {
-            get => (ReactionStyle)(_reactionStyle ??= GetValueOrDefault("ReactionStyle", (int)ReactionStyle.Original));
-            set => AddOrUpdateValue(ref _reactionStyle, "ReactionStyle", (int)value);
-        }
-
-        private static int? _serviceStyle;
-        public ServiceStyle ServiceStyle
-        {
-            get => (ServiceStyle)(_serviceStyle ??= GetValueOrDefault("ServiceStyle", (int)ServiceStyle.Original));
-            set => AddOrUpdateValue(ref _serviceStyle, "ServiceStyle", (int)value);
         }
 
         private static int? _messageTextStyle;

@@ -123,7 +123,7 @@ namespace Telegram.Views.Settings
             PlaygroundOutgoing.Mockup("Виглядає чудово! Ще трохи сяйва — і буде ідеально 😍", true, DateTime.Now.AddMinutes(-2));
             PlaygroundIncoming2.Mockup("Прокрути вгору: повідомлення плавно заходять під шапку 👆", false, DateTime.Now.AddMinutes(-1));
             PlaygroundOutgoing2.Mockup("А дати й реакції теж можна зробити скляними 🫧", true, DateTime.Now.AddSeconds(-40));
-            PlaygroundIncoming3.Mockup("Спробуй «Матове скло» і «Скло з сяйвом» нижче 👇", false, DateTime.Now);
+            PlaygroundIncoming3.Mockup("Спробуй «Рідке скло» або «Лампове сяйво» нижче 👇", false, DateTime.Now);
 
             UpdatePlaygroundHeader();
 
@@ -142,7 +142,7 @@ namespace Telegram.Views.Settings
 
             if (!original)
             {
-                MasterDetailView.ApplyHeaderStyle(PlaygroundHeaderGlass, style, ActualTheme, null, default, 48);
+                MasterDetailView.ApplyHeaderStyle(PlaygroundHeaderGlass, style, AppSettings.Appearance.HeaderGlass, ActualTheme, null, default, 48);
             }
 
             // The same sizes the real header shows its title at once a page is scrolled; inside
@@ -221,10 +221,16 @@ namespace Telegram.Views.Settings
                 PlaygroundOutgoing2.UpdateMockup(true, true, true);
                 PlaygroundIncoming3.UpdateMockup(false, true, true);
             }
-            else if (e.PropertyName is nameof(ViewModel.BubbleStyleIndex)
+            else if (e.PropertyName is nameof(ViewModel.BubbleGlassIndex)
                 or nameof(ViewModel.BubbleOpacity)
-                or nameof(ViewModel.ReactionStyleIndex)
-                or nameof(ViewModel.ServiceStyleIndex)
+                or nameof(ViewModel.ReactionGlassIndex)
+                or nameof(ViewModel.ServiceGlassIndex)
+                or nameof(ViewModel.HeaderGlassIndex)
+                or nameof(ViewModel.RimStyleIndex)
+                or nameof(ViewModel.RimIntensity)
+                or nameof(ViewModel.GlowIntensity)
+                or nameof(ViewModel.ScanlineIntensity)
+                or nameof(ViewModel.BlurIntensity)
                 or nameof(ViewModel.MessageTextStyleIndex)
                 or nameof(ViewModel.HeaderStyleIndex)
                 or nameof(ViewModel.UseCustomMessageColors)

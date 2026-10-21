@@ -909,6 +909,7 @@
     <Compile Include="Td\Api\TdExtensions.cs" />
     <Compile Include="Common\TextBlockHelper.cs" />
     <Compile Include="Common\ToggleHelper.cs" />
+    <Compile Include="Common\Glass.cs" />
     <Compile Include="Common\MessageStyle.cs" />
     <Compile Include="Common\Theme.cs" />
     <Compile Include="Common\TLNavigationService.cs" />
