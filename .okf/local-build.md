@@ -33,3 +33,6 @@ timestamp: "2026-10-20T00:00:00+00:00"
 6. `Add-AppxPackage -Register <bin\win32\x64\Debug\...\win-x64>\AppxManifest.xml`, потім запуск через `shell:AppsFolder\38833FF26BA1D.UnigramWin32_g9c9v27vpyspw!App`.
 
 Цей пакет встановлюється поруч з основним Unigram і не конфліктує з ним: має окрему ідентичність і протокол `tg-win32`.
+
+## Ідентичність Primary (2026-10-21)
+`Build.Win32.ps1 -Identity Primary` збирає підписаний пакет `38833FF26BA1D.UnigramPrimary` з назвою «Unigram». Він зберігає протоколи `tg`/`tonsite`, псевдонім `Telegram.exe` і `.unigram-theme` (керує `Win32ClaimsShell`), тож форк може замінити оригінал. `Import-UnigramData.ps1` переносить акаунти й налаштування з Unigram / Unigram Preview, а дані форка перед цим зберігає в `%LOCALAPPDATA%\UnigramPrimary-backup-*`. Сесія після копіювання спільна: старий застосунок не запускати й не виходити в ньому з акаунта, його можна лише видалити (`-RemoveSource`). Маніфест тепер у `obj\win32\Package.Win32.<Identity>.appxmanifest`.
