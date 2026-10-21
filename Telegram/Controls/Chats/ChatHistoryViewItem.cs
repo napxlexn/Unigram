@@ -648,7 +648,7 @@ namespace Telegram.Controls.Chats
 
             for (int i = 0; i < count; i++)
             {
-                var color = sorted[i].ToColor();
+                var color = Theme.Saturate(sorted[i].ToColor());
                 color.A = alpha;
 
                 _gradientBrush.ColorStops.Add(_gradientBrush.Compositor.CreateColorGradientStop(offset, color));

@@ -115,7 +115,7 @@ namespace Telegram.Controls
 
         internal static void ApplyCardLayout(DependencyObject element)
         {
-            var _cardCorner = new CornerRadius(Services.AppSettings.Appearance.CardRadius);
+            var _cardCorner = new CornerRadius(Services.AppSettings.Appearance.GetRadius(Services.Settings.RadiusTree.SettingsItems));
 
             switch (element)
             {

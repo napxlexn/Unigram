@@ -391,7 +391,11 @@
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Заокруглення"
-                                          Footer="За замовчуванням усе таке ж кругле, як капсула шапки. Шапки й пункти налаштувань змінюються одразу (пункти — коли сторінку відкрито знову); кнопки й поля вводу — у щойно відкритих вікнах і сторінках, повністю — після перезапуску.">
+                                          Footer="Загальний повзунок задає заокруглення всьому, що ви не змінили окремо; категорія — своїм елементам (розгорніть стрілкою). Змінене окремо позначено «окремо» й загальним повзунком не скидається; з «Синхронно» будь-який повзунок задає одне значення всьому. Шапки, поле вводу, реакції й пункти змінюються одразу; кнопки, поля, меню й капсули — у щойно відкритих сторінках і вікнах, повністю — після перезапуску.">
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.RadiusSync, Mode=TwoWay}"
+                              AutomationProperties.Name="Синхронне заокруглення"
+                              Content="Змінювати все синхронно"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
                     <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
@@ -414,11 +418,11 @@
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
-                        <TextBlock Text="{x:Bind ConvertPixels('Шапки', ViewModel.HeaderRadius), Mode=OneWay}"
+                        <TextBlock Text="{x:Bind ViewModel.RadiusMaster.Text, Mode=OneWay}"
                                    VerticalAlignment="Center"
                                    Grid.Column="1" />
-                        <Slider Value="{x:Bind ViewModel.HeaderRadius, Mode=TwoWay}"
-                                AutomationProperties.Name="Шапки"
+                        <Slider Value="{x:Bind ViewModel.RadiusMaster.Value, Mode=TwoWay}"
+                                AutomationProperties.Name="Загальне заокруглення"
                                 Minimum="0"
                                 Maximum="28"
                                 SmallChange="1"
@@ -428,82 +432,142 @@
                                 Margin="12,6,16,6"
                                 Grid.Column="2" />
                     </Grid>
-                    <Grid Background="{ThemeResource SettingsItemBackground}"
-                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="58" />
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="208" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="46" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Border Width="24"
-                                Height="24"
-                                Margin="16,0,18,0">
-                            <TextBlock FontSize="25"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
-                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
-                        </Border>
-
-                        <TextBlock Text="{x:Bind ConvertPixels('Пункти налаштувань', ViewModel.CardRadius), Mode=OneWay}"
-                                   VerticalAlignment="Center"
-                                   Grid.Column="1" />
-                        <Slider Value="{x:Bind ViewModel.CardRadius, Mode=TwoWay}"
-                                AutomationProperties.Name="Пункти налаштувань"
-                                Minimum="0"
-                                Maximum="24"
-                                SmallChange="1"
-                                LargeChange="4"
-                                StepFrequency="1"
-                                IsThumbToolTipEnabled="False"
-                                Margin="12,6,16,6"
-                                Grid.Column="2" />
-                    </Grid>
-                    <Grid Background="{ThemeResource SettingsItemBackground}"
-                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="58" />
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="208" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="46" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Border Width="24"
-                                Height="24"
-                                Margin="16,0,18,0">
-                            <TextBlock FontSize="25"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
-                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
-                        </Border>
-
-                        <TextBlock Text="{x:Bind ConvertPixels('Кнопки й поля вводу', ViewModel.ControlRadius), Mode=OneWay}"
-                                   VerticalAlignment="Center"
-                                   Grid.Column="1" />
-                        <Slider Value="{x:Bind ViewModel.ControlRadius, Mode=TwoWay}"
-                                AutomationProperties.Name="Кнопки й поля вводу"
-                                Minimum="0"
-                                Maximum="20"
-                                SmallChange="1"
-                                LargeChange="4"
-                                StepFrequency="1"
-                                IsThumbToolTipEnabled="False"
-                                Margin="12,6,16,6"
-                                Grid.Column="2" />
-                    </Grid>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.RadiusCategories}"
+                                  IsTabStop="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewModels:RadiusNodeViewModel">
+                                <StackPanel Margin="0,0,0,2">
+                                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                                          BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                          BorderThickness="1"
+                                          CornerRadius="{x:Bind Corner, Mode=OneWay}"
+                                          MinHeight="46">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="58" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="208" />
+                                        </Grid.ColumnDefinitions>
+                                        <ToggleButton IsChecked="{x:Bind IsExpanded, Mode=TwoWay}"
+                                                      Visibility="{x:Bind HasChildren}"
+                                                      AutomationProperties.Name="{x:Bind Label}"
+                                                      Background="Transparent"
+                                                      BorderThickness="0"
+                                                      Width="36"
+                                                      Height="36"
+                                                      Padding="0"
+                                                      Margin="12,0,10,0">
+                                            <!-- An expander's chevron, not a pressed button: no fill when open, it turns instead. -->
+                                            <ToggleButton.Resources>
+                                                <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="Transparent" />
+                                                <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#14FFFFFF" />
+                                                <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#0AFFFFFF" />
+                                                <StaticResource x:Key="ToggleButtonForegroundChecked" ResourceKey="TextFillColorPrimaryBrush" />
+                                                <StaticResource x:Key="ToggleButtonForegroundCheckedPointerOver" ResourceKey="TextFillColorPrimaryBrush" />
+                                                <StaticResource x:Key="ToggleButtonForegroundCheckedPressed" ResourceKey="TextFillColorSecondaryBrush" />
+                                            </ToggleButton.Resources>
+                                            <FontIcon Glyph="{x:Bind ExpandGlyph, Mode=OneWay}"
+                                                      FontSize="12" />
+                                        </ToggleButton>
+                                        <TextBlock Text="{x:Bind Text, Mode=OneWay}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Grid.Column="1" />
+                                        <Slider Value="{x:Bind Value, Mode=TwoWay}"
+                                                AutomationProperties.Name="{x:Bind Label}"
+                                                Minimum="0"
+                                                Maximum="28"
+                                                SmallChange="1"
+                                                LargeChange="4"
+                                                StepFrequency="1"
+                                                IsThumbToolTipEnabled="False"
+                                                VerticalAlignment="Center"
+                                                Margin="12,6,16,6"
+                                                Grid.Column="2" />
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{x:Bind Children}"
+                                                  Visibility="{x:Bind IsExpanded, Mode=OneWay}"
+                                                  IsTabStop="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="viewModels:RadiusNodeViewModel">
+                                                <Grid Background="{ThemeResource SettingsItemBackground}"
+                                                      BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                                      BorderThickness="1"
+                                                      CornerRadius="{x:Bind Corner, Mode=OneWay}"
+                                                      MinHeight="42"
+                                                      Margin="24,2,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="58" />
+                                                        <ColumnDefinition />
+                                                        <ColumnDefinition Width="208" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{x:Bind Text, Mode=OneWay}"
+                                                               Style="{StaticResource BodyTextBlockStyle}"
+                                                               Opacity="0.85"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Grid.Column="1" />
+                                                    <Slider Value="{x:Bind Value, Mode=TwoWay}"
+                                                            AutomationProperties.Name="{x:Bind Label}"
+                                                            Minimum="0"
+                                                            Maximum="28"
+                                                            SmallChange="1"
+                                                            LargeChange="4"
+                                                            StepFrequency="1"
+                                                            IsThumbToolTipEnabled="False"
+                                                            VerticalAlignment="Center"
+                                                            Margin="12,6,16,6"
+                                                            Grid.Column="2" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <controls:SettingsButton Content="Повернути все до загального"
+                                             Click="{x:Bind ViewModel.ResetRadii}"
+                                             Glyph="&#xE777;" />
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Прозорість"
                                           Footer="Матеріал вікна потребує увімкнених ефектів прозорості в Windows. Розмиття показує розмиті вікна позаду, акрил — те саме під тінтом Windows.">
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Насиченість кольорів теми', ViewModel.ThemeSaturation), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.ThemeSaturation, Mode=TwoWay}"
+                                AutomationProperties.Name="Насиченість кольорів теми"
+                                Minimum="0"
+                                Maximum="150"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
                     <controls:SettingsButton Content="Матеріал вікна"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
@@ -592,6 +656,43 @@
                                                        SelectedIndex="{x:Bind ViewModel.InputGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Помітність поля вводу', ViewModel.InputFill), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.InputFill, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsInputGlass, Mode=OneWay}"
+                                AutomationProperties.Name="Помітність поля вводу"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
                     <controls:SettingsButton Content="Інші поля вводу (пошук, форми)"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>

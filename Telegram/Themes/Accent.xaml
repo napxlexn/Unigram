@@ -89,8 +89,7 @@
     <Thickness x:Key="MessageContentPadding">10,4,10,6</Thickness>
     <Thickness x:Key="MessageContentMargin">0,0,0,0</Thickness>
 
-    <CornerRadius x:Key="MessageServiceCornerRadius">11</CornerRadius>
-    <CornerRadius x:Key="MessageOverlayCornerRadius">10</CornerRadius>
+    <!-- MessageServiceCornerRadius and MessageOverlayCornerRadius are written by Theme, from the settings. -->
 
     <HorizontalAlignment x:Key="MessageHorizontalAlignment">Left</HorizontalAlignment>
     <HorizontalAlignment x:Key="MessageHorizontalAlignmentOut">Right</HorizontalAlignment>

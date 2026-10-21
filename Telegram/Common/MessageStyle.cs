@@ -118,7 +118,7 @@ namespace Telegram.Common
                     break;
             }
 
-            return color;
+            return Theme.Saturate(color);
         }
 
         /// <summary>
