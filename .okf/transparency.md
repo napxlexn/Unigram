@@ -82,4 +82,10 @@ UI: блок «Прозорість» у `Views/Settings/SettingsAppearancePage.
 - Де показувати: `RimOnBubbles`, `RimOnReactions`, `RimOnPanels` (передаються як `rim:` у `SmoothGlass.Attach`; реакції — у `MessageStyle.GetReactionRim`).
 - `Glass.GetRimColor(element, dark)` — спільний вибір кольору для `SmoothGlass` і реакцій.
 - `GlassHost` бульбашки отримує від'ємний `Margin` = `ContentPanel.Padding`: інакше скло й обідок починалися на 4 px нижче верху бульбашки (текст тиснув у обідок), а градієнт теми на вихідних було видно смугою над обідком — це і є «ореол».
+- Анімації обідка (`RimAnimation`): дихання, серцебиття, свічка (кадри яскравості `_rim.Opacity` з easing), відблиск (м'яка смуга, анімуються `StartPoint`/`EndPoint`), світло по колу (вираз Cos/Sin від `Angle` у `_state`), райдужний перелив (`ColorKeyFrameAnimation` у HSL на кожній зупинці).
+- Реакція на курсор (`RimHover`: світло за курсором, сяйво при наведенні, відблиск на склі, усе разом): `ElementCompositionPreview.GetPointerPositionPropertySet` батька хоста (сам хост не приймає введення), `Origin` хоста в ньому оновлюється в `Update`, `Hover` анімується на PointerEntered/Exited (обробники знімаються в `Detach`).
+
+## Сторінка «Вигляд»
+
+- Попередній перегляд винесено із ScrollViewer у закріплену `PreviewPanel` (рядок 0): налаштування прокручуються під ним. Кнопка «Матовість» (`PreviewHaze`) ховає напівпрозору картку під переглядом.
 
