@@ -692,7 +692,7 @@ namespace Telegram.Controls
                     // background to rounded corners without smoothing them.
                     header.Background = null;
                     header.BorderThickness = new Thickness(0);
-                    header.CornerRadius = new CornerRadius(14);
+                    header.CornerRadius = new CornerRadius(AppSettings.Appearance.HeaderRadius);
                     header.Margin = new Thickness(12, 6, 12, 0);
                     header.Height = height - 4;
                     SmoothGlass.Attach(header, kind == GlassKind.Original ? GlassKind.Clear : kind, theme != ElementTheme.Light, rim: AppSettings.Appearance.RimOnPanels);

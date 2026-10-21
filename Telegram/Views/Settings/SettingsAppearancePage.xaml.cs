@@ -162,6 +162,11 @@ namespace Telegram.Views.Settings
             return string.Format("{0}: {1:0}%", header, value);
         }
 
+        private string ConvertPixels(string header, double value)
+        {
+            return string.Format("{0}: {1:0} px", header, value);
+        }
+
         private double ConvertEnabledOpacity(bool enabled)
         {
             return enabled ? 1 : 0.5;

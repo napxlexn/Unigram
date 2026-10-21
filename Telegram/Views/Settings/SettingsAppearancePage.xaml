@@ -390,6 +390,118 @@
                     </controls:SettingsButton>
                 </controls:HeaderedControl>
 
+                <controls:HeaderedControl Header="Заокруглення"
+                                          Footer="За замовчуванням усе таке ж кругле, як капсула шапки. Шапки й пункти налаштувань змінюються одразу (пункти — коли сторінку відкрито знову); кнопки й поля вводу — у щойно відкритих вікнах і сторінках, повністю — після перезапуску.">
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPixels('Шапки', ViewModel.HeaderRadius), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.HeaderRadius, Mode=TwoWay}"
+                                AutomationProperties.Name="Шапки"
+                                Minimum="0"
+                                Maximum="28"
+                                SmallChange="1"
+                                LargeChange="4"
+                                StepFrequency="1"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPixels('Пункти налаштувань', ViewModel.CardRadius), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.CardRadius, Mode=TwoWay}"
+                                AutomationProperties.Name="Пункти налаштувань"
+                                Minimum="0"
+                                Maximum="24"
+                                SmallChange="1"
+                                LargeChange="4"
+                                StepFrequency="1"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPixels('Кнопки й поля вводу', ViewModel.ControlRadius), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.ControlRadius, Mode=TwoWay}"
+                                AutomationProperties.Name="Кнопки й поля вводу"
+                                Minimum="0"
+                                Maximum="20"
+                                SmallChange="1"
+                                LargeChange="4"
+                                StepFrequency="1"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                </controls:HeaderedControl>
+
                 <controls:HeaderedControl Header="Прозорість"
                                           Footer="Матеріал вікна потребує увімкнених ефектів прозорості в Windows. Розмиття показує розмиті вікна позаду, акрил — те саме під тінтом Windows.">
                     <controls:SettingsButton Content="Матеріал вікна"
@@ -460,6 +572,32 @@
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Скло нижньої панелі каналу"
                                                        SelectedIndex="{x:Bind ViewModel.FooterGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Поле вводу повідомлення"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.InputStyleOptions}"
+                                                       AutomationProperties.Name="Поле вводу повідомлення"
+                                                       SelectedIndex="{x:Bind ViewModel.InputStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Скло поля вводу повідомлення"
+                                             IsEnabled="{x:Bind ViewModel.IsInputGlass, Mode=OneWay}"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       IsEnabled="{x:Bind ViewModel.IsInputGlass, Mode=OneWay}"
+                                                       AutomationProperties.Name="Скло поля вводу повідомлення"
+                                                       SelectedIndex="{x:Bind ViewModel.InputGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Інші поля вводу (пошук, форми)"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Інші поля вводу"
+                                                       SelectedIndex="{x:Bind ViewModel.FieldGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>                    <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">

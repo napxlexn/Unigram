@@ -581,8 +581,8 @@
                                        UseLayoutRounding="False"
                                        Height="{StaticResource CheckBoxSize}"
                                        Width="{StaticResource CheckBoxSize}"
-                                       RadiusX="{Binding Source={ThemeResource ControlCornerRadius}, Converter={StaticResource TopLeftCornerRadiusDoubleValueConverter}}"
-                                       RadiusY="{Binding Source={ThemeResource ControlCornerRadius}, Converter={StaticResource BottomRightCornerRadiusDoubleValueConverter}}" />
+                                       RadiusX="4"
+                                       RadiusY="4" />
                             <local:AnimatedIcon x:Name="CheckGlyph"
                                                 Foreground="{ThemeResource CheckBoxCheckGlyphForegroundUnchecked}"
                                                 Margin="0,1,0,-1">
@@ -646,8 +646,9 @@
                 Value="{StaticResource UseSystemFocusVisuals}" />
         <Setter Property="FocusVisualMargin"
                 Value="{StaticResource CheckBoxFocusVisualMargin}" />
+        <!-- Its own, not the controls' radius: that one may be set round enough to make the box a circle. -->
         <Setter Property="CornerRadius"
-                Value="{ThemeResource ControlCornerRadius}" />
+                Value="4" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">

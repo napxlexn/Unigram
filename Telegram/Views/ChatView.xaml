@@ -652,7 +652,8 @@
                                     BorderThickness="0"
                                     CornerRadius="0"
                                     Padding="92,0,0,0">
-                <Grid Background="Transparent"
+                <Grid x:Name="ProfileContent"
+                      Background="Transparent"
                       VerticalAlignment="Center"
                       Margin="0,-2,0,2">
                     <Grid.RowDefinitions>
@@ -924,7 +925,8 @@
             <Grid x:Name="ContentPanel"
                   SizeChanged="ContentPanel_SizeChanged"
                   Grid.Row="2">
-                <Grid x:Name="MessagesRoot">
+                <Grid x:Name="MessagesRoot"
+                      SizeChanged="MessagesRoot_SizeChanged">
                     <chats:ChatHistoryView x:Name="Messages"
                                            Style="{StaticResource BubbleListViewStyle}"
                                            ShowsScrollingPlaceholders="False"
@@ -1242,11 +1244,25 @@
                     Margin="12,0"
                     Grid.Row="3" />
 
+            <!-- The composer's glass across the whole width, for the bar and the fading styles. -->
+            <Border x:Name="InputGlassBand"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False"
+                    VerticalAlignment="Bottom"
+                    Grid.Row="3"
+                    Grid.RowSpan="2" />
+
             <Grid x:Name="Footer"
                   Grid.Row="3">
                 <Rectangle x:Name="ShadowCaster"
                            RadiusX="24"
                            RadiusY="24" />
+
+                <!-- The composer's glass in its own shape, for the capsule style. -->
+                <Border x:Name="TextGlass"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False"
+                        CornerRadius="24" />
 
                 <ContentControl x:Name="TextArea"
                                 IsTabStop="False"
