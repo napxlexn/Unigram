@@ -13,8 +13,6 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <StaticResource x:Key="SettingsItemBorderBrush"
-                                    ResourceKey="CardStrokeColorDefaultBrush" />
                     <StaticResource x:Key="SettingsItemBorderBrushPointerOver"
                                     ResourceKey="ControlElevationBorderBrush" />
                     <StaticResource x:Key="SettingsItemBorderBrushPressed"
@@ -64,8 +62,6 @@
                     </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <StaticResource x:Key="SettingsItemBorderBrush"
-                                    ResourceKey="CardStrokeColorDefaultBrush" />
                     <StaticResource x:Key="SettingsItemBorderBrushPointerOver"
                                     ResourceKey="ControlElevationBorderBrush" />
                     <StaticResource x:Key="SettingsItemBorderBrushPressed"

@@ -242,6 +242,13 @@
                                                      Grid.Row="4" />
                             </local:MessageBubblePanel>
 
+                            <!-- Holds the glow of the panel's content under the lamp styles; empty and unloaded otherwise. -->
+                            <Border x:Name="GlowHost"
+                                    x:Load="False"
+                                    IsHitTestVisible="False"
+                                    Grid.Column="1"
+                                    Grid.Row="1" />
+
                             <Grid x:Name="Header"
                                   Margin="10,0,10,0"
                                   Grid.Column="1">

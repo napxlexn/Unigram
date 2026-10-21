@@ -171,6 +171,7 @@ namespace Telegram.Controls.Messages
         private HyperlinkButton PhotoRoot;
 
         private Border BackgroundPanel;
+        private Border GlowHost;
 
         private Grid HeaderPanel;
         private TextBlock HeaderLabel;
@@ -2489,15 +2490,31 @@ namespace Telegram.Controls.Messages
             }
 
             // The rim only where there is a bubble to rim; media drawn without one has none.
-            if (MessageStyle.IsGlowing && !light)
+            if (MessageStyle.IsLiquid && !light)
             {
-                ContentPanel.BorderBrush = MessageStyle.GetGlowBrush(ActualTheme != ElementTheme.Light);
+                ContentPanel.BorderBrush = MessageStyle.GetLiquidRimBrush(ActualTheme != ElementTheme.Light);
                 ContentPanel.BorderThickness = new Thickness(1);
             }
             else if (ContentPanel.BorderBrush != null)
             {
                 ContentPanel.BorderBrush = null;
                 ContentPanel.BorderThickness = default;
+            }
+
+            // The lamp styles: the content itself glows inside the glass.
+            if (MessageStyle.IsGlowing)
+            {
+                GlowHost ??= GetTemplateChild(nameof(GlowHost)) as Border;
+                if (GlowHost != null)
+                {
+                    GlowHost.Visibility = Visibility.Visible;
+                    ContentGlow.Attach(GlowHost, Panel, MessageStyle.IsTerminal);
+                }
+            }
+            else if (GlowHost != null)
+            {
+                ContentGlow.Detach(GlowHost);
+                GlowHost.Visibility = Visibility.Collapsed;
             }
         }
 

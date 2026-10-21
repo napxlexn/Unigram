@@ -367,16 +367,43 @@ namespace Telegram.Common
         }
 
         /// <summary>
-        /// The hairlines between the big parts of the window - the folders rail, the chat list,
-        /// the detail pane, the navigation pane and the headers. Cleared by the experimental
-        /// <see cref="AppearanceSettings.HideSeparators"/>; separators inside lists and cards are
-        /// drawn with other brushes and stay.
+        /// The hairlines of the theme's own palette - between the big parts of the window, under
+        /// the headers, and the separators inside lists and bubbles (the line above a post's
+        /// comments). <see cref="AppearanceSettings.SeparatorMode"/> hides or relights them; the
+        /// framework's card and divider strokes are written in <see cref="Update"/> alongside.
         /// </summary>
         private static readonly HashSet<string> _separators = new()
         {
             "NavigationViewItemSeparatorForeground",
             "PageHeaderBorderBrush",
+            "TelegramSeparatorMediumBrush",
         };
+
+        /// <summary>
+        /// A hairline as <see cref="AppearanceSettings.SeparatorMode"/> wants it. A line is dark
+        /// or light by its own colour: the same theme has both - black strokes around cards,
+        /// white ones in the panes - and only the dark ones show up as grime over glass.
+        /// </summary>
+        public static Color GetSeparatorColor(Color color, bool lightTheme)
+        {
+            var mode = AppSettings.Appearance.SeparatorMode;
+            if (mode == SeparatorMode.Original || color.A == 0)
+            {
+                return color;
+            }
+
+            var dark = 0.299 * color.R + 0.587 * color.G + 0.114 * color.B < 128;
+
+            return mode switch
+            {
+                SeparatorMode.HideAll => Colors.Transparent,
+                SeparatorMode.HideDark when dark => Colors.Transparent,
+                // As faint as the light lines the dark theme already has; on a light theme the
+                // white has to be stronger to show at all over glass.
+                SeparatorMode.DarkToLight when dark => Color.FromArgb(lightTheme ? (byte)0x80 : (byte)0x24, 0xFF, 0xFF, 0xFF),
+                _ => color
+            };
+        }
 
         private static readonly HashSet<string> _surfaces = new()
         {
@@ -563,7 +590,7 @@ namespace Telegram.Common
                 }
 
                 var surfaceOpacity = GetSurfaceOpacity();
-                var hideSeparators = AppSettings.Appearance.HideSeparators;
+                var lightTheme = requested == TelegramTheme.Light;
 
                 foreach (var item in lookup)
                 {
@@ -597,9 +624,9 @@ namespace Telegram.Common
                         {
                             value.A = (byte)(value.A * surfaceOpacity);
                         }
-                        else if (hideSeparators && _separators.Contains(item.Key))
+                        else if (_separators.Contains(item.Key))
                         {
-                            value.A = 0;
+                            value = GetSeparatorColor(value, lightTheme);
                         }
 
                         AddOrUpdate<SolidColorBrush>(target, muxcCopy, item.Key, create,
@@ -661,15 +688,21 @@ namespace Telegram.Common
                     MessageStyle.ApplyServiceStyle();
                 }
 
-                // Not in the lookup - it is WinUI's own, an alias of CardStrokeColorDefaultBrush - so
-                // it is written here, with WinUI's value, to give the separator switch a brush to
-                // clear.
-                var gridBorder = hideSeparators
-                    ? Colors.Transparent
-                    : requested == TelegramTheme.Light ? Color.FromArgb(0x0F, 0, 0, 0) : Color.FromArgb(0x19, 0, 0, 0);
+                // Not in the lookup - they are WinUI's own - so they are written here, with WinUI's
+                // values, to give the separator setting brushes to work on. The card stroke is
+                // also what outlines the settings cards and splits their rows; SettingsItemBorderBrush
+                // is its alias, kept here rather than in App.xaml so that it follows.
+                var cardStroke = GetSeparatorColor(lightTheme ? Color.FromArgb(0x0F, 0, 0, 0) : Color.FromArgb(0x19, 0, 0, 0), lightTheme);
+                var dividerStroke = GetSeparatorColor(lightTheme ? Color.FromArgb(0x0F, 0, 0, 0) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF), lightTheme);
 
-                AddOrUpdate<SolidColorBrush>(target, muxcCopy, "NavigationViewContentGridBorderBrush", create,
-                    update => update.Color = gridBorder);
+                foreach (var key in new[] { "NavigationViewContentGridBorderBrush", "CardStrokeColorDefaultBrush", "SettingsItemBorderBrush" })
+                {
+                    AddOrUpdate<SolidColorBrush>(target, muxcCopy, key, create,
+                        update => update.Color = cardStroke);
+                }
+
+                AddOrUpdate<SolidColorBrush>(target, muxcCopy, "DividerStrokeColorDefaultBrush", create,
+                    update => update.Color = dividerStroke);
 
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlElevationBorderFocusedBrush", create, GetShade);
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlBorderBrushFocused", create, GetShade);
