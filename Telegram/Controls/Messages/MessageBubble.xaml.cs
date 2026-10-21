@@ -172,6 +172,7 @@ namespace Telegram.Controls.Messages
 
         private Border BackgroundPanel;
         private Border GlowHost;
+        private Border ScanlineHost;
 
         private Grid HeaderPanel;
         private TextBlock HeaderLabel;
@@ -2508,7 +2509,7 @@ namespace Telegram.Controls.Messages
                 if (GlowHost != null)
                 {
                     GlowHost.Visibility = Visibility.Visible;
-                    ContentGlow.Attach(GlowHost, Panel, MessageStyle.IsTerminal);
+                    ContentGlow.Attach(GlowHost, GetGlowSources, MessageStyle.IsTerminal);
                 }
             }
             else if (GlowHost != null)
@@ -2516,6 +2517,73 @@ namespace Telegram.Controls.Messages
                 ContentGlow.Detach(GlowHost);
                 GlowHost.Visibility = Visibility.Collapsed;
             }
+
+            // Scanlines only where there is a bubble fill for them to sit on.
+            if (MessageStyle.IsTerminal && !light)
+            {
+                ScanlineHost ??= GetTemplateChild(nameof(ScanlineHost)) as Border;
+                if (ScanlineHost != null)
+                {
+                    ScanlineHost.Visibility = Visibility.Visible;
+                    ContentGlow.AttachScanlines(ScanlineHost);
+                }
+            }
+            else if (ScanlineHost != null)
+            {
+                ContentGlow.DetachScanlines(ScanlineHost);
+                ScanlineHost.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>
+        /// What glows under the lamp styles: the text, the reactions, the time, the sender's name
+        /// and the comments row - everything of the bubble but its media, which is the post's
+        /// own content and is shown as it is.
+        /// </summary>
+        private IEnumerable<(FrameworkElement, float)> GetGlowSources()
+        {
+            foreach (var child in Panel.Children)
+            {
+                // In the reaction capsules only the counts glow: the capsule's fill is light all
+                // over, and a glow of it washes the whole capsule out, the emoji with it.
+                if (child is ReactionsPanel reactions)
+                {
+                    foreach (var reaction in reactions.Children)
+                    {
+                        if (FindDescendant(reaction, "Count") is FrameworkElement count)
+                        {
+                            yield return (count, 0.8f);
+                        }
+                    }
+                }
+                else if (child is FrameworkElement element && element != Media)
+                {
+                    yield return (element, 1);
+                }
+            }
+
+            yield return (HeaderPanel, 1);
+            yield return (Thread, 1);
+        }
+
+        private static FrameworkElement FindDescendant(DependencyObject node, string name)
+        {
+            var count = VisualTreeHelper.GetChildrenCount(node);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(node, i);
+                if (child is FrameworkElement element && element.Name == name)
+                {
+                    return element;
+                }
+
+                if (FindDescendant(child, name) is FrameworkElement found)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         private void FooterToLightMedia(bool isOut)

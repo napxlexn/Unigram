@@ -668,6 +668,12 @@ namespace Telegram.Controls
         /// </summary>
         public static void ApplyHeaderStyle(Border header, HeaderStyle style, ElementTheme theme, Brush original, Thickness originalBorder, double height)
         {
+            // Only the capsule is drawn by SmoothGlass; any other style takes it off again.
+            if (style != HeaderStyle.Capsule)
+            {
+                SmoothGlass.Detach(header);
+            }
+
             switch (style)
             {
                 case HeaderStyle.Glass:
@@ -684,10 +690,15 @@ namespace Telegram.Controls
                     // Floating, rounded and inset like the settings cards, and glass all the way
                     // through: the same blur as the glass header, held to the capsule's edge
                     // instead of fading, with light catching the rim.
-                    header.Background = CreateCapsuleHeaderBrush(theme);
-                    header.BorderBrush = CreateRimBrush(theme);
-                    header.BorderThickness = new Thickness(1);
+                    // Drawn by SmoothGlass rather than as the background and border: XAML cuts a
+                    // composition background to rounded corners without smoothing them.
+                    header.Background = null;
+                    header.BorderThickness = new Thickness(0);
                     header.CornerRadius = new CornerRadius(14);
+                    SmoothGlass.Attach(header,
+                        theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x40, 0xF6, 0xF6, 0xF6) : Windows.UI.Color.FromArgb(0x38, 0x28, 0x28, 0x28),
+                        theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF),
+                        theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x14, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
                     header.Margin = new Thickness(12, 6, 12, 0);
                     header.Height = height - 4;
                     break;
@@ -701,27 +712,6 @@ namespace Telegram.Controls
                     header.Height = height;
                     break;
             }
-        }
-
-        public static Brush CreateCapsuleHeaderBrush(ElementTheme theme)
-        {
-            var tint = theme == ElementTheme.Light
-                ? Windows.UI.Color.FromArgb(0x40, 0xF6, 0xF6, 0xF6)
-                : Windows.UI.Color.FromArgb(0x38, 0x28, 0x28, 0x28);
-
-            return new FadingGlassBrush { TintColor = tint, BlurAmount = 32, SolidUntil = 1 };
-        }
-
-        /// <summary>
-        /// Light catching the edge of a pane of glass: bright along the top, almost gone at the
-        /// bottom.
-        /// </summary>
-        public static Brush CreateRimBrush(ElementTheme theme)
-        {
-            var gradient = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0, 0), EndPoint = new Windows.Foundation.Point(0, 1) };
-            gradient.GradientStops.Add(new GradientStop { Offset = 0, Color = theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF) });
-            gradient.GradientStops.Add(new GradientStop { Offset = 1, Color = theme == ElementTheme.Light ? Windows.UI.Color.FromArgb(0x14, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF) });
-            return gradient;
         }
 
         /// <summary>

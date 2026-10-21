@@ -859,6 +859,8 @@ namespace Telegram.Views
 
             Services.Settings.AppearanceSettings.GlassHeaderChanged -= OnGlassHeaderChanged;
             Services.Settings.AppearanceSettings.GlassHeaderChanged += OnGlassHeaderChanged;
+            ActualThemeChanged -= OnGlassThemeChanged;
+            ActualThemeChanged += OnGlassThemeChanged;
             UpdateChatHeaderStyle();
         }
 
@@ -871,6 +873,12 @@ namespace Telegram.Views
         private void OnGlassHeaderChanged(object sender, EventArgs e)
         {
             this.BeginOnUIThread(UpdateChatHeaderStyle);
+        }
+
+        // The glass tints are baked per theme.
+        private void OnGlassThemeChanged(FrameworkElement sender, object args)
+        {
+            UpdateChatHeaderStyle();
         }
 
         /// <summary>
@@ -937,14 +945,16 @@ namespace Telegram.Views
                     break;
             }
 
+            // The footer's glass follows the theme here too: this runs on every activation and
+            // theme change.
+            SmoothGlass.AttachDefault(ChatFooterGlass, theme);
+
             if (style == Services.Settings.ChatHeaderStyle.Capsule)
             {
                 // Centred on the header's own middle, so the title and the buttons sit in the
                 // middle of the capsule rather than above it.
-                HeaderCapsule.Background = CreateHeaderGlassBrush(theme);
-                HeaderCapsule.BorderBrush = MasterDetailView.CreateRimBrush(theme);
-                HeaderCapsule.BorderThickness = new Thickness(1);
                 HeaderCapsule.CornerRadius = new CornerRadius(16);
+                SmoothGlass.AttachDefault(HeaderCapsule, theme);
                 HeaderCapsule.Margin = new Thickness(8, 4, 8, 4);
                 HeaderCapsule.Height = Header.Height - 8;
                 HeaderCapsule.VerticalAlignment = VerticalAlignment.Top;
@@ -952,7 +962,7 @@ namespace Telegram.Views
             }
             else
             {
-                HeaderCapsule.Background = null;
+                SmoothGlass.Detach(HeaderCapsule);
                 HeaderCapsule.Visibility = Visibility.Collapsed;
             }
 
@@ -6960,6 +6970,7 @@ namespace Telegram.Views
                 ButtonClear.CornerRadius = new CornerRadius(min, 4, 4, 4);
             TextRoot.CornerRadius =
                 ChatFooter.CornerRadius =
+                ChatFooterGlass.CornerRadius =
                 ChatRecord.CornerRadius =
                 ManagePanel.CornerRadius =
                 ButtonAction.CornerRadius = new CornerRadius(radius);
