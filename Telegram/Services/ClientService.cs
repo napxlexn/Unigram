@@ -67,6 +67,16 @@ namespace Telegram.Services
 
         void ViewMessages(long chatId, MessageTopic topicId, Vector<long> messageIds, MessageSource source, bool forceRead);
 
+        /// <summary>
+        /// Marks a chat as opened without reading: until <see cref="EndOpenWithoutReading"/>,
+        /// nothing in it is reported viewed, so neither side sees it read.
+        /// </summary>
+        void OpenWithoutReading(long chatId);
+
+        void EndOpenWithoutReading(long chatId);
+
+        bool IsOpenWithoutReading(long chatId);
+
         Task<Object> GetStarTransactionsAsync(MessageSender ownerId, string subscriptionId, TransactionDirection direction, string offset, int limit);
 
         Task<Object> GetTonTransactionsAsync(TransactionDirection direction, string offset, int limit);
@@ -479,6 +489,42 @@ namespace Telegram.Services
             return TryGetChat(chatId, out Chat chat) && chat.Type is ChatTypeSupergroup { IsChannel: true };
         }
 
+        // Counted, not a set: the same chat can be reopened without reading while the view that
+        // opened it the first time is still on its way out, and that one ending must not end the
+        // new one.
+        private readonly Dictionary<long, int> _openWithoutReading = new();
+
+        public void OpenWithoutReading(long chatId)
+        {
+            lock (_openWithoutReading)
+            {
+                _openWithoutReading[chatId] = _openWithoutReading.GetValueOrDefault(chatId) + 1;
+            }
+        }
+
+        public void EndOpenWithoutReading(long chatId)
+        {
+            lock (_openWithoutReading)
+            {
+                if (_openWithoutReading.TryGetValue(chatId, out var count) && count > 1)
+                {
+                    _openWithoutReading[chatId] = count - 1;
+                }
+                else
+                {
+                    _openWithoutReading.Remove(chatId);
+                }
+            }
+        }
+
+        public bool IsOpenWithoutReading(long chatId)
+        {
+            lock (_openWithoutReading)
+            {
+                return _openWithoutReading.ContainsKey(chatId);
+            }
+        }
+
         public void ViewMessages(long chatId, MessageTopic topicId, Vector<long> messageIds, MessageSource source, bool forceRead)
         {
             // Read without a read receipt. TDLib only marks messages read when the client reports
@@ -486,6 +532,13 @@ namespace Telegram.Services
             // explicit "mark as read" comes with forceRead and still goes through. Channels are
             // left alone: nobody sees who read a post, and skipping would only stop view counts.
             if (!forceRead && AppSettings.IsGhostReadEnabled && !IsChannel(chatId))
+            {
+                return;
+            }
+
+            // A chat opened without reading reports nothing at all, forced or not, channels too:
+            // that is the whole point of opening it that way.
+            if (IsOpenWithoutReading(chatId))
             {
                 return;
             }

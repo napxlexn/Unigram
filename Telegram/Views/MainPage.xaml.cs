@@ -3394,6 +3394,18 @@ namespace Telegram.Views
             Chat_ContextRequested(chat, sender, args, true);
         }
 
+        /// <summary>
+        /// Opens a chat without reading it: nothing in it is reported viewed until it is closed,
+        /// so it stays unread here and the other side sees no read receipt. Always a fresh open,
+        /// so that a view of the same chat already on screen - which did not ask for this - is
+        /// not the one that ends it.
+        /// </summary>
+        private void OpenWithoutReading(Chat chat)
+        {
+            ViewModel.ClientService.OpenWithoutReading(chat.Id);
+            MasterDetail.NavigationService.NavigateToChat(chat, force: true);
+        }
+
         private async void Chat_ContextRequested(Chat chat, UIElement sender, ContextRequestedEventArgs args, bool allowSelection)
         {
             var viewModel = ViewModel.Chats;
@@ -3513,6 +3525,13 @@ namespace Telegram.Views
 
             if (viewModel.SelectionMode != ListViewSelectionMode.Multiple)
             {
+                // Only worth offering where there is something left to read.
+                if (chat.UnreadCount > 0 || chat.UnreadMentionCount > 0 || chat.UnreadReactionCount > 0)
+                {
+                    flyout.CreateFlyoutSeparator();
+                    flyout.CreateFlyoutItem(OpenWithoutReading, chat, "Відкрити без прочитання", Icons.EyeOff);
+                }
+
                 if (ApiInfo.HasMultipleViews)
                 {
                     flyout.CreateFlyoutSeparator();
