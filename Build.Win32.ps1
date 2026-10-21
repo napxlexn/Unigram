@@ -26,8 +26,10 @@ param(
     [string] $Configuration = 'Release',
 
     # Registered is the identity the development layout uses. Bundle is what makes this install
-    # beside it rather than fighting it.
-    [ValidateSet('Bundle', 'Registered')]
+    # beside it rather than fighting it. Primary is the fork as the everyday app: named Unigram
+    # and claiming tg: links, Telegram.exe and theme files - see Import-UnigramData.ps1 to move
+    # the accounts of an installed Unigram into it.
+    [ValidateSet('Bundle', 'Registered', 'Primary')]
     [string] $Identity = 'Bundle'
 )
 
@@ -115,3 +117,7 @@ if (-not $bundle) {
 Write-Host ''
 Write-Host ("{0}  ({1:N0} bytes)" -f $bundle.FullName, $bundle.Length) -ForegroundColor Green
 Write-Host 'Install with Add-AppDevPackage.ps1 beside it, which also trusts the test certificate.'
+
+if ($Identity -eq 'Primary') {
+    Write-Host 'Then, to take over from an installed Unigram: .\Import-UnigramData.ps1'
+}
