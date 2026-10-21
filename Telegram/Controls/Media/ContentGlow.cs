@@ -56,6 +56,7 @@ namespace Telegram.Controls.Media
             var attachment = new Attachment(host, sources, phosphor, intensity / 60f, root);
 
             host.SizeChanged += attachment.OnSizeChanged;
+            host.LayoutUpdated += attachment.OnLayoutUpdated;
             host.Tag = attachment;
 
             ElementCompositionPreview.SetElementChildVisual(host, root);
@@ -147,6 +148,15 @@ namespace Telegram.Controls.Media
                 Refresh();
             }
 
+            // After every layout pass: a bubble or a reaction capsule is reused for another
+            // message as the list scrolls, and its sources come and go or move without anything
+            // changing size - the glows of the last message stayed where its text and reactions
+            // had been. Only placement is redone; a glow is made only for a new source.
+            public void OnLayoutUpdated(object sender, object e)
+            {
+                Refresh();
+            }
+
             /// <summary>
             /// Matches the glows to the sources there are now - a reaction row is loaded late, a
             /// caption comes and goes with an edit - and puts each over its source.
@@ -193,6 +203,7 @@ namespace Telegram.Controls.Media
             public void Close()
             {
                 _host.SizeChanged -= OnSizeChanged;
+                _host.LayoutUpdated -= OnLayoutUpdated;
 
                 foreach (var glow in _glows.Values)
                 {
@@ -237,8 +248,21 @@ namespace Telegram.Controls.Media
                 root.Children.InsertAtTop(_glow);
             }
 
+            private Vector2 _origin = new(float.NaN);
+            private Vector2 _size;
+            private float _strength = float.NaN;
+
             public void Place(Vector2 origin, Vector2 size, float strength)
             {
+                if (origin == _origin && size == _size && strength == _strength)
+                {
+                    return;
+                }
+
+                _origin = origin;
+                _size = size;
+                _strength = strength;
+
                 var padded = size + new Vector2(Bleed * 2);
 
                 _surface.SourceSize = padded;
