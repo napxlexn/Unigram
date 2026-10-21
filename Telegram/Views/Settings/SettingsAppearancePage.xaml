@@ -542,7 +542,21 @@
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Обідок"
-                                          Footer="Лінія по краю скла. Колір «елемента» — це колір бульбашки чи шапки, освітлений. Реакція на курсор підсвічує обідок і скло там, де миша. Анімації працюють на всіх елементах з обідком, тож на слабкій відеокарті краще обрати одну неяскраву або вимкнути.">
+                                          Footer="Лінія по краю скла. З окремим обідком для повідомлень бульбашки й реакції мають усі свої налаштування — оберіть угорі, чий обідок змінюєте. Колір «елемента» — це колір бульбашки чи шапки, освітлений. Реакція на курсор підсвічує обідок і скло там, де миша. Анімації працюють на всіх елементах з обідком, тож на слабкій відеокарті краще обрати одну неяскраву або вимкнути.">
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.SeparateBubbleRim, Mode=TwoWay}"
+                              AutomationProperties.Name="Окремий обідок для повідомлень"
+                              Content="Окремий обідок для повідомлень"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                    <controls:SettingsButton Content="Налаштовую обідок для"
+                                             IsEnabled="{x:Bind ViewModel.SeparateBubbleRim, Mode=OneWay}"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimTargetOptions}"
+                                                       IsEnabled="{x:Bind ViewModel.SeparateBubbleRim, Mode=OneWay}"
+                                                       AutomationProperties.Name="Налаштовую обідок для"
+                                                       SelectedIndex="{x:Bind ViewModel.RimTargetIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
                     <controls:SettingsButton Content="Стиль обідка"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
@@ -706,7 +720,7 @@
                         <Slider Value="{x:Bind ViewModel.RimIntensity, Mode=TwoWay}"
                                 AutomationProperties.Name="Яскравість обідка"
                                 Minimum="0"
-                                Maximum="100"
+                                Maximum="200"
                                 SmallChange="5"
                                 LargeChange="10"
                                 StepFrequency="5"
@@ -765,7 +779,7 @@
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Ефекти скла"
-                                          Footer="Діють на всі елементи зі склом: сяйво — на внутрішнє світло та світіння тексту; розгортка — на ретро-термінали; розмиття — на все скло.">
+                                          Footer="Діють на всі елементи зі склом. Внутрішнє світло — лампа за склом ламп і терміналів; сяйво тексту й реакцій — світіння самих літер, емодзі й цифр у стилях з люмінофором (термінали, неон, лампи); світіння обідка — неоновий і сяйний обідки; розгортка — ретро-термінали; розмиття — усе скло.">
                     <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
@@ -788,11 +802,119 @@
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
-                        <TextBlock Text="{x:Bind ConvertPercent('Сила сяйва', ViewModel.GlowIntensity), Mode=OneWay}"
+                        <TextBlock Text="{x:Bind ConvertPercent('Внутрішнє світло', ViewModel.GlowIntensity), Mode=OneWay}"
                                    VerticalAlignment="Center"
                                    Grid.Column="1" />
                         <Slider Value="{x:Bind ViewModel.GlowIntensity, Mode=TwoWay}"
-                                AutomationProperties.Name="Сила сяйва"
+                                AutomationProperties.Name="Внутрішнє світло"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Сяйво тексту в бульбашках', ViewModel.BubbleGlowIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.BubbleGlowIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Сяйво тексту в бульбашках"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Сяйво емодзі й цифр у реакціях', ViewModel.ReactionGlowIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.ReactionGlowIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Сяйво емодзі й цифр у реакціях"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Світіння обідка (неон, сяйний)', ViewModel.RimGlowIntensity), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.RimGlowIntensity, Mode=TwoWay}"
+                                AutomationProperties.Name="Світіння обідка (неон, сяйний)"
                                 Minimum="0"
                                 Maximum="100"
                                 SmallChange="5"

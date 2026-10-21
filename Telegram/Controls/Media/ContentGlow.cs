@@ -42,11 +42,11 @@ namespace Telegram.Controls.Media
 
         /// <param name="phosphor">The glow's colour: transparent for each source's own, any other
         /// for a monochrome phosphor - green or amber - whatever the text is.</param>
-        public static void Attach(FrameworkElement host, Func<IEnumerable<(FrameworkElement Element, float Strength)>> sources, Color phosphor)
+        /// <param name="intensity">0 to 100, how strongly it glows.</param>
+        public static void Attach(FrameworkElement host, Func<IEnumerable<(FrameworkElement Element, float Strength)>> sources, Color phosphor, int intensity)
         {
             Detach(host);
 
-            var intensity = AppSettings.Appearance.GlowIntensity;
             if (!PowerSavingPolicy.AreMaterialsEnabled || intensity == 0)
             {
                 return;
