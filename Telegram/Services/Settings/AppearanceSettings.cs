@@ -127,7 +127,30 @@ namespace Telegram.Services.Settings
         // Breathes, brighter and dimmer.
         Pulse,
         // A glint runs along it.
-        Shimmer
+        Shimmer,
+        // Two beats, then a rest.
+        Heartbeat,
+        // Unsteady, as a flame.
+        Flicker,
+        // A light circles the edge.
+        Rotate,
+        // The colours of the rainbow flow along it.
+        Rainbow
+    }
+
+    /// <summary>
+    /// What the glass does under the mouse.
+    /// </summary>
+    public enum RimHover
+    {
+        None,
+        // The rim lights up around the pointer.
+        Spotlight,
+        // The rim glows while the pointer is over the element.
+        Glow,
+        // A soft highlight on the glass follows the pointer.
+        Sheen,
+        All
     }
 
     /// <summary>
@@ -601,6 +624,21 @@ namespace Telegram.Services.Settings
         {
             get => (RimAnimation)(_rimAnimation ??= GetValueOrDefault("RimAnimation", (int)RimAnimation.None));
             set => AddOrUpdateValue(ref _rimAnimation, "RimAnimation", (int)value);
+        }
+
+        // The settings card under the appearance preview.
+        private static bool? _previewHaze;
+        public bool PreviewHaze
+        {
+            get => _previewHaze ??= GetValueOrDefault("PreviewHaze", true);
+            set => AddOrUpdateValue(ref _previewHaze, "PreviewHaze", value);
+        }
+
+        private static int? _rimHover;
+        public RimHover RimHover
+        {
+            get => (RimHover)(_rimHover ??= GetValueOrDefault("RimHover", (int)RimHover.None));
+            set => AddOrUpdateValue(ref _rimHover, "RimHover", (int)value);
         }
 
         // Percent, 50-400, of the rim's usual thickness.

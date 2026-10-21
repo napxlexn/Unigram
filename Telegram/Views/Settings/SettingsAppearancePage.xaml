@@ -19,38 +19,66 @@
         <contract7Present:Grid.BackgroundTransition>
             <contract7Present:BrushTransition />
         </contract7Present:Grid.BackgroundTransition>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <!-- The preview, held over the settings rather than scrolled away with them, so that
+             whatever is changed below is seen changing. -->
+        <controls:SettingsPanel x:Name="PreviewPanel"
+                                Canvas.ZIndex="1">
+            <controls:HeaderedControl>
+                <Grid x:Name="PreviewCard"
+                      BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                      CornerRadius="4">
+                    <Border Background="{ThemeResource SettingsItemBackground}"
+                            Visibility="{x:Bind ViewModel.PreviewHaze, Mode=OneWay}"
+                            CornerRadius="4" />
+                    <Grid x:Name="Preview"
+                          CornerRadius="4">
+                        <chats:ChatBackgroundControl x:Name="BackgroundControl"
+                                                     CornerRadius="4" />
+                        <StackPanel x:Name="Bubbles"
+                                    Padding="0,4,0,12">
+                            <messages:MessageService HorizontalAlignment="Center"
+                                                     Margin="0,8,0,4">
+                                <TextBlock Text="Сьогодні"
+                                           Foreground="White"
+                                           FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                           Style="{StaticResource CaptionTextBlockStyle}" />
+                            </messages:MessageService>
+                            <messages:MessageBubble x:Name="Message1"
+                                                    HorizontalAlignment="Left" />
+                            <messages:MessageBubble x:Name="Message2"
+                                                    HorizontalAlignment="Right"
+                                                    IsOutgoing="True" />
+                        </StackPanel>
+                    </Grid>
+
+                    <ToggleButton x:Name="HazeToggle"
+                                  Content="Матовість"
+                                  AutomationProperties.Name="Матовість перегляду"
+                                  ToolTipService.ToolTip="Напівпрозора картка налаштувань під переглядом. Без неї перегляд виглядає точно як чат."
+                                  IsChecked="{x:Bind ViewModel.PreviewHaze, Mode=TwoWay}"
+                                  FontSize="12"
+                                  Padding="10,3"
+                                  MinHeight="0"
+                                  Margin="0,8,8,0"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Top" />
+                </Grid>
+            </controls:HeaderedControl>
+        </controls:SettingsPanel>
+
         <ScrollViewer x:Name="ScrollingHost"
                       VerticalScrollBarVisibility="Auto"
-                      VerticalScrollMode="Auto">
-            <controls:SettingsPanel SizeChanged="OnSizeChanged">
+                      VerticalScrollMode="Auto"
+                      Grid.Row="1">
+            <controls:SettingsPanel SizeChanged="OnSizeChanged"
+                                    HasTopPadding="False">
                 <controls:HeaderedControl>
                     <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid x:Name="Preview"
-                              CornerRadius="4,4,0,0">
-                            <chats:ChatBackgroundControl x:Name="BackgroundControl"
-                                                         CornerRadius="4,4,0,0" />
-                            <StackPanel x:Name="Bubbles"
-                                        Padding="0,4,0,12">
-                                <messages:MessageService HorizontalAlignment="Center"
-                                                         Margin="0,8,0,4">
-                                    <TextBlock Text="Сьогодні"
-                                               Foreground="White"
-                                               FontFamily="{ThemeResource EmojiThemeFontFamily}"
-                                               Style="{StaticResource CaptionTextBlockStyle}" />
-                                </messages:MessageService>
-                                <messages:MessageBubble x:Name="Message1"
-                                                        HorizontalAlignment="Left" />
-                                <messages:MessageBubble x:Name="Message2"
-                                                        HorizontalAlignment="Right"
-                                                        IsOutgoing="True" />
-                            </StackPanel>
-                        </Grid>
-
                         <ListView x:Name="List"
                                   ItemsSource="{x:Bind ViewModel.ChatThemes}"
                                   SelectedItem="{x:Bind ViewModel.SelectedChatTheme, Mode=TwoWay}"
@@ -63,8 +91,7 @@
                                   ScrollViewer.HorizontalScrollMode="Auto"
                                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                   ScrollViewer.VerticalScrollMode="Disabled"
-                                  Padding="12,12,0,8"
-                                  Grid.Row="1">
+                                  Padding="12,12,0,8">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <cells:ChatThemeCell Width="87" />
@@ -515,7 +542,7 @@
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Обідок"
-                                          Footer="Лінія по краю скла. Колір «елемента» — це колір бульбашки чи шапки, освітлений; анімація працює на всіх елементах з обідком, тож на слабкій відеокарті краще залишити її вимкненою.">
+                                          Footer="Лінія по краю скла. Колір «елемента» — це колір бульбашки чи шапки, освітлений. Реакція на курсор підсвічує обідок і скло там, де миша. Анімації працюють на всіх елементах з обідком, тож на слабкій відеокарті краще обрати одну неяскраву або вимкнути.">
                     <controls:SettingsButton Content="Стиль обідка"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
@@ -557,6 +584,14 @@
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimAnimationOptions}"
                                                        AutomationProperties.Name="Анімація обідка"
                                                        SelectedIndex="{x:Bind ViewModel.RimAnimationIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Реакція на курсор"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimHoverOptions}"
+                                                       AutomationProperties.Name="Реакція на курсор"
+                                                       SelectedIndex="{x:Bind ViewModel.RimHoverIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <Grid Background="{ThemeResource SettingsItemBackground}"

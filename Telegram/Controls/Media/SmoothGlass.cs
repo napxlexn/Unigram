@@ -19,6 +19,8 @@ using Windows.UI.Composition;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Hosting;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Input;
 
 namespace Telegram.Controls.Media
 {
@@ -58,6 +60,7 @@ namespace Telegram.Controls.Media
             attachment.Token = host.RegisterPropertyChangedCallback(Border.CornerRadiusProperty, attachment.OnCornerRadiusChanged);
 
             ElementCompositionPreview.SetElementChildVisual(host, attachment.Root);
+            attachment.Track(host);
             attachment.Update(host);
         }
 
@@ -68,6 +71,8 @@ namespace Telegram.Controls.Media
                 host.SizeChanged -= attachment.OnSizeChanged;
                 host.UnregisterPropertyChangedCallback(Border.CornerRadiusProperty, attachment.Token);
                 host.Tag = null;
+
+                attachment.Untrack();
 
                 // Released rather than disposed: the compositor may still be drawing it.
                 ElementCompositionPreview.SetElementChildVisual(host, null);
@@ -138,6 +143,21 @@ namespace Telegram.Controls.Media
                 _compositor = compositor;
                 Root = compositor.CreateContainerVisual();
 
+                var appearance = AppSettings.Appearance;
+
+                // What the animations and the pointer drive: how far the pointer is over the
+                // element, where the element sits in what tracks the pointer, the angle of the
+                // circling light, the middle and the reach of the element.
+                _state = compositor.CreatePropertySet();
+                _state.InsertScalar("Hover", 0);
+                _state.InsertVector2("Origin", Vector2.Zero);
+                _state.InsertScalar("Angle", 0);
+                _state.InsertVector2("Center", Vector2.Zero);
+                _state.InsertScalar("Reach", 0);
+
+                _hover = appearance.RimHover;
+                _ease = compositor.CreateCubicBezierEasingFunction(new Vector2(0.37f, 0), new Vector2(0.63f, 1));
+
                 _maskGeometry = compositor.CreatePathGeometry();
 
                 var maskFill = compositor.CreateSpriteShape(_maskGeometry);
@@ -150,7 +170,6 @@ namespace Telegram.Controls.Media
                 _maskSurface.SourceVisual = _maskShape;
                 _mask = compositor.CreateSurfaceBrush(_maskSurface);
 
-                var appearance = AppSettings.Appearance;
                 var layers = new System.Collections.Generic.List<SpriteVisual>();
                 var verticals = new System.Collections.Generic.List<CompositionLinearGradientBrush>();
 
@@ -217,6 +236,25 @@ namespace Telegram.Controls.Media
                     lines.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(alpha, 0, 0, 0)));
 
                     layers.Add(CreateMasked(lines));
+                }
+
+                // A highlight on the glass where the pointer is, faded in while it is over.
+                if (_hover is RimHover.Sheen or RimHover.All)
+                {
+                    var sheen = compositor.CreateRadialGradientBrush();
+                    sheen.MappingMode = CompositionMappingMode.Absolute;
+                    sheen.EllipseRadius = new Vector2(120);
+                    sheen.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(dark ? (byte)0x30 : (byte)0x70, 0xFF, 0xFF, 0xFF)));
+                    sheen.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(0, 0xFF, 0xFF, 0xFF)));
+
+                    FollowPointer(sheen);
+
+                    var layer = CreateMasked(sheen);
+                    var opacity = compositor.CreateExpressionAnimation("s.Hover");
+                    opacity.SetReferenceParameter("s", _state);
+                    layer.StartAnimation("Opacity", opacity);
+
+                    layers.Add(layer);
                 }
 
                 _layers = layers.ToArray();
@@ -347,18 +385,98 @@ namespace Telegram.Controls.Media
 
                 // A glint running along it: the outline again, lit only in a narrow band that
                 // Update slides across.
+                var glint = Scale(Colors.White, Math.Min(1, 0.9 * strength));
+
                 if (appearance.RimAnimation == RimAnimation.Shimmer)
                 {
-                    var glint = Scale(Colors.White, Math.Min(1, 0.9 * strength));
-                    var clear = Scale(glint, 0);
-
+                    // Soft at both sides of the band, so it never shows an edge as it moves.
                     _shimmer = compositor.CreateLinearGradientBrush();
                     _shimmer.MappingMode = CompositionMappingMode.Absolute;
-                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.38f, clear));
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.3f, Scale(glint, 0)));
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.42f, Scale(glint, 0.35)));
                     _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.5f, glint));
-                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.62f, clear));
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.58f, Scale(glint, 0.35)));
+                    _shimmer.ColorStops.Add(compositor.CreateColorGradientStop(0.7f, Scale(glint, 0)));
 
                     Stroke(_shimmer, 1.5f, 0.75f);
+                }
+                else if (appearance.RimAnimation == RimAnimation.Rotate)
+                {
+                    // Lit from one side, the light fading across; the side turns round the middle.
+                    var rotor = compositor.CreateLinearGradientBrush();
+                    rotor.MappingMode = CompositionMappingMode.Absolute;
+                    rotor.ColorStops.Add(compositor.CreateColorGradientStop(0, glint));
+                    rotor.ColorStops.Add(compositor.CreateColorGradientStop(0.2f, Scale(glint, 0.5)));
+                    rotor.ColorStops.Add(compositor.CreateColorGradientStop(0.5f, Scale(glint, 0)));
+
+                    var start = compositor.CreateExpressionAnimation("Vector2(s.Center.X - s.Reach * Cos(s.Angle), s.Center.Y - s.Reach * Sin(s.Angle))");
+                    start.SetReferenceParameter("s", _state);
+                    var end = compositor.CreateExpressionAnimation("Vector2(s.Center.X + s.Reach * Cos(s.Angle), s.Center.Y + s.Reach * Sin(s.Angle))");
+                    end.SetReferenceParameter("s", _state);
+                    rotor.StartAnimation("StartPoint", start);
+                    rotor.StartAnimation("EndPoint", end);
+
+                    var turn = compositor.CreateScalarKeyFrameAnimation();
+                    turn.InsertKeyFrame(0, 0);
+                    turn.InsertKeyFrame(1, MathF.PI * 2, compositor.CreateLinearEasingFunction());
+                    turn.Duration = TimeSpan.FromSeconds(5);
+                    turn.IterationBehavior = AnimationIterationBehavior.Forever;
+                    _state.StartAnimation("Angle", turn);
+
+                    Stroke(rotor, 1.5f, 0.75f);
+                }
+                else if (appearance.RimAnimation == RimAnimation.Rainbow)
+                {
+                    // Corner to corner, each stop going round the colours a step behind the last.
+                    var hues = new[]
+                    {
+                        Color.FromArgb(0xFF, 0xFF, 0x6B, 0x6B), Color.FromArgb(0xFF, 0xFF, 0xC8, 0x5A),
+                        Color.FromArgb(0xFF, 0x7C, 0xF0, 0x6B), Color.FromArgb(0xFF, 0x5A, 0xD0, 0xFF),
+                        Color.FromArgb(0xFF, 0x9A, 0x7C, 0xFF), Color.FromArgb(0xFF, 0xFF, 0x6B, 0xD8)
+                    };
+
+                    var alpha = Math.Min(1, 0.85 * strength);
+
+                    _rainbow = compositor.CreateLinearGradientBrush();
+                    _rainbow.MappingMode = CompositionMappingMode.Absolute;
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var stop = compositor.CreateColorGradientStop(i / 2f, Scale(hues[i * 2], alpha));
+                        var flow = compositor.CreateColorKeyFrameAnimation();
+                        flow.InterpolationColorSpace = CompositionColorSpace.Hsl;
+
+                        for (int j = 0; j <= hues.Length; j++)
+                        {
+                            flow.InsertKeyFrame(j / (float)hues.Length, Scale(hues[(i * 2 + j) % hues.Length], alpha), _ease);
+                        }
+
+                        flow.Duration = TimeSpan.FromSeconds(7);
+                        flow.IterationBehavior = AnimationIterationBehavior.Forever;
+                        stop.StartAnimation("Color", flow);
+
+                        _rainbow.ColorStops.Add(stop);
+                    }
+
+                    Stroke(_rainbow, 1.5f, 0.75f);
+                }
+
+                // The rim lit up around the pointer: a light that grows in as the pointer comes
+                // over the element and shrinks away as it leaves.
+                if (_hover is RimHover.Spotlight or RimHover.All)
+                {
+                    var spot = compositor.CreateRadialGradientBrush();
+                    spot.MappingMode = CompositionMappingMode.Absolute;
+                    spot.ColorStops.Add(compositor.CreateColorGradientStop(0, Scale(top, Math.Max(1, 2.2 / Math.Max(0.1, top.A / 255d)))));
+                    spot.ColorStops.Add(compositor.CreateColorGradientStop(1, Scale(top, 0)));
+
+                    FollowPointer(spot);
+
+                    var radius = compositor.CreateExpressionAnimation("Vector2(1 + 110 * s.Hover, 1 + 110 * s.Hover)");
+                    radius.SetReferenceParameter("s", _state);
+                    spot.StartAnimation("EllipseRadius", radius);
+
+                    Stroke(spot, 2, 1);
                 }
 
                 _rimGeometries = geometries.ToArray();
@@ -367,9 +485,12 @@ namespace Telegram.Controls.Media
 
                 // A rim that glows: the outline again, wider and blurred, light spilling both ways
                 // from the edge.
-                if (style == RimStyle.Glowing || spec.RimGlows)
+                var glows = style == RimStyle.Glowing || spec.RimGlows;
+                var hoverGlow = _hover is RimHover.Glow or RimHover.All;
+
+                if (glows || hoverGlow)
                 {
-                    var glowColor = Scale(spec.RimColor ?? top, spec.RimGlows ? 1.6 : 1.1);
+                    var glowColor = Scale(spec.RimColor ?? top, spec.RimGlows ? 1.6 : hoverGlow && !glows ? 2.2 : 1.1);
 
                     var glowShape = compositor.CreateShapeVisual();
                     var glowGeometry = compositor.CreatePathGeometry();
@@ -403,23 +524,136 @@ namespace Telegram.Controls.Media
                     _rimGlowGeometry = glowGeometry;
 
                     Root.Children.InsertAtTop(_rimGlow);
+
+                    // Under the pointer: a glowing rim at full strength, any other only then.
+                    if (hoverGlow)
+                    {
+                        var opacity = compositor.CreateExpressionAnimation(glows ? "0.55 + 0.45 * s.Hover" : "s.Hover");
+                        opacity.SetReferenceParameter("s", _state);
+                        _rimGlow.StartAnimation("Opacity", opacity);
+                    }
                 }
 
                 Root.Children.InsertAtTop(_rim);
 
-                // Breathing: the rim, and its glow, dim and come back.
-                if (appearance.RimAnimation == RimAnimation.Pulse)
+                // The ones that change the rim's brightness: eased between every step, so that
+                // nothing jumps; the glow follows unless the pointer has it.
+                if (CreateBrightness(compositor, appearance.RimAnimation) is ScalarKeyFrameAnimation brightness)
                 {
-                    var pulse = compositor.CreateScalarKeyFrameAnimation();
-                    pulse.InsertKeyFrame(0, 1);
-                    pulse.InsertKeyFrame(0.5f, 0.3f);
-                    pulse.InsertKeyFrame(1, 1);
-                    pulse.Duration = TimeSpan.FromSeconds(2.6);
-                    pulse.IterationBehavior = AnimationIterationBehavior.Forever;
+                    _rim.StartAnimation("Opacity", brightness);
 
-                    _rim.StartAnimation("Opacity", pulse);
-                    _rimGlow?.StartAnimation("Opacity", pulse);
+                    if (!hoverGlow)
+                    {
+                        _rimGlow?.StartAnimation("Opacity", brightness);
+                    }
                 }
+            }
+
+            private ScalarKeyFrameAnimation CreateBrightness(Compositor compositor, RimAnimation animation)
+            {
+                (float, float)[] frames;
+                double seconds;
+
+                switch (animation)
+                {
+                    case RimAnimation.Pulse:
+                        frames = new[] { (0f, 1f), (0.5f, 0.3f), (1f, 1f) };
+                        seconds = 3.6;
+                        break;
+                    case RimAnimation.Heartbeat:
+                        frames = new[] { (0f, 0.45f), (0.1f, 1f), (0.2f, 0.6f), (0.3f, 1f), (0.5f, 0.45f), (1f, 0.45f) };
+                        seconds = 1.8;
+                        break;
+                    case RimAnimation.Flicker:
+                        frames = new[] { (0f, 0.85f), (0.09f, 1f), (0.17f, 0.7f), (0.29f, 0.95f), (0.41f, 0.78f), (0.55f, 1f), (0.68f, 0.72f), (0.84f, 0.96f), (1f, 0.85f) };
+                        seconds = 3.2;
+                        break;
+                    default:
+                        return null;
+                }
+
+                var brightness = compositor.CreateScalarKeyFrameAnimation();
+
+                foreach (var (progress, value) in frames)
+                {
+                    brightness.InsertKeyFrame(progress, value, _ease);
+                }
+
+                brightness.Duration = TimeSpan.FromSeconds(seconds);
+                brightness.IterationBehavior = AnimationIterationBehavior.Forever;
+                return brightness;
+            }
+
+            /// <summary>
+            /// Centres a gradient on the pointer, as the element sees it.
+            /// </summary>
+            private void FollowPointer(CompositionRadialGradientBrush brush)
+            {
+                _followers.Add(brush);
+            }
+
+            private readonly System.Collections.Generic.List<CompositionRadialGradientBrush> _followers = new();
+
+            private readonly CompositionPropertySet _state;
+            private readonly CompositionEasingFunction _ease;
+            private readonly RimHover _hover;
+            private readonly CompositionLinearGradientBrush _rainbow;
+
+            private UIElement _tracker;
+            private PointerEventHandler _entered;
+            private PointerEventHandler _exited;
+
+            /// <summary>
+            /// Starts following the pointer, for the effects that do: over the element the glass
+            /// is behind - the host itself takes no input.
+            /// </summary>
+            public void Track(Border host)
+            {
+                if (_followers.Count == 0 && _hover is not (RimHover.Glow or RimHover.All))
+                {
+                    return;
+                }
+
+                _tracker = VisualTreeHelper.GetParent(host) as UIElement ?? host;
+
+                var pointer = ElementCompositionPreview.GetPointerPositionPropertySet(_tracker);
+
+                foreach (var brush in _followers)
+                {
+                    var center = _compositor.CreateExpressionAnimation("Vector2(p.Position.X - s.Origin.X, p.Position.Y - s.Origin.Y)");
+                    center.SetReferenceParameter("p", pointer);
+                    center.SetReferenceParameter("s", _state);
+                    brush.StartAnimation("EllipseCenter", center);
+                }
+
+                _entered = (s, e) => AnimateHover(1, 0.25);
+                _exited = (s, e) => AnimateHover(0, 0.6);
+
+                _tracker.AddHandler(UIElement.PointerEnteredEvent, _entered, true);
+                _tracker.AddHandler(UIElement.PointerExitedEvent, _exited, true);
+                _tracker.AddHandler(UIElement.PointerCanceledEvent, _exited, true);
+                _tracker.AddHandler(UIElement.PointerCaptureLostEvent, _exited, true);
+            }
+
+            public void Untrack()
+            {
+                if (_tracker != null)
+                {
+                    _tracker.RemoveHandler(UIElement.PointerEnteredEvent, _entered);
+                    _tracker.RemoveHandler(UIElement.PointerExitedEvent, _exited);
+                    _tracker.RemoveHandler(UIElement.PointerCanceledEvent, _exited);
+                    _tracker.RemoveHandler(UIElement.PointerCaptureLostEvent, _exited);
+                    _tracker = null;
+                }
+            }
+
+            private void AnimateHover(float to, double seconds)
+            {
+                // From wherever it is now: no keyframe at 0.
+                var hover = _compositor.CreateScalarKeyFrameAnimation();
+                hover.InsertKeyFrame(1, to, _ease);
+                hover.Duration = TimeSpan.FromSeconds(seconds);
+                _state.StartAnimation("Hover", hover);
             }
 
             private readonly RimLight _light;
@@ -468,6 +702,29 @@ namespace Telegram.Controls.Media
 
                 var radius = host.CornerRadius;
 
+                _state.InsertVector2("Center", size / 2);
+                _state.InsertScalar("Reach", size.Length() / 2);
+
+                if (_rainbow != null)
+                {
+                    _rainbow.StartPoint = Vector2.Zero;
+                    _rainbow.EndPoint = size;
+                }
+
+                // Where the host sits in the element the pointer is measured against.
+                if (_tracker != null && _tracker != host)
+                {
+                    try
+                    {
+                        var origin = host.TransformToVisual(_tracker).TransformPoint(default);
+                        _state.InsertVector2("Origin", new Vector2((float)origin.X, (float)origin.Y));
+                    }
+                    catch
+                    {
+                        // Not in the same tree for a moment, while it is being taken down.
+                    }
+                }
+
                 _maskGeometry.Path = CreateOutline(Vector2.Zero, size, radius);
                 _maskShape.Size = size;
                 _maskSurface.SourceSize = size;
@@ -515,9 +772,9 @@ namespace Telegram.Controls.Media
                     {
                         var run = _compositor.CreateVector2KeyFrameAnimation();
                         run.InsertKeyFrame(0, from - size);
-                        run.InsertKeyFrame(0.6f, from + size);
+                        run.InsertKeyFrame(0.65f, from + size, _ease);
                         run.InsertKeyFrame(1, from + size);
-                        run.Duration = TimeSpan.FromSeconds(3.2);
+                        run.Duration = TimeSpan.FromSeconds(4.2);
                         run.IterationBehavior = AnimationIterationBehavior.Forever;
                         return run;
                     }

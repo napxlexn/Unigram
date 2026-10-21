@@ -187,6 +187,7 @@ namespace Telegram.Views.Settings
                 or nameof(ViewModel.RimCustomBrush)
                 or nameof(ViewModel.RimLightIndex)
                 or nameof(ViewModel.RimAnimationIndex)
+                or nameof(ViewModel.RimHoverIndex)
                 or nameof(ViewModel.RimWidth)
                 or nameof(ViewModel.RimOnBubbles)
                 or nameof(ViewModel.RimOnReactions)

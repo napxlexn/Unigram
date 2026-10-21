@@ -714,6 +714,27 @@ namespace Telegram.ViewModels.Settings
             set => SetRimOption(RimAnimationOptions, value, AppSettings.Appearance.RimAnimation, x => AppSettings.Appearance.RimAnimation = x);
         }
 
+        public bool PreviewHaze
+        {
+            get => AppSettings.Appearance.PreviewHaze;
+            set
+            {
+                if (AppSettings.Appearance.PreviewHaze != value)
+                {
+                    AppSettings.Appearance.PreviewHaze = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public List<SettingsOptionItem<RimHover>> RimHoverOptions { get; } = Glass.RimHoverOptions;
+
+        public int RimHoverIndex
+        {
+            get => Math.Max(0, RimHoverOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimHover));
+            set => SetRimOption(RimHoverOptions, value, AppSettings.Appearance.RimHover, x => AppSettings.Appearance.RimHover = x);
+        }
+
         private bool SetRimOption<T>(List<SettingsOptionItem<T>> options, int value, T current, Action<T> set, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
         {
             if (value >= 0 && value < options.Count && !EqualityComparer<T>.Default.Equals(current, options[value].Value))
