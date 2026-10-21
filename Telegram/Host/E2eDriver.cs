@@ -256,6 +256,22 @@ namespace Telegram.Host
                         return "ok " + slider.Value;
                     }
 
+                case "value":
+                    {
+                        // Every slider of that name, in tree order: "value Шапки" reads them all.
+                        var name = line.Substring(line.IndexOf(' ') + 1);
+                        var found = new List<string>();
+                        Walk(root, element =>
+                        {
+                            if (element is Slider slider && AutomationProperties.GetName(element) == name)
+                            {
+                                found.Add(slider.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                            }
+                            return false;
+                        });
+                        return found.Count == 0 ? "none" : string.Join(",", found);
+                    }
+
                 case "combo":
                     {
                         var combo = Find<ComboBox>(root, parts[2]);
