@@ -221,6 +221,20 @@ namespace Telegram.Host
                         return (ok ? "ok " : "refused ") + (navigation.Content?.GetType().Name ?? "null");
                     }
 
+                case "chat-noread":
+                    {
+                        // What the chat list's "open without reading" does.
+                        if (navigation is not TLNavigationService noread)
+                        {
+                            return "error: no chat navigation";
+                        }
+
+                        var id = long.Parse(parts[1]);
+                        noread.ClientService.OpenWithoutReading(id);
+                        noread.NavigateToChat(id, force: true);
+                        return "ok " + id;
+                    }
+
                 case "chat":
                     if (navigation is not TLNavigationService service)
                     {
