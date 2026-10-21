@@ -854,8 +854,8 @@ namespace Telegram.Services.Settings
         private static int? _inputFadeHeight;
         public int InputFadeHeight
         {
-            get => _inputFadeHeight ??= Math.Clamp(GetValueOrDefault("InputFadeHeight", 96), 16, 160);
-            set => AddOrUpdateValue(ref _inputFadeHeight, "InputFadeHeight", Math.Clamp(value, 16, 160));
+            get => _inputFadeHeight ??= Math.Clamp(GetValueOrDefault("InputFadeHeight", 24), 0, 160);
+            set => AddOrUpdateValue(ref _inputFadeHeight, "InputFadeHeight", Math.Clamp(value, 0, 160));
         }
 
         // The composer's own fill under glass, percent: how much it stands out from the glass.

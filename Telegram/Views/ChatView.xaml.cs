@@ -1173,7 +1173,7 @@ namespace Telegram.Views
                         var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
                         var solid = Math.Max(1, Footer.ActualHeight + Footer.Margin.Bottom);
                         var fade = AppSettings.Appearance.InputFadeHeight;
-                        var total = solid + fade;
+                        var total = solid + Math.Max(fade, 1);
 
                         TextGlass.CornerRadius = TextRoot.CornerRadius;
                         TextGlass.Visibility = Visibility.Visible;
