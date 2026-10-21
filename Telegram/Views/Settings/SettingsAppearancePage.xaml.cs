@@ -77,7 +77,6 @@ namespace Telegram.Views.Settings
                 Message2.Mockup(Strings.FontSizePreviewLine2, true, DateTime.Now);
             }
 
-            InitializePlayground();
         }
 
         #region Custom colours
@@ -98,7 +97,7 @@ namespace Telegram.Views.Settings
                 IsHexInputVisible = true
             };
 
-            // Live, as the picker is dragged: the playground above and any open chat follow.
+            // Live, as the picker is dragged: the preview above and any open chat follow.
             picker.ColorChanged += (s, args) => ViewModel.SetCustomColor(name, args.NewColor);
 
             var flyout = new Flyout { Content = picker };
@@ -107,67 +106,17 @@ namespace Telegram.Views.Settings
 
         #endregion
 
-        #region Playground
-
-        private MessageBubbleBackgroundCoordinator _playgroundBackground;
-
-        private void InitializePlayground()
-        {
-            PlaygroundBackground.Update(ViewModel.ClientService, ViewModel.Aggregator);
-
-            _playgroundBackground ??= new MessageBubbleBackgroundCoordinator(PlaygroundBubbles, ViewModel.Window);
-            _playgroundBackground.Attach(PlaygroundOutgoing);
-            _playgroundBackground.Attach(PlaygroundOutgoing2);
-
-            PlaygroundIncoming.Mockup("Як тобі нове скло? Бульбашки тепер просвічують шпалери ✨", false, DateTime.Now.AddMinutes(-3));
-            PlaygroundOutgoing.Mockup("Виглядає чудово! Ще трохи сяйва — і буде ідеально 😍", true, DateTime.Now.AddMinutes(-2));
-            PlaygroundIncoming2.Mockup("Прокрути вгору: повідомлення плавно заходять під шапку 👆", false, DateTime.Now.AddMinutes(-1));
-            PlaygroundOutgoing2.Mockup("А дати й реакції теж можна зробити скляними 🫧", true, DateTime.Now.AddSeconds(-40));
-            PlaygroundIncoming3.Mockup("Спробуй «Рідке скло» або «Лампове сяйво» нижче 👇", false, DateTime.Now);
-
-            UpdatePlaygroundHeader();
-
-            // Opened scrolled to the end, as a chat is, so the first messages already sit under
-            // the header and show what it does to them.
-            PlaygroundScroll.Loaded += (s, args) => PlaygroundScroll.ChangeView(null, PlaygroundScroll.ScrollableHeight, null, true);
-        }
-
-        private void UpdatePlaygroundHeader()
-        {
-            var style = AppSettings.Appearance.HeaderStyle;
-            var original = style == HeaderStyle.Original;
-
-            PlaygroundHeaderOriginal.Visibility = original ? Visibility.Visible : Visibility.Collapsed;
-            PlaygroundHeaderGlass.Visibility = original ? Visibility.Collapsed : Visibility.Visible;
-
-            if (!original)
-            {
-                MasterDetailView.ApplyHeaderStyle(PlaygroundHeaderGlass, style, AppSettings.Appearance.HeaderGlass, ActualTheme, null, default, 48);
-            }
-
-            // The same sizes the real header shows its title at once a page is scrolled; inside
-            // the capsule it sits a little further in.
-            PlaygroundTitle.FontSize = original ? 14 : 18;
-            PlaygroundTitle.Margin = style == HeaderStyle.Capsule ? new Thickness(28, 16, 16, 0) : new Thickness(16, 12, 16, 0);
-        }
-
         /// <summary>
         /// The colours change with the theme pass the setting triggers, which runs after this
         /// returns; the fills that are not a colour are re-read once it has.
         /// </summary>
-        private async void RefreshPlayground()
+        private async void RefreshPreview()
         {
             await Task.Delay(250);
 
-            foreach (var bubble in new[] { Message1, Message2, PlaygroundIncoming, PlaygroundOutgoing, PlaygroundIncoming2, PlaygroundOutgoing2, PlaygroundIncoming3 })
-            {
-                bubble.RefreshStyle();
-            }
-
-            UpdatePlaygroundHeader();
+            Message1.RefreshStyle();
+            Message2.RefreshStyle();
         }
-
-        #endregion
 
         private MessageBubbleBackgroundCoordinator _background;
 
@@ -215,11 +164,6 @@ namespace Telegram.Views.Settings
             {
                 Message1.UpdateMockup(false, true, true);
                 Message2.UpdateMockup(true, true, true);
-                PlaygroundIncoming.UpdateMockup(false, true, true);
-                PlaygroundOutgoing.UpdateMockup(true, true, true);
-                PlaygroundIncoming2.UpdateMockup(false, true, true);
-                PlaygroundOutgoing2.UpdateMockup(true, true, true);
-                PlaygroundIncoming3.UpdateMockup(false, true, true);
             }
             else if (e.PropertyName is nameof(ViewModel.BubbleGlassIndex)
                 or nameof(ViewModel.BubbleOpacity)
@@ -237,7 +181,7 @@ namespace Telegram.Views.Settings
                 or nameof(ViewModel.BackgroundOpacity)
                 or nameof(ViewModel.WindowMaterialIndex))
             {
-                RefreshPlayground();
+                RefreshPreview();
             }
         }
 

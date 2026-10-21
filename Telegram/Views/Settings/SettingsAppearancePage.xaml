@@ -36,6 +36,13 @@
                                                          CornerRadius="4,4,0,0" />
                             <StackPanel x:Name="Bubbles"
                                         Padding="0,4,0,12">
+                                <messages:MessageService HorizontalAlignment="Center"
+                                                         Margin="0,8,0,4">
+                                    <TextBlock Text="Сьогодні"
+                                               Foreground="White"
+                                               FontFamily="{ThemeResource EmojiThemeFontFamily}"
+                                               Style="{StaticResource CaptionTextBlockStyle}" />
+                                </messages:MessageService>
                                 <messages:MessageBubble x:Name="Message1"
                                                         HorizontalAlignment="Left" />
                                 <messages:MessageBubble x:Name="Message2"
@@ -104,6 +111,141 @@
                                              IsChevronVisible="True">
                         <controls:SettingsButton.Badge>
                             <controls:ProfileColorBadge x:Name="ProfileColor" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                </controls:HeaderedControl>
+
+                <controls:HeaderedControl Header="Повідомлення"
+                                          Footer="Попередній перегляд угорі змінюється разом із цими налаштуваннями. У відкритих чатах скло й сяйво з'являються, щойно повідомлення перемальовуються: прокрутіть або знову відкрийте чат.">
+
+                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.UseCustomMessageColors, Mode=TwoWay}"
+                              AutomationProperties.Name="Власні кольори"
+                              Content="Власні кольори повідомлень (замість кольорів теми)"
+                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                    <controls:SettingsButton Content="Вхідні бульбашки"
+                                             Tag="CustomIncomingColor"
+                                             Click="CustomColor_Click"
+                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
+                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                    Background="{x:Bind ViewModel.CustomIncomingBrush, Mode=OneWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Вихідні бульбашки"
+                                             Tag="CustomOutgoingColor"
+                                             Click="CustomColor_Click"
+                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
+                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                    Background="{x:Bind ViewModel.CustomOutgoingBrush, Mode=OneWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Текст вхідних"
+                                             Tag="CustomIncomingTextColor"
+                                             Click="CustomColor_Click"
+                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
+                                             Glyph="&#xE9EB;">
+                        <controls:SettingsButton.Badge>
+                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
+                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                    Background="{x:Bind ViewModel.CustomIncomingTextBrush, Mode=OneWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Текст вихідних"
+                                             Tag="CustomOutgoingTextColor"
+                                             Click="CustomColor_Click"
+                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
+                                             Glyph="&#xE9EB;">
+                        <controls:SettingsButton.Badge>
+                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
+                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                    Background="{x:Bind ViewModel.CustomOutgoingTextBrush, Mode=OneWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Капсули реакцій (колір)"
+                                             Tag="CustomReactionColor"
+                                             Click="CustomColor_Click"
+                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
+                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
+                                    Background="{x:Bind ViewModel.CustomReactionBrush, Mode=OneWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+
+                    <controls:SettingsButton Content="Бульбашки"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Бульбашки"
+                                                       SelectedIndex="{x:Bind ViewModel.BubbleGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xE9E8;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Непрозорість бульбашок', ViewModel.BubbleOpacity), Mode=OneWay}"
+                                   Opacity="{x:Bind ConvertEnabledOpacity(ViewModel.IsBubbleGlass), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.BubbleOpacity, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsBubbleGlass, Mode=OneWay}"
+                                AutomationProperties.Name="Непрозорість бульбашок"
+                                Minimum="20"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
+                    <controls:SettingsButton Content="Капсули реакцій"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Капсули реакцій"
+                                                       SelectedIndex="{x:Bind ViewModel.ReactionGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Дати й сервісні повідомлення"
+                                             Glyph="&#xE9E8;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
+                                                       AutomationProperties.Name="Сервісні капсули"
+                                                       SelectedIndex="{x:Bind ViewModel.ServiceGlassIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Текст у повідомленнях"
+                                             Glyph="&#xE9EB;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.MessageTextStyleOptions}"
+                                                       AutomationProperties.Name="Текст у повідомленнях"
+                                                       SelectedIndex="{x:Bind ViewModel.MessageTextStyleIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                 </controls:HeaderedControl>
@@ -524,256 +666,6 @@
                                 Grid.Column="2" />
                     </Grid>                </controls:HeaderedControl>
 
-                <controls:HeaderedControl Header="Майданчик"
-                                          Footer="Живий приклад: шпалери, бульбашки, реакції, дати й шапка змінюються разом із налаштуваннями нижче. Прокрутіть його, щоб побачити, як повідомлення заходять під шапку.">
-                    <Grid x:Name="Playground"
-                          AutomationProperties.Name="Майданчик"
-                          Height="320"
-                          CornerRadius="4">
-                        <chats:ChatBackgroundControl x:Name="PlaygroundBackground"
-                                                     CornerRadius="4" />
-
-                        <ScrollViewer x:Name="PlaygroundScroll"
-                                      VerticalScrollBarVisibility="Hidden"
-                                      VerticalScrollMode="Enabled"
-                                      HorizontalScrollMode="Disabled">
-                            <StackPanel x:Name="PlaygroundBubbles"
-                                        Padding="0,64,0,16"
-                                        Spacing="6">
-                                <messages:MessageService HorizontalAlignment="Center">
-                                    <TextBlock Text="Сьогодні"
-                                               Foreground="White"
-                                               FontFamily="{ThemeResource EmojiThemeFontFamily}"
-                                               Style="{StaticResource CaptionTextBlockStyle}" />
-                                </messages:MessageService>
-
-                                <messages:MessageBubble x:Name="PlaygroundIncoming"
-                                                        HorizontalAlignment="Left" />
-
-                                <!-- The capsules a message's reactions are drawn in, painted with
-                                     the same brushes, so they change with the reaction style. -->
-                                <StackPanel Orientation="Horizontal"
-                                            Spacing="4"
-                                            Margin="58,0,0,0">
-                                    <Grid MinWidth="44"
-                                          Height="28"
-                                          Padding="8,0"
-                                          CornerRadius="14"
-                                          Background="{ThemeResource MessageReactionChosenBackgroundBrush}">
-                                        <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="14"
-                                                Margin="-8,0" />
-                                        <TextBlock Text="❤ 24"
-                                                   VerticalAlignment="Center"
-                                                   FontFamily="{ThemeResource EmojiThemeFontFamily}"
-                                                   Foreground="{ThemeResource MessageReactionChosenForegroundBrush}"
-                                                   Style="{StaticResource CaptionTextBlockStyle}" />
-                                    </Grid>
-                                    <Grid MinWidth="44"
-                                          Height="28"
-                                          Padding="8,0"
-                                          CornerRadius="14"
-                                          Background="{ThemeResource MessageReactionBackgroundBrush}">
-                                        <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="14"
-                                                Margin="-8,0" />
-                                        <TextBlock Text="🔥 7"
-                                                   VerticalAlignment="Center"
-                                                   FontFamily="{ThemeResource EmojiThemeFontFamily}"
-                                                   Foreground="{ThemeResource MessageReactionForegroundBrush}"
-                                                   Style="{StaticResource CaptionTextBlockStyle}" />
-                                    </Grid>
-                                </StackPanel>
-
-                                <messages:MessageBubble x:Name="PlaygroundOutgoing"
-                                                        HorizontalAlignment="Right"
-                                                        IsOutgoing="True" />
-
-                                <messages:MessageService HorizontalAlignment="Center">
-                                    <TextBlock Text="Олена приєдналася до групи"
-                                               Foreground="White"
-                                               FontFamily="{ThemeResource EmojiThemeFontFamily}"
-                                               Style="{StaticResource CaptionTextBlockStyle}" />
-                                </messages:MessageService>
-
-                                <messages:MessageBubble x:Name="PlaygroundIncoming2"
-                                                        HorizontalAlignment="Left" />
-
-                                <messages:MessageBubble x:Name="PlaygroundOutgoing2"
-                                                        HorizontalAlignment="Right"
-                                                        IsOutgoing="True" />
-
-                                <messages:MessageBubble x:Name="PlaygroundIncoming3"
-                                                        HorizontalAlignment="Left" />
-                            </StackPanel>
-                        </ScrollViewer>
-
-                        <!-- The header the pages scroll under, in both of its forms. -->
-                        <Border x:Name="PlaygroundHeaderOriginal"
-                                Height="48"
-                                VerticalAlignment="Top"
-                                Background="{ThemeResource PageSubHeaderBackgroundBrush2}"
-                                BorderBrush="{ThemeResource NavigationViewContentGridBorderBrush}"
-                                BorderThickness="0,0,0,1"
-                                IsHitTestVisible="False" />
-                        <Border x:Name="PlaygroundHeaderGlass"
-                                Height="72"
-                                VerticalAlignment="Top"
-                                IsHitTestVisible="False" />
-                        <TextBlock x:Name="PlaygroundTitle"
-                                   Text="Олена"
-                                   FontFamily="{ThemeResource EmojiThemeFontFamily}"
-                                   FontWeight="SemiBold"
-                                   Margin="16,12,16,0"
-                                   VerticalAlignment="Top"
-                                   IsHitTestVisible="False" />
-                    </Grid>
-                </controls:HeaderedControl>
-
-                <controls:HeaderedControl Header="Повідомлення"
-                                          Footer="Кольори змінюються одразу. Матове скло й сяйво бульбашок з'являються на повідомленнях, щойно вони перемальовуються: прокрутіть або знову відкрийте чат.">
-                    <controls:SettingsButton Content="{CustomResource ChatThemes}"
-                                             Click="{x:Bind ViewModel.OpenThemes}"
-                                             Glyph="&#xE90E;"
-                                             IsChevronVisible="True" />
-                    <controls:SettingsButton Content="{CustomResource ChatWallpaper}"
-                                             Click="{x:Bind ViewModel.OpenWallpaper}"
-                                             Glyph="&#xE9E7;"
-                                             IsChevronVisible="True" />
-
-                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.UseCustomMessageColors, Mode=TwoWay}"
-                              AutomationProperties.Name="Власні кольори"
-                              Content="Власні кольори повідомлень (замість кольорів теми)"
-                              Style="{StaticResource SettingsCheckBoxStyle}" />
-                    <controls:SettingsButton Content="Вхідні бульбашки"
-                                             Tag="CustomIncomingColor"
-                                             Click="CustomColor_Click"
-                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
-                        <controls:SettingsButton.Badge>
-                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
-                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
-                                    Background="{x:Bind ViewModel.CustomIncomingBrush, Mode=OneWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <controls:SettingsButton Content="Вихідні бульбашки"
-                                             Tag="CustomOutgoingColor"
-                                             Click="CustomColor_Click"
-                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
-                        <controls:SettingsButton.Badge>
-                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
-                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
-                                    Background="{x:Bind ViewModel.CustomOutgoingBrush, Mode=OneWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <controls:SettingsButton Content="Текст вхідних"
-                                             Tag="CustomIncomingTextColor"
-                                             Click="CustomColor_Click"
-                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9EB;">
-                        <controls:SettingsButton.Badge>
-                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
-                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
-                                    Background="{x:Bind ViewModel.CustomIncomingTextBrush, Mode=OneWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <controls:SettingsButton Content="Текст вихідних"
-                                             Tag="CustomOutgoingTextColor"
-                                             Click="CustomColor_Click"
-                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9EB;">
-                        <controls:SettingsButton.Badge>
-                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
-                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
-                                    Background="{x:Bind ViewModel.CustomOutgoingTextBrush, Mode=OneWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <controls:SettingsButton Content="Капсули реакцій (колір)"
-                                             Tag="CustomReactionColor"
-                                             Click="CustomColor_Click"
-                                             IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
-                        <controls:SettingsButton.Badge>
-                            <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
-                                    BorderBrush="{ThemeResource SettingsItemBorderBrush}"
-                                    Background="{x:Bind ViewModel.CustomReactionBrush, Mode=OneWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-
-                    <controls:SettingsButton Content="Бульбашки"
-                                             Glyph="&#xE9E8;">
-                        <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
-                                                       AutomationProperties.Name="Бульбашки"
-                                                       SelectedIndex="{x:Bind ViewModel.BubbleGlassIndex, Mode=TwoWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <Grid Background="{ThemeResource SettingsItemBackground}"
-                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="58" />
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="208" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="46" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Border Width="24"
-                                Height="24"
-                                Margin="16,0,18,0">
-                            <TextBlock FontSize="25"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
-                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
-                        </Border>
-
-                        <TextBlock Text="{x:Bind ConvertPercent('Непрозорість бульбашок', ViewModel.BubbleOpacity), Mode=OneWay}"
-                                   Opacity="{x:Bind ConvertEnabledOpacity(ViewModel.IsBubbleGlass), Mode=OneWay}"
-                                   VerticalAlignment="Center"
-                                   Grid.Column="1" />
-                        <Slider Value="{x:Bind ViewModel.BubbleOpacity, Mode=TwoWay}"
-                                IsEnabled="{x:Bind ViewModel.IsBubbleGlass, Mode=OneWay}"
-                                AutomationProperties.Name="Непрозорість бульбашок"
-                                Minimum="20"
-                                Maximum="100"
-                                SmallChange="5"
-                                LargeChange="10"
-                                StepFrequency="5"
-                                IsThumbToolTipEnabled="False"
-                                Margin="12,6,16,6"
-                                Grid.Column="2" />
-                    </Grid>
-                    <controls:SettingsButton Content="Капсули реакцій"
-                                             Glyph="&#xE9E8;">
-                        <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
-                                                       AutomationProperties.Name="Капсули реакцій"
-                                                       SelectedIndex="{x:Bind ViewModel.ReactionGlassIndex, Mode=TwoWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <controls:SettingsButton Content="Дати й сервісні повідомлення"
-                                             Glyph="&#xE9E8;">
-                        <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
-                                                       AutomationProperties.Name="Сервісні капсули"
-                                                       SelectedIndex="{x:Bind ViewModel.ServiceGlassIndex, Mode=TwoWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                    <controls:SettingsButton Content="Текст у повідомленнях"
-                                             Glyph="&#xE9EB;">
-                        <controls:SettingsButton.Badge>
-                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.MessageTextStyleOptions}"
-                                                       AutomationProperties.Name="Текст у повідомленнях"
-                                                       SelectedIndex="{x:Bind ViewModel.MessageTextStyleIndex, Mode=TwoWay}" />
-                        </controls:SettingsButton.Badge>
-                    </controls:SettingsButton>
-                </controls:HeaderedControl>
 
                 <controls:HeaderedControl Footer="{CustomResource StickersNameInfo}">
                     <controls:SettingsButton Content="{CustomResource StickersName}"
