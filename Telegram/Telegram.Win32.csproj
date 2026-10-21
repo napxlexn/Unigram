@@ -259,7 +259,16 @@
     <Win32PackageDisplayName Condition="'$(Win32Identity)' == 'Registered'">Unigram Win32</Win32PackageDisplayName>
     <Win32PackageIdentity Condition="'$(Win32Identity)' == 'Bundle'">38833FF26BA1D.UnigramWin32Bundle</Win32PackageIdentity>
     <Win32PackageDisplayName Condition="'$(Win32Identity)' == 'Bundle'">Unigram Win32 (Bundle)</Win32PackageDisplayName>
-    <Win32AppxManifest>$(BaseIntermediateOutputPath)Package.Win32.appxmanifest</Win32AppxManifest>
+    <!-- Primary is the fork as the app actually used, in place of the shipping Unigram or Telegram
+         Desktop: its own identity again, so it installs beside them while they are being retired,
+         but under the plain name and with every claim the others make on the shell - see
+         Win32ClaimsShell. Import-UnigramData.ps1 moves the accounts across. -->
+    <Win32PackageIdentity Condition="'$(Win32Identity)' == 'Primary'">38833FF26BA1D.UnigramPrimary</Win32PackageIdentity>
+    <Win32PackageDisplayName Condition="'$(Win32Identity)' == 'Primary'">Unigram</Win32PackageDisplayName>
+    <Win32ClaimsShell Condition="'$(Win32Identity)' == 'Primary'">true</Win32ClaimsShell>
+    <!-- Per identity, because the target below is incremental on its inputs and the identity is not
+         one of them: switching identities would otherwise keep the previous one's manifest. -->
+    <Win32AppxManifest>$(BaseIntermediateOutputPath)Package.Win32.$(Win32Identity).appxmanifest</Win32AppxManifest>
     <!-- The one key in the repository, shared by every project that packages the app. -->
     <PackageCertificateKeyFile>..\Telegram_TemporaryKey.pfx</PackageCertificateKeyFile>
     <Win32ManifestNamespaces>&lt;Namespace Prefix='f' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;&lt;Namespace Prefix='uap5' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10/5' /&gt;&lt;Namespace Prefix='rescap' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities' /&gt;</Win32ManifestNamespaces>
@@ -267,7 +276,7 @@
 
   <Target Name="PatchWin32AppxManifest"
           BeforeTargets="PrepareForBuild"
-          Inputs="Package.appxmanifest;$(MSBuildThisFileFullPath)"
+          Inputs="Package.appxmanifest;Package.Win32.xslt;$(MSBuildThisFileFullPath)"
           Outputs="$(Win32AppxManifest)">
     <PropertyGroup>
       <_Win32ManifestFull>$([System.IO.Path]::GetFullPath('$(Win32AppxManifest)'))</_Win32ManifestFull>
@@ -303,14 +312,18 @@
          compete for anything the shell dispatches. XmlPoke cannot delete nodes, so the claims are
          renamed out of the way instead: a tg: link, a typed Telegram.exe or a .unigram-theme file
          still reach the shipping app. The share target survives as one extra entry in the sheet,
-         which is harmless and cannot be renamed away. -->
-    <XmlPoke XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
+         which is harmless and cannot be renamed away.
+
+         Except for the Primary identity, which is meant to take those over: it keeps the claims as
+         the shipping manifest has them, and Windows then offers it for tg: links beside the others
+         (Settings > Apps > Default apps decides). -->
+    <XmlPoke Condition="'$(Win32ClaimsShell)' != 'true'" XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
              Query="/f:Package/f:Applications/f:Application/f:Extensions/uap:Extension/uap:Protocol[@Name='tg']/@Name" Value="tg-win32" />
-    <XmlPoke XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
+    <XmlPoke Condition="'$(Win32ClaimsShell)' != 'true'" XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
              Query="/f:Package/f:Applications/f:Application/f:Extensions/uap:Extension/uap:Protocol[@Name='tonsite']/@Name" Value="tonsite-win32" />
-    <XmlPoke XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
+    <XmlPoke Condition="'$(Win32ClaimsShell)' != 'true'" XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
              Query="/f:Package/f:Applications/f:Application/f:Extensions/uap5:Extension/uap5:AppExecutionAlias/uap5:ExecutionAlias/@Alias" Value="TelegramWin32.exe" />
-    <XmlPoke XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
+    <XmlPoke Condition="'$(Win32ClaimsShell)' != 'true'" XmlInputPath="$(Win32AppxManifest)" Namespaces="$(Win32ManifestNamespaces)"
              Query="/f:Package/f:Applications/f:Application/f:Extensions/uap:Extension/uap:FileTypeAssociation/uap:SupportedFileTypes/uap:FileType" Value=".unigram-theme-win32" />
 
   </Target>
