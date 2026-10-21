@@ -541,11 +541,19 @@
                 Grid.ColumnSpan="2"
                 Canvas.ZIndex="2" />
 
+        <!-- The floating glass capsule of the capsule header style; collapsed otherwise. -->
+        <Border x:Name="HeaderCapsule"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"
+                Grid.ColumnSpan="2"
+                Canvas.ZIndex="2" />
+
         <Grid x:Name="Header"
               Height="{StaticResource NavigationViewTopPaneHeight}"
               Grid.ColumnSpan="2"
               Canvas.ZIndex="3">
-            <Border BorderBrush="{ThemeResource NavigationViewContentGridBorderBrush}"
+            <Border x:Name="HeaderSeparator"
+                    BorderBrush="{ThemeResource NavigationViewContentGridBorderBrush}"
                     BorderThickness="0,0,0,1" />
             <Grid x:Name="HeaderLeft"
                   HorizontalAlignment="Left"
@@ -1190,6 +1198,16 @@
                     </Grid>
                 </Grid>
             </Grid>
+
+            <!-- The glass behind the header and the bars under it, for the glass header styles.
+                 Not inside ClipperOuter: that panel animates, which renders it as a layer of its
+                 own, and a blur inside a layer sees nothing of the messages behind it. -->
+            <Border x:Name="HeaderGlass"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False"
+                    VerticalAlignment="Top"
+                    Canvas.ZIndex="1"
+                    Grid.Row="2" />
 
             <Border x:Name="LinearCaster"
                     IsHitTestVisible="False"

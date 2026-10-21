@@ -67,14 +67,42 @@ namespace Telegram.Services.Settings
 
     /// <summary>
     /// Message bubbles. Glass is the theme colour made translucent; Frosted also blurs what is
-    /// behind the bubble; Glow is Glass with a soft light rim.
+    /// behind the bubble; Glow is glass whose content softly glows, as phosphor on an old tube
+    /// monitor; Liquid is frosted glass with light caught along its top; Terminal is the glow
+    /// with the faint scanlines of a CRT. Stored as numbers, so new ones go last.
     /// </summary>
     public enum BubbleStyle
     {
         Original,
         Glass,
         Frosted,
-        Glow
+        Glow,
+        Liquid,
+        Terminal
+    }
+
+    /// <summary>
+    /// The chat's own header - the title bar over the messages, with the pinned message and
+    /// the other bars under it. The glass ones let the messages scroll beneath and blur them.
+    /// </summary>
+    public enum ChatHeaderStyle
+    {
+        Original,
+        Glass,
+        FadingGlass,
+        Capsule
+    }
+
+    /// <summary>
+    /// The hairlines between parts of the interface. Dark and light are told apart by the
+    /// line's own colour, whatever the theme.
+    /// </summary>
+    public enum SeparatorMode
+    {
+        Original,
+        HideAll,
+        HideDark,
+        DarkToLight
     }
 
     public enum HeaderStyle
@@ -554,13 +582,23 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _headerStyle, "HeaderStyle", (int)value);
         }
 
-        // Experimental: the hairlines between the folders rail, the chat list, the detail pane
-        // and the headers go clear. A candidate for the default if it holds up.
-        private static bool? _hideSeparators;
-        public bool HideSeparators
+        // The chat header: the original translucent bar, glass the messages scroll under, glass
+        // that fades out downwards, or a floating glass capsule.
+        private static int? _chatHeaderStyle;
+        public ChatHeaderStyle ChatHeaderStyle
         {
-            get => _hideSeparators ??= GetValueOrDefault("HideSeparators", false);
-            set => AddOrUpdateValue(ref _hideSeparators, "HideSeparators", value);
+            get => (ChatHeaderStyle)(_chatHeaderStyle ??= GetValueOrDefault("ChatHeaderStyle", (int)ChatHeaderStyle.Original));
+            set => AddOrUpdateValue(ref _chatHeaderStyle, "ChatHeaderStyle", (int)value);
+        }
+
+        // What happens to the hairlines between parts of the interface. The earlier on/off
+        // switch carries over as hiding them all.
+        private static int? _separatorMode;
+        public SeparatorMode SeparatorMode
+        {
+            get => (SeparatorMode)(_separatorMode ??= GetValueOrDefault("SeparatorMode",
+                (int)(GetValueOrDefault("HideSeparators", false) ? SeparatorMode.HideAll : SeparatorMode.Original)));
+            set => AddOrUpdateValue(ref _separatorMode, "SeparatorMode", (int)value);
         }
 
         // Off draws no wallpaper at all, whatever its opacity: the chat sits on the same glass as

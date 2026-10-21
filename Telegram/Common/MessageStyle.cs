@@ -23,9 +23,10 @@ namespace Telegram.Common
     /// Most of it rides on the per-direction message brushes, which <see cref="MessageBrushes"/>
     /// recolours in place on every theme pass: <see cref="Adjust"/> is applied there, so a
     /// change shows on every visible bubble at once. What a colour cannot express - the blur
-    /// under a frosted bubble, the rim of a glowing one - is handed to the bubble by
-    /// <see cref="GetFrostedBrush"/> and <see cref="GetGlowBrush"/> and picked up as bubbles are
-    /// realized, which is when the chat is opened or scrolled.
+    /// under a frosted bubble, the rim of a liquid one, the glow of a lamp one - is handed to
+    /// the bubble by <see cref="GetFrostedBrush"/>, <see cref="GetLiquidRimBrush"/> and
+    /// <see cref="ContentGlow"/> and picked up as bubbles are realized, which is when the chat
+    /// is opened or scrolled.
     /// </summary>
     public static class MessageStyle
     {
@@ -84,10 +85,9 @@ namespace Telegram.Common
                     break;
 
                 case "MessageReactionBorderBrush":
-                    // A light rim on dark, a faint dark one on light; nothing unless glowing.
-                    color = appearance.ReactionStyle == ReactionStyle.Glow
-                        ? dark ? Color.FromArgb(0x60, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x30, 0x00, 0x00, 0x00)
-                        : Color.FromArgb(0, 0, 0, 0);
+                    // No hard rim on any style: the glowing one lights the capsule from inside
+                    // instead (MessageReactionGlowBrush, see ApplyReactionGlow).
+                    color = Color.FromArgb(0, 0, 0, 0);
                     break;
 
                 case "MessageForegroundBrush" when appearance.MessageTextStyle == MessageTextStyle.Brighter:
@@ -113,9 +113,16 @@ namespace Telegram.Common
         private static readonly Dictionary<Color, Brush> _frosted = new();
         private static readonly Dictionary<bool, Brush> _glow = new();
 
-        public static bool IsFrosted => AppSettings.Appearance.BubbleStyle == BubbleStyle.Frosted;
+        public static bool IsFrosted => AppSettings.Appearance.BubbleStyle is BubbleStyle.Frosted or BubbleStyle.Liquid;
 
-        public static bool IsGlowing => AppSettings.Appearance.BubbleStyle == BubbleStyle.Glow;
+        public static bool IsLiquid => AppSettings.Appearance.BubbleStyle == BubbleStyle.Liquid;
+
+        /// <summary>
+        /// The lamp styles, whose content glows - see <see cref="ContentGlow"/>.
+        /// </summary>
+        public static bool IsGlowing => AppSettings.Appearance.BubbleStyle is BubbleStyle.Glow or BubbleStyle.Terminal;
+
+        public static bool IsTerminal => AppSettings.Appearance.BubbleStyle == BubbleStyle.Terminal;
 
         /// <summary>
         /// A blur of what is behind the bubble under its own translucent colour. One brush per
@@ -136,18 +143,20 @@ namespace Telegram.Common
         }
 
         /// <summary>
-        /// A soft rim: bright along the top edge, almost gone at the bottom, as light catching
-        /// the edge of a pane of glass.
+        /// Liquid glass: light caught by the top edge of a thick pane, gone by the middle, and
+        /// a hint of it again at the bottom where the light leaves.
         /// </summary>
-        public static Brush GetGlowBrush(bool dark)
+        public static Brush GetLiquidRimBrush(bool dark)
         {
             if (!_glow.TryGetValue(dark, out var brush))
             {
-                var top = dark ? Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xA0, 0xFF, 0xFF, 0xFF);
-                var bottom = dark ? Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00);
+                var top = dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF);
+                var bottom = dark ? Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF);
 
                 var gradient = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
                 gradient.GradientStops.Add(new GradientStop { Color = top, Offset = 0 });
+                gradient.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, 0xFF, 0xFF, 0xFF), Offset = 0.45 });
+                gradient.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, 0xFF, 0xFF, 0xFF), Offset = 0.7 });
                 gradient.GradientStops.Add(new GradientStop { Color = bottom, Offset = 1 });
 
                 _glow[dark] = brush = gradient;
@@ -164,8 +173,26 @@ namespace Telegram.Common
         // in every chat paints with that one instance - so retinting it restyles all of them.
         private static readonly Dictionary<SolidGaussianBrush, Color> _serviceOriginal = new();
 
+        /// <summary>
+        /// The lamp glow of the reaction capsules: one brush shared by all of them, its stops
+        /// set in place - warm light in the middle, fading out well before the edge.
+        /// </summary>
+        private static void ApplyReactionGlow()
+        {
+            if (Application.Current.Resources.TryGetValue("MessageReactionGlowBrush", out var resource)
+                && resource is Microsoft.UI.Xaml.Media.RadialGradientBrush brush
+                && brush.GradientStops.Count == 2)
+            {
+                brush.GradientStops[0].Color = AppSettings.Appearance.ReactionStyle == ReactionStyle.Glow
+                    ? Color.FromArgb(0x62, 0xFF, 0xE4, 0xB0)
+                    : Color.FromArgb(0, 0xFF, 0xFF, 0xFF);
+            }
+        }
+
         public static void ApplyServiceStyle()
         {
+            ApplyReactionGlow();
+
             foreach (var (theme, brush) in FindServiceBrushes())
             {
                 if (!_serviceOriginal.TryGetValue(brush, out var original))

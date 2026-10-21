@@ -3069,8 +3069,9 @@
                                                  Margin="0,1,8,2"
                                                  Grid.Column="1" />
 
-                        <!-- The glass rim, drawn over both columns so it takes no room: transparent unless the reaction style glows. -->
+                        <!-- The glass rim and the lamp glow, drawn over both columns so they take no room: clear unless the reaction style asks for them. -->
                         <Border BorderBrush="{ThemeResource MessageReactionBorderBrush}"
+                                Background="{ThemeResource MessageReactionGlowBrush}"
                                 BorderThickness="1"
                                 CornerRadius="{TemplateBinding CornerRadius}"
                                 IsHitTestVisible="False"

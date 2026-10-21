@@ -599,7 +599,9 @@ namespace Telegram.ViewModels.Settings
             new SettingsOptionItem<BubbleStyle>(BubbleStyle.Original, "Оригінал"),
             new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glass, "Скло"),
             new SettingsOptionItem<BubbleStyle>(BubbleStyle.Frosted, "Матове скло"),
-            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glow, "Скло з сяйвом"),
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Liquid, "Рідке скло"),
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Glow, "Лампове сяйво"),
+            new SettingsOptionItem<BubbleStyle>(BubbleStyle.Terminal, "Ретро-термінал"),
         };
 
         public int BubbleStyleIndex
@@ -641,7 +643,7 @@ namespace Telegram.ViewModels.Settings
         {
             new SettingsOptionItem<ReactionStyle>(ReactionStyle.Original, "Оригінал"),
             new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glass, "Скло"),
-            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glow, "Скло з сяйвом"),
+            new SettingsOptionItem<ReactionStyle>(ReactionStyle.Glow, "Лампове сяйво"),
         };
 
         public int ReactionStyleIndex
@@ -826,15 +828,45 @@ namespace Telegram.ViewModels.Settings
             }
         }
 
-        public bool HideSeparators
+        public List<SettingsOptionItem<SeparatorMode>> SeparatorModeOptions { get; } = new()
         {
-            get => AppSettings.Appearance.HideSeparators;
+            new SettingsOptionItem<SeparatorMode>(SeparatorMode.Original, "Як у темі"),
+            new SettingsOptionItem<SeparatorMode>(SeparatorMode.HideAll, "Прибрати всі"),
+            new SettingsOptionItem<SeparatorMode>(SeparatorMode.HideDark, "Прибрати лише темні"),
+            new SettingsOptionItem<SeparatorMode>(SeparatorMode.DarkToLight, "Темні замінити світлими"),
+        };
+
+        public int SeparatorModeIndex
+        {
+            get => Math.Max(0, SeparatorModeOptions.FindIndex(x => x.Value == AppSettings.Appearance.SeparatorMode));
             set
             {
-                if (AppSettings.Appearance.HideSeparators != value)
+                if (value >= 0 && value < SeparatorModeOptions.Count && AppSettings.Appearance.SeparatorMode != SeparatorModeOptions[value].Value)
                 {
-                    AppSettings.Appearance.HideSeparators = value;
+                    AppSettings.Appearance.SeparatorMode = SeparatorModeOptions[value].Value;
                     NightModeService.Current.Update(false, updateBackground: false);
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public List<SettingsOptionItem<ChatHeaderStyle>> ChatHeaderStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Original, "Оригінал"),
+            new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Glass, "Скло"),
+            new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.FadingGlass, "Скло з переходом"),
+            new SettingsOptionItem<ChatHeaderStyle>(ChatHeaderStyle.Capsule, "Капсула"),
+        };
+
+        public int ChatHeaderStyleIndex
+        {
+            get => Math.Max(0, ChatHeaderStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.ChatHeaderStyle));
+            set
+            {
+                if (value >= 0 && value < ChatHeaderStyleOptions.Count && AppSettings.Appearance.ChatHeaderStyle != ChatHeaderStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.ChatHeaderStyle = ChatHeaderStyleOptions[value].Value;
+                    AppearanceSettings.RaiseGlassHeaderChanged();
                     RaisePropertyChanged();
                 }
             }

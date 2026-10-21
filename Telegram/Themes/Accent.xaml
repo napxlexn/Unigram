@@ -2,6 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="using:Telegram.Controls"
                     xmlns:media="using:Telegram.Controls.Media"
+                    xmlns:muxm="using:Microsoft.UI.Xaml.Media"
                     xmlns:s="using:System">
 
     <ResourceDictionary.ThemeDictionaries>
@@ -71,6 +72,19 @@
             </LinearGradientBrush>
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
+
+    <!-- The lamp glow inside a reaction capsule: warm light from its middle, nothing at its edge.
+         Clear unless the reaction style glows; MessageStyle sets its stops in place. -->
+    <muxm:RadialGradientBrush x:Key="MessageReactionGlowBrush"
+                              Center="0.5,0.5"
+                              RadiusX="0.6"
+                              RadiusY="0.9"
+                              GradientOrigin="0.5,0.5">
+        <GradientStop Color="#00FFFFFF"
+                      Offset="0" />
+        <GradientStop Color="#00FFFFFF"
+                      Offset="1" />
+    </muxm:RadialGradientBrush>
 
     <!--<Thickness x:Key="EllipsisButtonPadding">16,23,16,0</Thickness>-->
 

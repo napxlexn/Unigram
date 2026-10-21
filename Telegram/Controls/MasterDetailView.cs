@@ -370,6 +370,7 @@ namespace Telegram.Controls
 
             ElementCompositionPreview.SetIsTranslationEnabled(DetailAction, true);
             ElementCompositionPreview.SetIsTranslationEnabled(BackButton, true);
+            ElementCompositionPreview.SetIsTranslationEnabled(DetailHeaderPresenter, true);
 
             var detailVisual = ElementComposition.GetElementVisual(DetailPresenter);
             detailVisual.Clip = detailVisual.Compositor.CreateInsetClip();
@@ -632,11 +633,34 @@ namespace Telegram.Controls
             var style = AppSettings.Appearance.HeaderStyle;
             ApplyHeaderStyle(DetailHeaderBackground, style, ActualTheme, _headerBackground, _headerBorder, _headerHeight);
 
-            _properties?.InsertScalar("MinScale", style == HeaderStyle.Original ? TitleMinScale : GlassTitleMinScale);
+            if (_properties != null)
+            {
+                InsertHeaderShifts(_properties, style);
+            }
         }
 
         private const float TitleMinScale = 0.583f;
         private const float GlassTitleMinScale = 0.75f;
+
+        /// <summary>
+        /// Where the collapsed header's contents sit, per style. The original bar was laid out
+        /// for a title shrunk to 0.583, centred on the back button at 24; the glass styles keep
+        /// the title larger, which pushes its middle down by about six, and the capsule's own
+        /// middle is lower still, at 28, being inset from the top. So the title is moved up to
+        /// the line, and the buttons down to the capsule's middle - once the page is scrolled,
+        /// in step with the shrinking.
+        /// </summary>
+        private static void InsertHeaderShifts(CompositionPropertySet properties, HeaderStyle style)
+        {
+            properties.InsertScalar("MinScale", style == HeaderStyle.Original ? TitleMinScale : GlassTitleMinScale);
+            properties.InsertScalar("TitleShift", style switch
+            {
+                HeaderStyle.Glass => -6,
+                HeaderStyle.Capsule => -2,
+                _ => 0
+            });
+            properties.InsertScalar("ButtonShift", style == HeaderStyle.Capsule ? 4 : 0);
+        }
 
         /// <summary>
         /// Puts one of the header styles on a header background. Shared with the appearance
@@ -760,7 +784,7 @@ namespace Telegram.Controls
 
             _properties = visual1.Compositor.CreatePropertySet();
             _properties.InsertVector3("Translation", new Vector3(0, 32, 0));
-            _properties.InsertScalar("MinScale", AppSettings.Appearance.HeaderStyle == HeaderStyle.Original ? TitleMinScale : GlassTitleMinScale);
+            InsertHeaderShifts(_properties, AppSettings.Appearance.HeaderStyle);
 
             var properties = _properties;
 
@@ -774,9 +798,12 @@ namespace Telegram.Controls
             var slideOut2 = visual1.Compositor.CreateExpressionAnimation($"vector3({expOut2}, {expOut2}, 1)");
             slideOut2.SetReferenceParameter("scrollViewer", properties);
 
-            var expOut3 = "-clamp(((-scrollViewer.Translation.Y / 32) * 16), 0, 16)";
+            var expOut3 = "-clamp(((-scrollViewer.Translation.Y / 32) * 16), 0, 16) + clamp(-scrollViewer.Translation.Y / 32, 0, 1) * scrollViewer.ButtonShift";
             var slideOut3 = visual1.Compositor.CreateExpressionAnimation(expOut3);
             slideOut3.SetReferenceParameter("scrollViewer", properties);
+
+            var titleShift = visual1.Compositor.CreateExpressionAnimation("clamp(-scrollViewer.Translation.Y / 32, 0, 1) * scrollViewer.TitleShift");
+            titleShift.SetReferenceParameter("scrollViewer", properties);
 
             var expIn = "clamp(1.357 - ((-scrollViewer.Translation.Y / 32) * 0.357), 1, 1.357)";
             var slideIn = visual1.Compositor.CreateExpressionAnimation($"vector3({expIn}, {expIn}, 1)");
@@ -792,6 +819,7 @@ namespace Telegram.Controls
             visual4.StartAnimation("Scale", slideOut2);
             visual3.StartAnimation("Translation.Y", slideOut3);
             visual4.StartAnimation("Translation.Y", slideOut3);
+            visual2.StartAnimation("Translation.Y", titleShift);
 
             var fadeIn = visual1.Compositor.CreateExpressionAnimation("scrollViewer.Translation.Y < -16 ? -(scrollViewer.Translation.Y + 16) / 16 : 0");
             fadeIn.SetReferenceParameter("scrollViewer", properties);

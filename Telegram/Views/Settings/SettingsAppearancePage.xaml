@@ -247,16 +247,28 @@
                                                        SelectedIndex="{x:Bind ViewModel.FoldersPlacementIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
-                    <CheckBox common:ToggleHelper.IsChecked="{x:Bind ViewModel.HideSeparators, Mode=TwoWay}"
-                              AutomationProperties.Name="Прибрати розділювачі"
-                              Content="Прибрати лінії між частинами вікна (експериментально)"
-                              Style="{StaticResource SettingsCheckBoxStyle}" />
+                    <controls:SettingsButton Content="Лінії між елементами"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.SeparatorModeOptions}"
+                                                       AutomationProperties.Name="Лінії між елементами"
+                                                       SelectedIndex="{x:Bind ViewModel.SeparatorModeIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
                     <controls:SettingsButton Content="Шапка сторінок"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.HeaderStyleOptions}"
                                                        AutomationProperties.Name="Шапка сторінок"
                                                        SelectedIndex="{x:Bind ViewModel.HeaderStyleIndex, Mode=TwoWay}" />
+                        </controls:SettingsButton.Badge>
+                    </controls:SettingsButton>
+                    <controls:SettingsButton Content="Шапка чату"
+                                             Glyph="&#xEA89;">
+                        <controls:SettingsButton.Badge>
+                            <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ChatHeaderStyleOptions}"
+                                                       AutomationProperties.Name="Шапка чату"
+                                                       SelectedIndex="{x:Bind ViewModel.ChatHeaderStyleIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <Grid Background="{ThemeResource SettingsItemBackground}"
