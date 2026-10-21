@@ -641,6 +641,21 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _rimHover, "RimHover", (int)value);
         }
 
+        // Percents, 0-100, of how strongly the rim animations and the pointer effects show.
+        private static int? _rimAnimationIntensity;
+        public int RimAnimationIntensity
+        {
+            get => _rimAnimationIntensity ??= Math.Clamp(GetValueOrDefault("RimAnimationIntensity", 100), 0, 100);
+            set => AddOrUpdateValue(ref _rimAnimationIntensity, "RimAnimationIntensity", Math.Clamp(value, 0, 100));
+        }
+
+        private static int? _rimHoverIntensity;
+        public int RimHoverIntensity
+        {
+            get => _rimHoverIntensity ??= Math.Clamp(GetValueOrDefault("RimHoverIntensity", 70), 0, 100);
+            set => AddOrUpdateValue(ref _rimHoverIntensity, "RimHoverIntensity", Math.Clamp(value, 0, 100));
+        }
+
         // Percent, 50-400, of the rim's usual thickness.
         private static int? _rimWidth;
         public int RimWidth

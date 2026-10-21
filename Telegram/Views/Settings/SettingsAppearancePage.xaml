@@ -586,6 +586,44 @@
                                                        SelectedIndex="{x:Bind ViewModel.RimAnimationIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Сила анімації', ViewModel.RimAnimationIntensity), Mode=OneWay}"
+                                   Opacity="{x:Bind ConvertEnabledOpacity(ViewModel.IsRimAnimated), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.RimAnimationIntensity, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsRimAnimated, Mode=OneWay}"
+                                AutomationProperties.Name="Сила анімації"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
                     <controls:SettingsButton Content="Реакція на курсор"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>
@@ -594,6 +632,44 @@
                                                        SelectedIndex="{x:Bind ViewModel.RimHoverIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
+                    <Grid Background="{ThemeResource SettingsItemBackground}"
+                          BorderBrush="{ThemeResource SettingsItemBorderBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="208" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Width="24"
+                                Height="24"
+                                Margin="16,0,18,0">
+                            <TextBlock FontSize="25"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AccessibilityView="Raw"
+                                       Text="&#xEA89;"
+                                       FontFamily="{StaticResource SymbolThemeFontFamily}" />
+                        </Border>
+
+                        <TextBlock Text="{x:Bind ConvertPercent('Сила реакції на курсор', ViewModel.RimHoverIntensity), Mode=OneWay}"
+                                   Opacity="{x:Bind ConvertEnabledOpacity(ViewModel.IsRimHovered), Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Grid.Column="1" />
+                        <Slider Value="{x:Bind ViewModel.RimHoverIntensity, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsRimHovered, Mode=OneWay}"
+                                AutomationProperties.Name="Сила реакції на курсор"
+                                Minimum="0"
+                                Maximum="100"
+                                SmallChange="5"
+                                LargeChange="10"
+                                StepFrequency="5"
+                                IsThumbToolTipEnabled="False"
+                                Margin="12,6,16,6"
+                                Grid.Column="2" />
+                    </Grid>
                     <Grid Background="{ThemeResource SettingsItemBackground}"
                           BorderBrush="{ThemeResource SettingsItemBorderBrush}">
                         <Grid.ColumnDefinitions>
