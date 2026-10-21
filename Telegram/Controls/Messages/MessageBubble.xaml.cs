@@ -3247,6 +3247,32 @@ namespace Telegram.Controls.Messages
 
         #endregion
 
+        /// <summary>
+        /// Shows the reactions of a made-up message under a mockup's text. For display only:
+        /// there is no message for a click on them to react to.
+        /// </summary>
+        public void MockupReactions(MessageViewModel message)
+        {
+            if (!_templateApplied)
+            {
+                void loaded(object o, EventArgs e)
+                {
+                    TemplateApplied -= loaded;
+                    MockupReactions(message);
+                }
+
+                TemplateApplied += loaded;
+                return;
+            }
+
+            UpdateMessageReactions(message, false);
+
+            if (Reactions != null)
+            {
+                Reactions.IsHitTestVisible = false;
+            }
+        }
+
         public void Mockup(string message, bool outgoing, DateTime date, bool first = true, bool last = true)
         {
             if (!_templateApplied)
