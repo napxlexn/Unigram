@@ -1619,10 +1619,13 @@
                                      Visibility="Collapsed" />
 
                 <Grid x:Name="ChatFooter"
-                      BorderBrush="{ThemeResource ChatFooterRimBrush}"
-                      BorderThickness="1"
                       CornerRadius="24">
+                    <!-- The glass and its rim, drawn by SmoothGlass so that the corners stay smooth. -->
+                    <Border x:Name="ChatFooterGlass"
+                            IsHitTestVisible="False"
+                            CornerRadius="24" />
                     <chats:ChatBottomButton x:Name="ButtonAction"
+                                            Background="Transparent"
                                             LosingFocus="ButtonAction_LosingFocus"
                                             Click="{x:Bind ViewModel.Action}"
                                             Height="{StaticResource TelegramToolBarHeight}">

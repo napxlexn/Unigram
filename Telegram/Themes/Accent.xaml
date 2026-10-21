@@ -33,10 +33,6 @@
             <media:SolidGaussianBrush x:Key="ChatFooterGlassBrush"
                                       FallbackColor="#F0181818"
                                       TintColor="#8C161616" />
-            <LinearGradientBrush x:Key="ChatFooterRimBrush" StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#55FFFFFF" Offset="0" />
-                <GradientStop Color="#12FFFFFF" Offset="1" />
-            </LinearGradientBrush>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
             <x:String x:Key="BreadcrumbBarChevronLeftToRight">&#xE0E3;</x:String>
@@ -66,10 +62,6 @@
             <media:SolidGaussianBrush x:Key="ChatFooterGlassBrush"
                                       FallbackColor="#F2FAFAFA"
                                       TintColor="#A6FFFFFF" />
-            <LinearGradientBrush x:Key="ChatFooterRimBrush" StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#E6FFFFFF" Offset="0" />
-                <GradientStop Color="#14000000" Offset="1" />
-            </LinearGradientBrush>
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 

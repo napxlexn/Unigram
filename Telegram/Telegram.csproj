@@ -1086,6 +1086,7 @@
     <Compile Include="Controls\LoopingPicker.cs" />
     <Compile Include="Controls\MasterDetailPanel.cs" />
     <Compile Include="Controls\Media\ContentGlow.cs" />
+    <Compile Include="Controls\Media\SmoothGlass.cs" />
     <Compile Include="Controls\Media\FadingGlassBrush.cs" />
     <Compile Include="Controls\Media\SolidGaussianBrush.cs" />
     <Compile Include="Controls\Media\ChatBackgroundBrush.cs" />

@@ -200,6 +200,13 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
+                            <!-- The terminal style's scanlines, over the bubble's fill and under everything in it. -->
+                            <Border x:Name="ScanlineHost"
+                                    x:Load="False"
+                                    IsHitTestVisible="False"
+                                    Grid.ColumnSpan="3"
+                                    Grid.RowSpan="3" />
+
                             <Border x:Load="False"
                                     x:Name="BackgroundPanel"
                                     Background="{ThemeResource PageSubHeaderBackgroundSolidBrush}"
@@ -241,13 +248,6 @@
                                                      Grid.Column="1"
                                                      Grid.Row="4" />
                             </local:MessageBubblePanel>
-
-                            <!-- Holds the glow of the panel's content under the lamp styles; empty and unloaded otherwise. -->
-                            <Border x:Name="GlowHost"
-                                    x:Load="False"
-                                    IsHitTestVisible="False"
-                                    Grid.Column="1"
-                                    Grid.Row="1" />
 
                             <Grid x:Name="Header"
                                   Margin="10,0,10,0"
@@ -375,6 +375,14 @@
                                                Grid.Column="2" />
                                 </Grid>
                             </HyperlinkButton>
+
+                            <!-- Holds the glow of the text, reactions and the like under the lamp styles - never
+                                 of the media; empty and unloaded otherwise. Last, over all of it. -->
+                            <Border x:Name="GlowHost"
+                                    x:Load="False"
+                                    IsHitTestVisible="False"
+                                    Grid.ColumnSpan="3"
+                                    Grid.RowSpan="3" />
                         </Grid>
 
                         <local:ReplyMarkupInlinePanel x:Name="Markup"
