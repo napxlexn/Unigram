@@ -733,6 +733,14 @@ namespace Telegram.ViewModels.Settings
             }
         }
 
+        public List<SettingsOptionItem<RimSmoothing>> RimSmoothingOptions { get; } = Glass.RimSmoothingOptions;
+
+        public int RimSmoothingIndex
+        {
+            get => Math.Max(0, RimSmoothingOptions.FindIndex(x => x.Value == AppSettings.Appearance.RimSmoothing));
+            set => SetRimOption(RimSmoothingOptions, value, AppSettings.Appearance.RimSmoothing, x => AppSettings.Appearance.RimSmoothing = x);
+        }
+
         public List<SettingsOptionItem<RimHover>> RimHoverOptions { get; } = Glass.RimHoverOptions;
 
         public int RimHoverIndex
