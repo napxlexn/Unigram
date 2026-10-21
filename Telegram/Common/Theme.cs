@@ -384,6 +384,28 @@ namespace Telegram.Common
         /// or light by its own colour: the same theme has both - black strokes around cards,
         /// white ones in the panes - and only the dark ones show up as grime over glass.
         /// </summary>
+        private static (string Key, Color Fill)[] GetFieldFills(bool lightTheme)
+        {
+            var kind = AppSettings.Appearance.FieldGlass;
+            if (kind == Services.Settings.GlassKind.Original)
+            {
+                return lightTheme
+                    ? new[] { ("TextControlBackground", Color.FromArgb(0xB3, 0xFF, 0xFF, 0xFF)), ("TextControlBackgroundPointerOver", Color.FromArgb(0x80, 0xF9, 0xF9, 0xF9)), ("TextControlBackgroundFocused", Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF)) }
+                    : new[] { ("TextControlBackground", Color.FromArgb(0x0F, 0xFF, 0xFF, 0xFF)), ("TextControlBackgroundPointerOver", Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF)), ("TextControlBackgroundFocused", Color.FromArgb(0xB3, 0x1E, 0x1E, 0x1E)) };
+            }
+
+            var tint = Glass.Resolve(kind, !lightTheme).Tint ?? (lightTheme ? Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x60, 0x20, 0x20, 0x24));
+
+            Color Denser(double factor)
+            {
+                var color = tint;
+                color.A = (byte)Math.Clamp(color.A * factor, 0, 255);
+                return color;
+            }
+
+            return new[] { ("TextControlBackground", tint), ("TextControlBackgroundPointerOver", Denser(1.2)), ("TextControlBackgroundFocused", Denser(1.45)) };
+        }
+
         public static Color GetSeparatorColor(Color color, bool lightTheme)
         {
             var mode = AppSettings.Appearance.SeparatorMode;
@@ -703,6 +725,19 @@ namespace Telegram.Common
 
                 AddOrUpdate<SolidColorBrush>(target, muxcCopy, "DividerStrokeColorDefaultBrush", create,
                     update => update.Color = dividerStroke);
+
+                // How round the buttons, fields and lists are, which WinUI's styles all read from
+                // one resource: here, ahead of the library's own. Templates take it as they are
+                // applied, so what is already on screen keeps the old one until made again.
+                target["ControlCornerRadius"] = new CornerRadius(AppSettings.Appearance.ControlRadius);
+
+                // The text fields' fills, WinUI's own unless a glass is chosen for them: then its
+                // tint, a little denser where the pointer is and denser still while typing.
+                foreach (var (key, fill) in GetFieldFills(lightTheme))
+                {
+                    AddOrUpdate<SolidColorBrush>(target, muxcCopy, key, create,
+                        update => update.Color = fill);
+                }
 
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlElevationBorderFocusedBrush", create, GetShade);
                 PatchTextControlElevationBorderFocusedBrush(requested, target, muxcCopy, lookup, "TextControlBorderBrushFocused", create, GetShade);

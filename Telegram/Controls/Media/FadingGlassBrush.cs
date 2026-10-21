@@ -32,8 +32,8 @@ namespace Telegram.Controls.Media
 
             // Opaque at the top, holding through the title, gone at the bottom edge.
             var mask = compositor.CreateLinearGradientBrush();
-            mask.StartPoint = new Vector2(0, 0);
-            mask.EndPoint = new Vector2(0, 1);
+            mask.StartPoint = new Vector2(0, FadesUp ? 1 : 0);
+            mask.EndPoint = new Vector2(0, FadesUp ? 0 : 1);
             mask.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(255, 255, 255, 255)));
             mask.ColorStops.Add(compositor.CreateColorGradientStop((float)SolidUntil, Color.FromArgb(255, 255, 255, 255)));
             mask.ColorStops.Add(compositor.CreateColorGradientStop(1, Color.FromArgb(0, 255, 255, 255)));
@@ -100,5 +100,10 @@ namespace Telegram.Controls.Media
         /// Where the fade starts, as a fraction of the height.
         /// </summary>
         public double SolidUntil { get; set; } = 0.55;
+
+        /// <summary>
+        /// Solid at the bottom and fading upwards instead: for a bar along the bottom edge.
+        /// </summary>
+        public bool FadesUp { get; set; }
     }
 }

@@ -16,7 +16,6 @@ namespace Telegram.Controls
     public partial class HeaderedControl : ItemsControl
     {
         private static readonly Thickness _cardBorder = new(1);
-        private static readonly CornerRadius _cardCorner = new(4);
 
         private Grid ContentRoot;
 
@@ -116,6 +115,8 @@ namespace Telegram.Controls
 
         internal static void ApplyCardLayout(DependencyObject element)
         {
+            var _cardCorner = new CornerRadius(Services.AppSettings.Appearance.CardRadius);
+
             switch (element)
             {
                 case Control control:

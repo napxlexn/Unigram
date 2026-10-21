@@ -869,6 +869,7 @@ namespace Telegram.Views
         // What the template gives the header, which is what the original style puts back.
         private Brush _clipperBackground;
         private float _headerInset;
+        private double? _headerHeight;
 
         private void OnGlassHeaderChanged(object sender, EventArgs e)
         {
@@ -908,6 +909,19 @@ namespace Telegram.Views
             Grid.SetRow(RootGrid, glass ? 0 : 1);
             Grid.SetRowSpan(RootGrid, glass ? 3 : 2);
 
+            // Room above and below the title and the status: inside a capsule they otherwise
+            // touch its top, and a title's emoji, taller than its letters, crosses it. The glass
+            // styles take a header a little taller, the capsule most, and the content is
+            // centred in it rather than lifted.
+            _headerHeight ??= Header.Height;
+            Header.Height = style switch
+            {
+                Services.Settings.ChatHeaderStyle.Capsule => _headerHeight.Value + 8,
+                Services.Settings.ChatHeaderStyle.Original => _headerHeight.Value,
+                _ => _headerHeight.Value + 4
+            };
+            ProfileContent.Margin = glass ? new Thickness(0) : new Thickness(0, -2, 0, 2);
+
             _headerInset = glass ? (float)Header.Height : 0;
 
             // Inside the capsule the bars are inset from its rounded sides.
@@ -942,7 +956,7 @@ namespace Telegram.Views
                     // One rounded capsule around the header and the bars, sized in
                     // UpdateClipperBackground. HeaderGlass rather than an element of its own over
                     // the header: it has to lie under the bars, or it would blur them away.
-                    HeaderGlass.CornerRadius = new CornerRadius(16);
+                    HeaderGlass.CornerRadius = new CornerRadius(AppSettings.Appearance.HeaderRadius);
                     SmoothGlass.Attach(HeaderGlass, headerKind, dark, rim: AppSettings.Appearance.RimOnPanels);
                     break;
 
@@ -956,6 +970,8 @@ namespace Telegram.Views
 
             // Every activation and theme change passes here, so the footer follows too.
             SmoothGlass.Attach(ChatFooterGlass, footerKind, dark, rim: AppSettings.Appearance.RimOnPanels);
+
+            UpdateInputStyle(dark);
 
 
             UpdateClipperBackground();
@@ -976,11 +992,12 @@ namespace Telegram.Views
             var height = ClipperOuter.ActualHeight - DateHeaderRelative.ActualHeight;
 
             // Up through the header: the bars start right below it.
-            ClipperBackground.Margin = new Thickness(-width, -height - 48, -72, 0);
+            ClipperBackground.Margin = new Thickness(-width, -height - Header.Height, -72, 0);
 
             if (_headerInset == 0)
             {
                 HeaderGlass.Visibility = Visibility.Collapsed;
+                UpdateMessagesClip();
                 return;
             }
 
@@ -1022,6 +1039,128 @@ namespace Telegram.Views
                     HeaderGlass.Height = _headerInset + Math.Max(0, height);
                     HeaderGlass.Visibility = Visibility.Visible;
                     break;
+            }
+
+            UpdateMessagesClip();
+        }
+
+        private void MessagesRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateMessagesClip();
+        }
+
+        /// <summary>
+        /// Under the capsule header the messages end where the capsule begins: nothing scrolls
+        /// past it at the top, nor round its rounded corners, nor down the strips beside it - the
+        /// page's edge follows the capsule's outline down to its bottom, and is the full width
+        /// from there on.
+        /// </summary>
+        private void UpdateMessagesClip()
+        {
+            var visual = ElementComposition.GetElementVisual(MessagesRoot);
+
+            if (_headerInset == 0 || AppSettings.Appearance.ChatHeaderStyle != Services.Settings.ChatHeaderStyle.Capsule || HeaderGlass.Visibility != Visibility.Visible)
+            {
+                visual.Clip = null;
+                return;
+            }
+
+            var width = (float)MessagesRoot.ActualWidth;
+            var height = (float)MessagesRoot.ActualHeight;
+            if (width < 1 || height < 1)
+            {
+                return;
+            }
+
+            var margin = HeaderGlass.Margin;
+            var left = (float)margin.Left;
+            var right = width - (float)margin.Right;
+            var top = (float)margin.Top;
+            var bottom = top + (float)HeaderGlass.Height;
+            var radius = (float)Math.Min(HeaderGlass.CornerRadius.TopLeft, (bottom - top) / 2);
+
+            using var builder = new Microsoft.Graphics.Canvas.Geometry.CanvasPathBuilder(Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice());
+            builder.BeginFigure(left, top + radius);
+            builder.AddArc(new Vector2(left + radius, top), radius, radius, 0, Microsoft.Graphics.Canvas.Geometry.CanvasSweepDirection.Clockwise, Microsoft.Graphics.Canvas.Geometry.CanvasArcSize.Small);
+            builder.AddLine(right - radius, top);
+            builder.AddArc(new Vector2(right, top + radius), radius, radius, 0, Microsoft.Graphics.Canvas.Geometry.CanvasSweepDirection.Clockwise, Microsoft.Graphics.Canvas.Geometry.CanvasArcSize.Small);
+            builder.AddLine(right, bottom);
+            builder.AddLine(width, bottom);
+            builder.AddLine(width, height + 64);
+            builder.AddLine(0, height + 64);
+            builder.AddLine(0, bottom);
+            builder.AddLine(left, bottom);
+            builder.EndFigure(Microsoft.Graphics.Canvas.Geometry.CanvasFigureLoop.Closed);
+
+            var compositor = visual.Compositor;
+            var geometry = compositor.CreatePathGeometry(new CompositionPath(Microsoft.Graphics.Canvas.Geometry.CanvasGeometry.CreatePath(builder)));
+            visual.Clip = compositor.CreateGeometricClip(geometry);
+        }
+
+        // What the template gives the composer, which the original style puts back.
+        private Brush _textRootBackground;
+
+        /// <summary>
+        /// The composer as <see cref="Services.Settings.AppearanceSettings.InputStyle"/> wants it:
+        /// glass in its own rounded shape, a band of glass the whole width, or glass rising from
+        /// the bottom and fading out above it as the fading header does downwards. The shadow
+        /// under it and the original fade go under glass: they show through it.
+        /// </summary>
+        private void UpdateInputStyle(bool dark)
+        {
+            _textRootBackground ??= TextRoot.Background;
+
+            var style = FromPreview || ViewModel.IsSavedMessagesTab
+                ? Services.Settings.InputStyle.Original
+                : AppSettings.Appearance.InputStyle;
+            var kind = AppSettings.Appearance.InputGlass is var chosen && chosen != Services.Settings.GlassKind.Original ? chosen : Services.Settings.GlassKind.Frosted;
+
+            SmoothGlass.Detach(TextGlass);
+            SmoothGlass.Detach(InputGlassBand);
+            TextGlass.Visibility = Visibility.Collapsed;
+            InputGlassBand.Visibility = Visibility.Collapsed;
+            InputGlassBand.Background = null;
+
+            var original = style == Services.Settings.InputStyle.Original;
+            TextRoot.Background = original ? _textRootBackground : null;
+            ShadowCaster.Opacity = original ? 1 : 0;
+
+            if (!FromPreview && !ViewModel.IsSavedMessagesTab)
+            {
+                LinearCaster.Visibility = original ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            switch (style)
+            {
+                case Services.Settings.InputStyle.Capsule:
+                    TextGlass.CornerRadius = TextRoot.CornerRadius;
+                    TextGlass.Visibility = Visibility.Visible;
+                    SmoothGlass.Attach(TextGlass, kind, dark, rim: AppSettings.Appearance.RimOnPanels);
+                    break;
+
+                case Services.Settings.InputStyle.Bar:
+                    InputGlassBand.Height = double.NaN;
+                    InputGlassBand.Margin = new Thickness(0);
+                    InputGlassBand.VerticalAlignment = VerticalAlignment.Stretch;
+                    InputGlassBand.Visibility = Visibility.Visible;
+                    SmoothGlass.Attach(InputGlassBand, kind, dark, rim: false);
+                    break;
+
+                case Services.Settings.InputStyle.Fading:
+                    {
+                        // Solid behind the composer, fading over the 40px above it.
+                        var spec = Glass.Resolve(kind, dark);
+                        var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
+                        var solid = Math.Max(1, Footer.ActualHeight + Footer.Margin.Bottom);
+                        var total = solid + 40;
+
+                        InputGlassBand.VerticalAlignment = VerticalAlignment.Bottom;
+                        InputGlassBand.Height = total;
+                        InputGlassBand.Margin = new Thickness(0, -40, 0, 0);
+                        InputGlassBand.Background = new FadingGlassBrush { TintColor = tint, BlurAmount = Glass.ScaleBlur(spec.Blur), SolidUntil = solid / total, FadesUp = true };
+                        InputGlassBand.Visibility = Visibility.Visible;
+                        break;
+                    }
             }
         }
 
@@ -5246,6 +5385,12 @@ namespace Telegram.Views
         private void TextArea_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             _rootVisual.Size = e.NewSize.ToVector2();
+
+            // The fading glass is solid as far as the composer reaches, which it bakes in.
+            if (e.NewSize.Height != e.PreviousSize.Height && AppSettings.Appearance.InputStyle == Services.Settings.InputStyle.Fading && ViewModel != null)
+            {
+                UpdateInputStyle(ActualTheme != ElementTheme.Light);
+            }
         }
 
         private void Autocomplete_ItemClick(object sender, ItemClickEventArgs e)
@@ -6950,6 +7095,7 @@ namespace Telegram.Views
             ButtonEditor.CornerRadius =
                 ButtonClear.CornerRadius = new CornerRadius(min, 4, 4, 4);
             TextRoot.CornerRadius =
+                TextGlass.CornerRadius =
                 ChatFooter.CornerRadius =
                 ChatFooterGlass.CornerRadius =
                 ChatRecord.CornerRadius =

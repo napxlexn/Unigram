@@ -632,6 +632,91 @@ namespace Telegram.ViewModels.Settings
             set => SetGlass(value, AppSettings.Appearance.ChatHeaderGlass, x => AppSettings.Appearance.ChatHeaderGlass = x);
         }
 
+        public double HeaderRadius
+        {
+            get => AppSettings.Appearance.HeaderRadius;
+            set => SetIntensity((int)value, AppSettings.Appearance.HeaderRadius, x => AppSettings.Appearance.HeaderRadius = x);
+        }
+
+        public double CardRadius
+        {
+            get => AppSettings.Appearance.CardRadius;
+            set
+            {
+                if (AppSettings.Appearance.CardRadius != (int)value)
+                {
+                    AppSettings.Appearance.CardRadius = (int)value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double ControlRadius
+        {
+            get => AppSettings.Appearance.ControlRadius;
+            set
+            {
+                if (AppSettings.Appearance.ControlRadius != (int)value)
+                {
+                    AppSettings.Appearance.ControlRadius = (int)value;
+                    RaisePropertyChanged();
+
+                    // A theme resource: written again with the theme, once the slider settles.
+                    _radiusDebouncer ??= new DebouncedProperty<int>(300, _ => NightModeService.Current.Update(false, updateBackground: false));
+                    _radiusDebouncer.Set((int)value);
+                }
+            }
+        }
+
+        private DebouncedProperty<int> _radiusDebouncer;
+
+        public List<SettingsOptionItem<InputStyle>> InputStyleOptions { get; } = new()
+        {
+            new SettingsOptionItem<InputStyle>(InputStyle.Original, "Оригінал"),
+            new SettingsOptionItem<InputStyle>(InputStyle.Capsule, "Скляна капсула"),
+            new SettingsOptionItem<InputStyle>(InputStyle.Bar, "Скляна смуга на всю ширину"),
+            new SettingsOptionItem<InputStyle>(InputStyle.Fading, "Скло з переходом, як у шапці"),
+        };
+
+        public int InputStyleIndex
+        {
+            get => Math.Max(0, InputStyleOptions.FindIndex(x => x.Value == AppSettings.Appearance.InputStyle));
+            set
+            {
+                if (value >= 0 && value < InputStyleOptions.Count && AppSettings.Appearance.InputStyle != InputStyleOptions[value].Value)
+                {
+                    AppSettings.Appearance.InputStyle = InputStyleOptions[value].Value;
+                    ApplyGlass();
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(IsInputGlass));
+                }
+            }
+        }
+
+        public bool IsInputGlass => AppSettings.Appearance.InputStyle != InputStyle.Original;
+
+        public int InputGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.InputGlass);
+            set => SetGlass(value, AppSettings.Appearance.InputGlass, x => AppSettings.Appearance.InputGlass = x);
+        }
+
+        public int FieldGlassIndex
+        {
+            get => IndexOf(AppSettings.Appearance.FieldGlass);
+            set
+            {
+                if (value >= 0 && value < GlassOptions.Count && AppSettings.Appearance.FieldGlass != GlassOptions[value].Value)
+                {
+                    AppSettings.Appearance.FieldGlass = GlassOptions[value].Value;
+
+                    // The fields' brushes are the theme's: written again with it.
+                    NightModeService.Current.Update(false, updateBackground: false);
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
         public int FooterGlassIndex
         {
             get => IndexOf(AppSettings.Appearance.FooterGlass);

@@ -139,6 +139,21 @@ namespace Telegram.Services.Settings
     }
 
     /// <summary>
+    /// How the message composer is drawn under glass.
+    /// </summary>
+    public enum InputStyle
+    {
+        Original,
+        // Glass in the composer's own rounded shape.
+        Capsule,
+        // A band of glass the whole width, the composer clear on it.
+        Bar,
+        // Glass rising from the bottom and fading out above the composer, as the fading header
+        // does downwards.
+        Fading
+    }
+
+    /// <summary>
     /// How the rim's edges are smoothed - experiments, to be compared side by side.
     /// </summary>
     public enum RimSmoothing
@@ -688,6 +703,51 @@ namespace Telegram.Services.Settings
         {
             get => (GlassKind)(_chatHeaderGlass ??= GetValueOrDefault("ChatHeaderGlass", (int)GlassKind.Frosted));
             set => AddOrUpdateValue(ref _chatHeaderGlass, "ChatHeaderGlass", (int)value);
+        }
+
+        // How round, in pixels: the header capsules, the settings cards, the buttons and fields.
+        // All the capsule's by default, so that everything matches it.
+        private static int? _headerRadius;
+        public int HeaderRadius
+        {
+            get => _headerRadius ??= Math.Clamp(GetValueOrDefault("HeaderRadius", 16), 0, 28);
+            set => AddOrUpdateValue(ref _headerRadius, "HeaderRadius", Math.Clamp(value, 0, 28));
+        }
+
+        private static int? _cardRadius;
+        public int CardRadius
+        {
+            get => _cardRadius ??= Math.Clamp(GetValueOrDefault("CardRadius", 16), 0, 24);
+            set => AddOrUpdateValue(ref _cardRadius, "CardRadius", Math.Clamp(value, 0, 24));
+        }
+
+        private static int? _controlRadius;
+        public int ControlRadius
+        {
+            get => _controlRadius ??= Math.Clamp(GetValueOrDefault("ControlRadius", 16), 0, 20);
+            set => AddOrUpdateValue(ref _controlRadius, "ControlRadius", Math.Clamp(value, 0, 20));
+        }
+
+        private static int? _inputStyle;
+        public InputStyle InputStyle
+        {
+            get => (InputStyle)(_inputStyle ??= GetValueOrDefault("InputStyle", (int)InputStyle.Original));
+            set => AddOrUpdateValue(ref _inputStyle, "InputStyle", (int)value);
+        }
+
+        private static int? _inputGlass;
+        public GlassKind InputGlass
+        {
+            get => (GlassKind)(_inputGlass ??= GetValueOrDefault("InputGlass", (int)GlassKind.Frosted));
+            set => AddOrUpdateValue(ref _inputGlass, "InputGlass", (int)value);
+        }
+
+        // Every other text field: search boxes, the forms in settings and popups.
+        private static int? _fieldGlass;
+        public GlassKind FieldGlass
+        {
+            get => (GlassKind)(_fieldGlass ??= GetValueOrDefault("FieldGlass", (int)GlassKind.Original));
+            set => AddOrUpdateValue(ref _fieldGlass, "FieldGlass", (int)value);
         }
 
         private static int? _footerGlass;
