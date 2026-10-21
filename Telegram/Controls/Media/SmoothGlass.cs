@@ -780,10 +780,17 @@ namespace Telegram.Controls.Media
                     brush.StartAnimation("EllipseCenter", center);
                 }
 
-                _entered = (s, e) => AnimateHover(1, 0.25);
-                _exited = (s, e) => AnimateHover(0, 0.6);
+                _entered = (s, e) => AnimateHover(true);
+                _exited = (s, e) => AnimateHover(false);
+
+                // The wheel scrolls the element out from under a pointer that stays put, and no
+                // exit comes for that: the glow stayed lit on a bubble long gone from the pointer.
+                // A turn of the wheel counts as leaving; the next move over it, as coming back.
+                _moved = (s, e) => AnimateHover(true);
 
                 _tracker.AddHandler(UIElement.PointerEnteredEvent, _entered, true);
+                _tracker.AddHandler(UIElement.PointerMovedEvent, _moved, true);
+                _tracker.AddHandler(UIElement.PointerWheelChangedEvent, _exited, true);
                 _tracker.AddHandler(UIElement.PointerExitedEvent, _exited, true);
                 _tracker.AddHandler(UIElement.PointerCanceledEvent, _exited, true);
                 _tracker.AddHandler(UIElement.PointerCaptureLostEvent, _exited, true);
@@ -794,6 +801,8 @@ namespace Telegram.Controls.Media
                 if (_tracker != null)
                 {
                     _tracker.RemoveHandler(UIElement.PointerEnteredEvent, _entered);
+                    _tracker.RemoveHandler(UIElement.PointerMovedEvent, _moved);
+                    _tracker.RemoveHandler(UIElement.PointerWheelChangedEvent, _exited);
                     _tracker.RemoveHandler(UIElement.PointerExitedEvent, _exited);
                     _tracker.RemoveHandler(UIElement.PointerCanceledEvent, _exited);
                     _tracker.RemoveHandler(UIElement.PointerCaptureLostEvent, _exited);
@@ -801,12 +810,23 @@ namespace Telegram.Controls.Media
                 }
             }
 
-            private void AnimateHover(float to, double seconds)
+            private PointerEventHandler _moved;
+            private bool _hovered;
+
+            private void AnimateHover(bool over)
             {
+                // Every move passes here: only a change starts an animation.
+                if (_hovered == over)
+                {
+                    return;
+                }
+
+                _hovered = over;
+
                 // From wherever it is now: no keyframe at 0.
                 var hover = _compositor.CreateScalarKeyFrameAnimation();
-                hover.InsertKeyFrame(1, to, _ease);
-                hover.Duration = TimeSpan.FromSeconds(seconds);
+                hover.InsertKeyFrame(1, over ? 1 : 0, _ease);
+                hover.Duration = TimeSpan.FromSeconds(over ? 0.25 : 0.6);
                 _state.StartAnimation("Hover", hover);
             }
 
