@@ -34,18 +34,21 @@ namespace Telegram.Controls.Media
         /// The same effect graph this brush paints with, for callers drawing into Composition
         /// directly rather than through XAML.
         /// </summary>
-        public static CompositionBrush CreateBrush(Compositor compositor, Color tintColor, float blurAmount = 30, float saturation = 1.7f)
+        /// <param name="quality">Blurred at full resolution rather than from a smaller copy:
+        /// smoother, for a large soft blur such as a fade, at a higher cost.</param>
+        public static CompositionBrush CreateBrush(Compositor compositor, Color tintColor, float blurAmount = 30, float saturation = 1.7f, bool quality = false)
         {
             // One factory per compositor, with the three values as properties of the brush:
             // compiling the effect is the expensive part, and every glass bubble, capsule and
             // pane asks for one of these.
-            if (!_factories.TryGetValue(compositor, out var effectFactory))
+            var factories = quality ? _qualityFactories : _factories;
+            if (!factories.TryGetValue(compositor, out var effectFactory))
             {
                 var gaussianBlur = new GaussianBlurEffect
                 {
                     Name = "Blur",
                     BlurAmount = 30,
-                    Optimization = EffectOptimization.Speed,
+                    Optimization = quality ? EffectOptimization.Quality : EffectOptimization.Speed,
                     BorderMode = EffectBorderMode.Hard,
                     Source = new CompositionEffectSourceParameter("Backdrop"),
                 };
@@ -69,7 +72,7 @@ namespace Telegram.Controls.Media
                 compositeEffect.Sources.Add(tintColorEffect);
 
                 effectFactory = compositor.CreateEffectFactory(compositeEffect, new[] { "Blur.BlurAmount", "Saturation.Saturation", "TintColor.Color" });
-                _factories.Add(compositor, effectFactory);
+                factories.Add(compositor, effectFactory);
             }
 
             var brush = effectFactory.CreateBrush();
@@ -82,6 +85,7 @@ namespace Telegram.Controls.Media
         }
 
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, CompositionEffectFactory> _factories = new();
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, CompositionEffectFactory> _qualityFactories = new();
 
         /// <summary>
         /// A circular brush for a SpriteVisual of the same diameter, frosted where materials are

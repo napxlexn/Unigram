@@ -1118,6 +1118,7 @@ namespace Telegram.Views
 
             SmoothGlass.Detach(TextGlass);
             SmoothGlass.Detach(InputGlassBand);
+            ProgressiveGlass.Detach(InputGlassBand);
             TextGlass.Visibility = Visibility.Collapsed;
             InputGlassBand.Visibility = Visibility.Collapsed;
             InputGlassBand.Background = null;
@@ -1166,11 +1167,13 @@ namespace Telegram.Views
 
                 case Services.Settings.InputStyle.Fading:
                     {
-                        // Solid behind the composer, fading over the 40px above it.
+                        // Solid behind the composer, fading - in strength, not only in alpha -
+                        // over the height the setting gives above it.
                         var spec = Glass.Resolve(kind, dark);
                         var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
                         var solid = Math.Max(1, Footer.ActualHeight + Footer.Margin.Bottom);
-                        var total = solid + 40;
+                        var fade = AppSettings.Appearance.InputFadeHeight;
+                        var total = solid + fade;
 
                         TextGlass.CornerRadius = TextRoot.CornerRadius;
                         TextGlass.Visibility = Visibility.Visible;
@@ -1178,8 +1181,8 @@ namespace Telegram.Views
 
                         InputGlassBand.VerticalAlignment = VerticalAlignment.Bottom;
                         InputGlassBand.Height = total;
-                        InputGlassBand.Margin = new Thickness(0, -40, 0, 0);
-                        InputGlassBand.Background = new FadingGlassBrush { TintColor = tint, BlurAmount = Glass.ScaleBlur(spec.Blur), SolidUntil = solid / total, FadesUp = true };
+                        InputGlassBand.Margin = new Thickness(0, -fade, 0, 0);
+                        ProgressiveGlass.Attach(InputGlassBand, tint, (float)(Glass.ScaleBlur(spec.Blur) * AppSettings.Appearance.InputBlur / 100d), (float)(solid / total), fadesUp: true);
                         InputGlassBand.Visibility = Visibility.Visible;
                         break;
                     }

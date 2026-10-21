@@ -842,6 +842,22 @@ namespace Telegram.Services.Settings
             set => AddOrUpdateValue(ref _themeSaturation, "ThemeSaturation", Math.Clamp(value, 0, 150));
         }
 
+        // The composer's fading glass: percent of its kind's blur, and how far above the
+        // composer it fades out, in pixels.
+        private static int? _inputBlur;
+        public int InputBlur
+        {
+            get => _inputBlur ??= Math.Clamp(GetValueOrDefault("InputBlur", 100), 0, 200);
+            set => AddOrUpdateValue(ref _inputBlur, "InputBlur", Math.Clamp(value, 0, 200));
+        }
+
+        private static int? _inputFadeHeight;
+        public int InputFadeHeight
+        {
+            get => _inputFadeHeight ??= Math.Clamp(GetValueOrDefault("InputFadeHeight", 96), 16, 160);
+            set => AddOrUpdateValue(ref _inputFadeHeight, "InputFadeHeight", Math.Clamp(value, 16, 160));
+        }
+
         // The composer's own fill under glass, percent: how much it stands out from the glass.
         private static int? _inputFill;
         public int InputFill
