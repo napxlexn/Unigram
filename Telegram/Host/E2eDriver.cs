@@ -273,11 +273,16 @@ namespace Telegram.Host
                     {
                         // A ScrollViewer by x:Name, to a vertical offset: scrolls the playground
                         // under its header, for instance.
+                        // "Name#2" takes the second of several with the same name - the chat
+                        // list and the history are both "ScrollViewer".
+                        var name = parts[1].Split('#');
+                        var skip = name.Length > 1 ? int.Parse(name[1]) - 1 : 0;
+
                         ScrollViewer target = null;
                         Walk(root, element =>
                         {
-                            target = element.Name == parts[1] ? element as ScrollViewer : null;
-                            return target != null;
+                            target = element.Name == name[0] ? element as ScrollViewer : null;
+                            return target != null && skip-- == 0;
                         });
 
                         if (target == null)
@@ -285,7 +290,11 @@ namespace Telegram.Host
                             return "error: no ScrollViewer " + parts[1];
                         }
 
-                        target.ChangeView(null, double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture), null, true);
+                        // "~120" scrolls by an amount instead of to an offset.
+                        var relative = parts[2].StartsWith('~');
+                        var offset = double.Parse(parts[2].TrimStart('~'), System.Globalization.CultureInfo.InvariantCulture);
+
+                        target.ChangeView(null, relative ? target.VerticalOffset + offset : offset, null, true);
                         return "ok " + target.ScrollableHeight;
                     }
 
@@ -296,6 +305,50 @@ namespace Telegram.Host
                         var element = Find<FrameworkElement>(root, parts.Length > 2 ? parts[1] + " " + parts[2] : parts[1]);
                         element.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = 0.1 });
                         return "ok";
+                    }
+
+                case "scrollchat":
+                    {
+                        // Scrolls the open chat's history by an amount, so that messages pass
+                        // under the header.
+                        Telegram.Controls.Chats.ChatHistoryView history = null;
+                        Walk(root, element => (history = element as Telegram.Controls.Chats.ChatHistoryView) != null);
+
+                        var host = history?.ScrollingHost;
+                        if (host == null)
+                        {
+                            return "error: no chat history";
+                        }
+
+                        host.ChangeView(null, host.VerticalOffset + double.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture), null, true);
+                        return $"ok {host.VerticalOffset:0}/{host.ScrollableHeight:0}";
+                    }
+
+                case "el":
+                    {
+                        // Layout state of every element with an x:Name: whether it is shown,
+                        // where and how big, and what it paints with.
+                        var found = new List<string>();
+                        Walk(root, element =>
+                        {
+                            if (element is FrameworkElement framework && framework.Name == parts[1])
+                            {
+                                var origin = framework.TransformToVisual(window.Content).TransformPoint(default);
+                                var brush = framework switch
+                                {
+                                    Panel panel => panel.Background,
+                                    Border border => border.Background,
+                                    Control control => control.Background,
+                                    _ => null
+                                };
+
+                                found.Add($"{framework.Visibility} {origin.X:0},{origin.Y:0} {framework.ActualWidth:0}x{framework.ActualHeight:0} {brush?.GetType().Name ?? "-"}");
+                            }
+
+                            return false;
+                        });
+
+                        return found.Count == 0 ? "none" : string.Join(" | ", found);
                     }
 
                 case "probe":
