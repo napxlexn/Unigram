@@ -758,6 +758,20 @@ namespace Telegram.ViewModels.Settings
 
         private DebouncedProperty<int> _saturationDebouncer;
 
+        public double InputBlur
+        {
+            get => AppSettings.Appearance.InputBlur;
+            set => SetIntensity((int)value, AppSettings.Appearance.InputBlur, x => AppSettings.Appearance.InputBlur = x);
+        }
+
+        public double InputFadeHeight
+        {
+            get => AppSettings.Appearance.InputFadeHeight;
+            set => SetIntensity((int)value, AppSettings.Appearance.InputFadeHeight, x => AppSettings.Appearance.InputFadeHeight = x);
+        }
+
+        public bool IsInputFading => AppSettings.Appearance.InputStyle == InputStyle.Fading;
+
         public double InputFill
         {
             get => AppSettings.Appearance.InputFill;
@@ -785,6 +799,7 @@ namespace Telegram.ViewModels.Settings
                     ApplyGlass();
                     RaisePropertyChanged();
                     RaisePropertyChanged(nameof(IsInputGlass));
+                    RaisePropertyChanged(nameof(IsInputFading));
                 }
             }
         }
