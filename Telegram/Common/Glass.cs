@@ -116,7 +116,20 @@ namespace Telegram.Common
         {
             new(RimAnimation.None, "Без анімації"),
             new(RimAnimation.Pulse, "Дихання"),
+            new(RimAnimation.Heartbeat, "Серцебиття"),
+            new(RimAnimation.Flicker, "Свічка"),
             new(RimAnimation.Shimmer, "Відблиск, що біжить"),
+            new(RimAnimation.Rotate, "Світло по колу"),
+            new(RimAnimation.Rainbow, "Райдужний перелив"),
+        };
+
+        public static List<SettingsOptionItem<RimHover>> RimHoverOptions => new()
+        {
+            new(RimHover.None, "Не реагує"),
+            new(RimHover.Spotlight, "Світло за курсором"),
+            new(RimHover.Glow, "Сяйво при наведенні"),
+            new(RimHover.Sheen, "Відблиск на склі"),
+            new(RimHover.All, "Усе разом"),
         };
 
         private static readonly Color Green = Color.FromArgb(0xFF, 0x4C, 0xFF, 0x7A);
