@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-21
+* **update**: transparency: unified GlassKind, rim styles, effect strengths, capsule header as one element, open without reading
 * **update**: transparency: glass chat header, separator modes, content glow, SmoothGlass; local-build: Primary identity and data import
 * **update**: transparency: header styles, own message colours, layered footer, RO_E_CLOSED fix
 
