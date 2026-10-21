@@ -758,7 +758,7 @@
                         <Slider Value="{x:Bind ViewModel.InputFadeHeight, Mode=TwoWay}"
                                 IsEnabled="{x:Bind ViewModel.IsInputFading, Mode=OneWay}"
                                 AutomationProperties.Name="Висота переходу над полем вводу"
-                                Minimum="16"
+                                Minimum="0"
                                 Maximum="160"
                                 SmallChange="4"
                                 LargeChange="10"
