@@ -29,16 +29,31 @@ namespace Telegram.Controls.Media
     /// </summary>
     public static class ProgressiveGlass
     {
+        /// <param name="Steps">How many blurs, each weaker, the fade is made of.</param>
+        /// <param name="Curve">The power the strength grows with from the weakest to the strongest.</param>
+        /// <param name="Overlap">Over how many steps each layer eases out.</param>
+        /// <param name="Ease">The fade's form: smoothstep, linear, smootherstep, quick or slow fall.</param>
+        /// <param name="Tint">How much of the tint's own alpha is drawn.</param>
+        /// <param name="TintSpread">How much of the fade the tint takes to go.</param>
+        /// <param name="Outline">Marks where the glass is solid to and where it ends.</param>
+        public sealed record Shape(int Steps = 6, float Curve = 2, float Overlap = 2, int Ease = 0, float Saturation = 1.2f, bool Quality = true, float Tint = 1, float TintSpread = 1, bool Outline = false);
+
         /// <param name="solidUntil">Where the fade starts, as a fraction of the height from the
         /// solid side.</param>
+        /// <param name="tintUntil">Where the tint starts to fade, likewise.</param>
         /// <param name="fadesUp">Solid at the bottom, fading upwards.</param>
-        public static void Attach(FrameworkElement host, Color tint, float blur, float solidUntil, bool fadesUp, int steps = 6)
+        public static void Attach(FrameworkElement host, Color tint, float blur, float solidUntil, float tintUntil, bool fadesUp, Shape shape)
         {
             Detach(host);
 
             var compositor = BootStrapper.Current.Compositor;
             var root = compositor.CreateContainerVisual();
-            var layers = new SpriteVisual[steps + 1];
+            root.RelativeSizeAdjustment = Vector2.One;
+
+            var steps = Math.Max(1, shape.Steps);
+
+            solidUntil = Math.Clamp(solidUntil, 0, 1);
+            tintUntil = Math.Clamp(tintUntil, 0, 1);
 
             var fade = 1 - solidUntil;
 
@@ -46,56 +61,49 @@ namespace Telegram.Controls.Media
             {
                 // From the weakest, reaching furthest, to the strongest, drawn last and on top;
                 // each holds a step further out than the next stronger one, then eases out over
-                // two steps, so that neighbours overlap and no line shows between them.
-                // The strength grows with the square of the step: the outer layers barely blur,
+                // the overlap, so that neighbours overlap and no line shows between them.
+                // The strength grows with a power of the step: the outer layers barely blur,
                 // so the content goes soft gradually rather than at the edge of the band.
                 for (int k = 1; k <= steps; k++)
                 {
                     var holds = solidUntil + fade * (steps - k) / steps;
-                    var strength = (float)k / steps;
+                    var strength = MathF.Pow((float)k / steps, Math.Max(0.01f, shape.Curve));
 
                     var masked = compositor.CreateMaskBrush();
-                    masked.Source = SolidGaussianBrush.CreateBrush(compositor, Colors.Transparent, blur * strength * strength, 1.2f, quality: true);
-                    masked.Mask = CreateRamp(compositor, holds, holds + fade * 2f / steps, fadesUp);
+                    masked.Source = SolidGaussianBrush.CreateBrush(compositor, Colors.Transparent, blur * strength, shape.Saturation, quality: shape.Quality);
+                    masked.Mask = CreateRamp(compositor, holds, holds + fade * shape.Overlap / steps, fadesUp, shape.Ease);
 
-                    layers[k - 1] = compositor.CreateSpriteVisual();
-                    layers[k - 1].Brush = masked;
-                    root.Children.InsertAtTop(layers[k - 1]);
+                    root.Children.InsertAtTop(CreateLayer(compositor, masked));
                 }
             }
 
-            var tinted = compositor.CreateMaskBrush();
-            tinted.Source = compositor.CreateColorBrush(tint);
-            tinted.Mask = CreateRamp(compositor, solidUntil, 1, fadesUp);
-
-            layers[steps] = compositor.CreateSpriteVisual();
-            layers[steps].Brush = tinted;
-            root.Children.InsertAtTop(layers[steps]);
-
-            void Resize(object sender, SizeChangedEventArgs e)
+            if (shape.Tint > 0 && tint.A > 0)
             {
-                foreach (var layer in layers)
-                {
-                    layer?.Size = e.NewSize.ToVector2();
-                }
+                tint.A = (byte)Math.Clamp(tint.A * shape.Tint, 0, 255);
+
+                var tinted = compositor.CreateMaskBrush();
+                tinted.Source = compositor.CreateColorBrush(tint);
+                tinted.Mask = CreateRamp(compositor, tintUntil, tintUntil + (1 - tintUntil) * shape.TintSpread, fadesUp, shape.Ease);
+
+                root.Children.InsertAtTop(CreateLayer(compositor, tinted));
             }
 
-            foreach (var layer in layers)
+            if (shape.Outline)
             {
-                layer?.Size = host.ActualSize;
+                // Yellow where the fade starts, cyan where the tint does, red at the far edge.
+                root.Children.InsertAtTop(CreateLine(compositor, Colors.Yellow, solidUntil, fadesUp));
+                root.Children.InsertAtTop(CreateLine(compositor, Colors.Cyan, tintUntil, fadesUp));
+                root.Children.InsertAtTop(CreateLine(compositor, Colors.Red, 1, fadesUp));
             }
-
-            host.SizeChanged += Resize;
-            host.Tag = new Attachment(Resize);
 
             ElementCompositionPreview.SetElementChildVisual(host, root);
+            host.Tag = new Attachment();
         }
 
         public static void Detach(FrameworkElement host)
         {
-            if (host?.Tag is Attachment attachment)
+            if (host?.Tag is Attachment)
             {
-                host.SizeChanged -= attachment.Resize;
                 host.Tag = null;
 
                 // Released rather than disposed: the compositor may still be drawing it.
@@ -103,13 +111,45 @@ namespace Telegram.Controls.Media
             }
         }
 
-        private sealed record Attachment(SizeChangedEventHandler Resize);
+        private sealed record Attachment;
+
+        // Sized with the host by the relative adjustments, so no handler has to follow it.
+        private static SpriteVisual CreateLayer(Compositor compositor, CompositionBrush brush)
+        {
+            var layer = compositor.CreateSpriteVisual();
+            layer.Brush = brush;
+            layer.RelativeSizeAdjustment = Vector2.One;
+            return layer;
+        }
+
+        private static SpriteVisual CreateLine(Compositor compositor, Color color, float at, bool fadesUp)
+        {
+            var line = compositor.CreateSpriteVisual();
+            line.Brush = compositor.CreateColorBrush(color);
+            line.RelativeSizeAdjustment = new Vector2(1, 0);
+            line.Size = new Vector2(0, 2);
+            line.RelativeOffsetAdjustment = new Vector3(0, fadesUp ? 1 - at : at, 0);
+            line.Offset = new Vector3(0, fadesUp ? (at >= 1 ? 0 : -1) : (at >= 1 ? -2 : -1), 0);
+            return line;
+        }
+
+        private static float Eased(float t, int ease)
+        {
+            return ease switch
+            {
+                1 => 1 - t,
+                2 => 1 - t * t * t * (t * (t * 6 - 15) + 10),
+                3 => (1 - t) * (1 - t),
+                4 => 1 - t * t,
+                _ => 1 - t * t * (3 - 2 * t)
+            };
+        }
 
         /// <summary>
         /// Opaque from the solid side to <paramref name="from"/>, eased to nothing by
-        /// <paramref name="to"/> - a smoothstep in five stops, so it has no visible start or end.
+        /// <paramref name="to"/> in eight stops, so it has no visible start or end.
         /// </summary>
-        private static CompositionLinearGradientBrush CreateRamp(Compositor compositor, float from, float to, bool fadesUp)
+        private static CompositionLinearGradientBrush CreateRamp(Compositor compositor, float from, float to, bool fadesUp, int ease)
         {
             from = Math.Clamp(from, 0, 0.999f);
             to = Math.Clamp(to, from + 0.001f, 1);
@@ -119,11 +159,10 @@ namespace Telegram.Controls.Media
             ramp.EndPoint = new Vector2(0, fadesUp ? 0 : 1);
             ramp.ColorStops.Add(compositor.CreateColorGradientStop(0, Color.FromArgb(255, 255, 255, 255)));
 
-            for (int i = 0; i <= 4; i++)
+            for (int i = 0; i <= 8; i++)
             {
-                var t = i / 4f;
-                var eased = 1 - t * t * (3 - 2 * t);
-                ramp.ColorStops.Add(compositor.CreateColorGradientStop(from + (to - from) * t, Color.FromArgb((byte)(255 * eased), 255, 255, 255)));
+                var t = i / 8f;
+                ramp.ColorStops.Add(compositor.CreateColorGradientStop(from + (to - from) * t, Color.FromArgb((byte)(255 * Math.Clamp(Eased(t, ease), 0, 1)), 255, 255, 255)));
             }
 
             if (to < 1)

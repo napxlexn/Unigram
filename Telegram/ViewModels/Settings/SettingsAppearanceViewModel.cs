@@ -732,6 +732,7 @@ namespace Telegram.ViewModels.Settings
             {
                 NightModeService.Current.Update(false, updateBackground: false);
                 ApplyGlass();
+                ListRadius.Apply();
                 RaisePropertyChanged(nameof(RadiusMaster));
             });
             _radiusDebouncer.Set(Environment.TickCount);

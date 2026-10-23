@@ -2546,7 +2546,7 @@
         <Setter Property="FontFamily"
                 Value="{StaticResource SymbolThemeFontFamily}" />
         <Setter Property="CornerRadius"
-                Value="4" />
+                Value="{ThemeResource ListItemCornerRadius}" />
         <Setter Property="Padding"
                 Value="4,2,4,2" />
         <Setter Property="UseSystemFocusVisuals"
@@ -4407,7 +4407,7 @@
         <Setter Property="FocusVisualMargin"
                 Value="0" />
         <Setter Property="CornerRadius"
-                Value="4" />
+                Value="{ThemeResource ListItemCornerRadius}" />
         <Setter Property="BorderThickness"
                 Value="1" />
         <Setter Property="BorderBrush"
@@ -9958,7 +9958,7 @@
         <Setter Property="FocusVisualMargin"
                 Value="0" />
         <Setter Property="CornerRadius"
-                Value="4" />
+                Value="{ThemeResource ListItemCornerRadius}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
@@ -10512,7 +10512,7 @@
         <Setter Property="Margin"
                 Value="4,2" />
         <Setter Property="CornerRadius"
-                Value="4" />
+                Value="{ThemeResource ListItemCornerRadius}" />
     </Style>
 
     <Style TargetType="local:AnimatedTextBlock">

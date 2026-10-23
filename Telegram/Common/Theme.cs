@@ -401,6 +401,7 @@ namespace Telegram.Common
                 ("OverlayCornerRadius", RadiusTree.Overlays),
                 ("NavigationViewContentGridCornerRadius", RadiusTree.ContentFrame),
                 ("GlyphButtonCornerRadius", RadiusTree.GlyphButtons),
+                ("ListItemCornerRadius", RadiusTree.ListItems),
                 ("MessageServiceCornerRadius", RadiusTree.Service),
                 ("MessageOverlayCornerRadius", RadiusTree.MediaButtons),
             })

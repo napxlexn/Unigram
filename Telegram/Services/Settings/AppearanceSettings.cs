@@ -300,6 +300,7 @@ namespace Telegram.Services.Settings
         public const string Fields = "Fields";
         public const string GlyphButtons = "GlyphButtons";
         public const string Composer = "Composer";
+        public const string ListItems = "ListItems";
 
         public const string Overlays = "Overlays";
 
@@ -312,7 +313,7 @@ namespace Telegram.Services.Settings
         {
             (Headers, "Шапки й панелі", new[] { (ChatHeader, "Шапка чату"), (PageHeaders, "Шапки сторінок"), (ContentFrame, "Рамка вмісту вікна") }),
             (Cards, "Пункти налаштувань і картки", new[] { (SettingsItems, "Пункти налаштувань"), (Preview, "Попередній перегляд") }),
-            (Controls, "Кнопки й поля вводу", new[] { (Fields, "Кнопки, поля й списки"), (GlyphButtons, "Кнопки-значки"), (Composer, "Поле вводу повідомлення") }),
+            (Controls, "Кнопки й поля вводу", new[] { (Fields, "Кнопки, поля й списки"), (GlyphButtons, "Кнопки-значки"), (Composer, "Поле вводу повідомлення"), (ListItems, "Пункти списків: чати, папки, таблиці") }),
             (Overlays, "Меню й спливаючі вікна", System.Array.Empty<(string, string)>()),
             (ChatCapsules, "Капсули в чаті", new[] { (Reactions, "Реакції"), (Service, "Дати й сервісні повідомлення"), (MediaButtons, "Кнопки на фото й відео") }),
         };
