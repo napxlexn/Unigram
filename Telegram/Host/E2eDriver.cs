@@ -521,6 +521,42 @@ namespace Telegram.Host
                     var appearance = AppSettings.Appearance;
                     return $"material={appearance.WindowMaterial} background={appearance.BackgroundOpacity} wallpaper={appearance.WallpaperOpacity} theme={window.ActualTheme}";
 
+                case "hover":
+                case "unhover":
+                    {
+                        // A control's hover state without a pointer, by x:Name or by type name,
+                        // "#2" for the second: "hover Profile", "hover ListViewItem#3".
+                        var name = parts[1].Split('#');
+                        var skip = name.Length > 1 ? int.Parse(name[1]) - 1 : 0;
+
+                        Control target = null;
+                        Walk(root, element =>
+                        {
+                            target = element is Control control && (element.Name == name[0] || element.GetType().Name == name[0]) ? control : null;
+                            return target != null && skip-- == 0;
+                        });
+
+                        if (target == null)
+                        {
+                            return "error: no control " + parts[1];
+                        }
+
+                        var moved = VisualStateManager.GoToState(target, parts[0] == "hover" ? "PointerOver" : "Normal", false);
+                        var origin = target.TransformToVisual(window.Content).TransformPoint(default);
+                        return $"{moved} {target.GetType().Name} {origin.X:0},{origin.Y:0} {target.ActualWidth:0}x{target.ActualHeight:0} r={target.CornerRadius.TopLeft}";
+                    }
+
+                case "tuner":
+                    // On the second monitor, left of the app: a test never puts a window on the
+                    // primary one, where the game is.
+                    Services.Settings.ApplicationDataSettingsStore.Local.GetContainer("WindowLayout").SetValue("GlassTuner", parts.Length > 1 ? parts[1] : "3460,60,640,1300");
+                    Telegram.Controls.GlassTuner.Open();
+                    return "ok";
+
+                case "tune":
+                    Services.Settings.GlassTuning.Set(parts[1], double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture));
+                    return "ok " + Services.Settings.GlassTuning.Get(parts[1]);
+
                 case "names":
                     {
                         // Every named element, to find what to point the other commands at.
