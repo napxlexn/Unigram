@@ -33,6 +33,9 @@ namespace Telegram.Controls
         // What shows each value, to follow it when it changes from elsewhere.
         private readonly Dictionary<string, (Action<double> Show, TextBlock Value)> _rows = new();
 
+        // What paints the window: a UserControl draws no background of its own.
+        private readonly Border _surface = new();
+
         private GlassTuner()
         {
             var panel = new StackPanel
@@ -88,7 +91,7 @@ namespace Telegram.Controls
                 panel.Children.Add(CreateRow(parameter));
             }
 
-            Content = new ScrollViewer
+            _surface.Child = new ScrollViewer
             {
                 Content = panel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -96,6 +99,7 @@ namespace Telegram.Controls
                 Margin = new Thickness(0, 32, 0, 0)
             };
 
+            Content = _surface;
             UpdateBackground();
 
             GlassTuning.Changed += OnChanged;
@@ -127,14 +131,14 @@ namespace Telegram.Controls
             var solid = dark ? Windows.UI.Color.FromArgb(0xFF, 0x20, 0x20, 0x20) : Windows.UI.Color.FromArgb(0xFF, 0xF3, 0xF3, 0xF3);
             if (spec.IsOriginal || spec.Tint is not Windows.UI.Color tint)
             {
-                Background = new SolidColorBrush(solid);
+                _surface.Background = new SolidColorBrush(solid);
                 return;
             }
 
             tint.A = Math.Max(tint.A, (byte)0xA0);
 
             var blur = Glass.ScaleBlur(spec.Blur);
-            Background = blur > 0
+            _surface.Background = blur > 0
                 ? new Telegram.Controls.Media.SolidGaussianBrush { TintColor = tint, FallbackColor = solid, BlurAmount = blur, Saturation = spec.Saturation }
                 : new SolidColorBrush(tint);
         }
