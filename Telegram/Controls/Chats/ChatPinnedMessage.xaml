@@ -58,6 +58,7 @@
                 </VisualStateManager.VisualStateGroups>
                 <ContentPresenter x:Name="ContentPresenter"
                                   Background="{TemplateBinding Background}"
+                                  CornerRadius="{TemplateBinding CornerRadius}"
                                   BorderBrush="{TemplateBinding BorderBrush}"
                                   BorderThickness="{TemplateBinding BorderThickness}"
                                   Content="{TemplateBinding Content}"

@@ -1102,6 +1102,8 @@ namespace Telegram.Views
             var gap = (float)(HeaderGlass.Margin.Top);
             var radius = (float)Math.Min(HeaderGlass.CornerRadius.BottomLeft - gap, height / 2);
 
+            UpdateBarShapes(capsule && height >= 1, Math.Max(0, HeaderGlass.CornerRadius.BottomLeft - gap));
+
             if (!capsule || height < 1 || width < 1 || radius <= 0)
             {
                 visual.Clip = null;
@@ -8154,34 +8156,76 @@ namespace Telegram.Views
         }
 
         /// <summary>
-        /// The header's button lies under the whole header, and its hover is a fill of its whole
-        /// shape: square and edge to edge, which inside the capsule header showed past its rounded
-        /// sides. There it takes the capsule's own outline instead - square at the bottom when
-        /// the bars carry the capsule on below it.
+        /// Inside the capsule header every row - the header's own and each bar under it - is the
+        /// same inset pill: as far in from the capsule's sides as the bars always were, with
+        /// corners that follow the capsule's own, inset as they are. Hovers are fills of those
+        /// shapes; square and edge to edge, the header's showed past the capsule's rounded sides
+        /// and the bars' square corners stood out against it. The buttons on the right are pulled
+        /// in to the same edge, so the header's and the bars' line up, and down to the row's
+        /// height, so that their hovers stay inside it.
         /// </summary>
         private void UpdateProfileShape()
         {
             var capsule = _headerInset > 0 && AppSettings.Appearance.ChatHeaderStyle == Services.Settings.ChatHeaderStyle.Capsule && HeaderGlass.Visibility == Visibility.Visible;
-            var inset = capsule ? HeaderGlass.Margin.Left : 0;
 
-            Profile.Padding = new Thickness(Math.Max(0, HeaderLeft.ActualWidth - inset), 0, Math.Max(0, Options.ActualWidth - inset), 0);
+            var gap = capsule ? HeaderGlass.Margin.Top : 0;
+            var inset = capsule ? HeaderGlass.Margin.Left + gap : 0;
+            var vertical = capsule ? HeaderGlass.Margin.Top + gap : 0;
+            var height = Header.Height - vertical * 2;
+            var radius = capsule ? Math.Max(0, Math.Min(HeaderGlass.CornerRadius.TopLeft - gap, height / 2)) : 0;
 
-            if (capsule)
+            Options.Margin = new Thickness(0, vertical, inset, vertical);
+
+            foreach (var button in LinqToVisualTree.TreeExtensions.Descendants<Control>(Options))
             {
-                var height = Header.Height - HeaderGlass.Margin.Top * 2;
-                var radius = Math.Min(HeaderGlass.CornerRadius.TopLeft, height / 2);
-                var bars = HeaderGlass.Height > height + 0.5;
+                if (button is GlyphButton or MoreButton)
+                {
+                    if (capsule)
+                    {
+                        button.Height = height;
+                    }
+                    else
+                    {
+                        button.ClearValue(HeightProperty);
+                    }
+                }
+            }
 
-                Profile.Margin = new Thickness(inset, HeaderGlass.Margin.Top, HeaderGlass.Margin.Right, HeaderGlass.Margin.Top);
-                Profile.CornerRadius = new CornerRadius(radius, radius, bars ? 0 : radius, bars ? 0 : radius);
-            }
-            else
-            {
-                Profile.Margin = new Thickness(0);
-                Profile.CornerRadius = new CornerRadius(0);
-            }
+            Profile.Margin = new Thickness(inset, vertical, inset, vertical);
+            Profile.CornerRadius = new CornerRadius(radius);
+            Profile.Padding = new Thickness(Math.Max(0, HeaderLeft.ActualWidth - inset), 0, Math.Max(0, Options.ActualWidth + Options.Margin.Right - inset), 0);
         }
 
+        // The bars' rows given a pill's corners in the capsule, with the radius each had before.
+        private readonly Dictionary<Control, CornerRadius> _barCorners = new();
+
+        private void UpdateBarShapes(bool capsule, double radius)
+        {
+            foreach (var corner in _barCorners)
+            {
+                corner.Key.CornerRadius = corner.Value;
+            }
+
+            _barCorners.Clear();
+
+            if (!capsule || ClipperOuter.ActualWidth < 1)
+            {
+                return;
+            }
+
+            // A row is whatever control spans a bar's whole width: the bar itself when it is a
+            // button, or the button it lays over its full width.
+            var width = ClipperOuter.ActualWidth;
+
+            foreach (var row in LinqToVisualTree.TreeExtensions.Descendants<Control>(ClipperOuter))
+            {
+                if (row is ButtonBase && row.ActualWidth >= width - 1 && row.ActualHeight > 0)
+                {
+                    _barCorners[row] = row.CornerRadius;
+                    row.CornerRadius = new CornerRadius(Math.Min(radius, row.ActualHeight / 2));
+                }
+            }
+        }
         private void EmptyChat_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.ClientService.TryGetUserFull(ViewModel.Chat, out UserFullInfo fullInfo))

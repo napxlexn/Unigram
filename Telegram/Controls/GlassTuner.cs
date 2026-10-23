@@ -96,10 +96,47 @@ namespace Telegram.Controls
                 Margin = new Thickness(0, 32, 0, 0)
             };
 
-            Background = Application.Current.Resources["ApplicationPageBackgroundThemeBrush"] as Brush;
+            UpdateBackground();
 
             GlassTuning.Changed += OnChanged;
-            Unloaded += (s, e) => GlassTuning.Changed -= OnChanged;
+            AppearanceSettings.PaneMaterialChanged += OnPaneMaterialChanged;
+            ActualThemeChanged += (s, e) => UpdateBackground();
+            Unloaded += (s, e) =>
+            {
+                GlassTuning.Changed -= OnChanged;
+                AppearanceSettings.PaneMaterialChanged -= OnPaneMaterialChanged;
+            };
+        }
+
+        private void OnPaneMaterialChanged(object sender, EventArgs e)
+        {
+            this.BeginOnUIThread(UpdateBackground);
+        }
+
+        /// <summary>
+        /// The window has the app's material behind it, and the pages' own surfaces step aside for
+        /// it - with nothing else on it the tuner was a clear pane over whatever lay behind. It is
+        /// given what the app's side pane has: the pane's kind of glass, with some body to read
+        /// against, or the theme's own colour where that kind is the original one.
+        /// </summary>
+        private void UpdateBackground()
+        {
+            var dark = ActualTheme != ElementTheme.Light;
+            var spec = Glass.Resolve(AppSettings.Appearance.PaneGlass, dark);
+
+            var solid = dark ? Windows.UI.Color.FromArgb(0xFF, 0x20, 0x20, 0x20) : Windows.UI.Color.FromArgb(0xFF, 0xF3, 0xF3, 0xF3);
+            if (spec.IsOriginal || spec.Tint is not Windows.UI.Color tint)
+            {
+                Background = new SolidColorBrush(solid);
+                return;
+            }
+
+            tint.A = Math.Max(tint.A, (byte)0xA0);
+
+            var blur = Glass.ScaleBlur(spec.Blur);
+            Background = blur > 0
+                ? new Telegram.Controls.Media.SolidGaussianBrush { TintColor = tint, FallbackColor = solid, BlurAmount = blur, Saturation = spec.Saturation }
+                : new SolidColorBrush(tint);
         }
 
         private FrameworkElement CreateRow(GlassTuning.Parameter parameter)
