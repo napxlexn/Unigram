@@ -93,6 +93,11 @@ namespace Telegram.Views.Settings
 
         }
 
+        private void GlassTuner_Click(object sender, RoutedEventArgs e)
+        {
+            Controls.GlassTuner.Open();
+        }
+
         #region Custom colours
 
         private void CustomColor_Click(object sender, RoutedEventArgs e)

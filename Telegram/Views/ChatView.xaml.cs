@@ -58,6 +58,7 @@ using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Animation;
+using GlassTuning = Telegram.Services.Settings.GlassTuning;
 
 namespace Telegram.Views
 {
@@ -473,6 +474,7 @@ namespace Telegram.Views
             _dust?.Stop();
 
             Services.Settings.AppearanceSettings.GlassHeaderChanged -= OnGlassHeaderChanged;
+            GlassTuning.Changed -= OnGlassTuningChanged;
 
             // Ranges measured against rows this view is about to stop showing.
             _messagesShift.Clear();
@@ -859,6 +861,8 @@ namespace Telegram.Views
 
             Services.Settings.AppearanceSettings.GlassHeaderChanged -= OnGlassHeaderChanged;
             Services.Settings.AppearanceSettings.GlassHeaderChanged += OnGlassHeaderChanged;
+            GlassTuning.Changed -= OnGlassTuningChanged;
+            GlassTuning.Changed += OnGlassTuningChanged;
             ActualThemeChanged -= OnGlassThemeChanged;
             ActualThemeChanged += OnGlassThemeChanged;
             UpdateChatHeaderStyle();
@@ -874,6 +878,29 @@ namespace Telegram.Views
         private void OnGlassHeaderChanged(object sender, EventArgs e)
         {
             this.BeginOnUIThread(UpdateChatHeaderStyle);
+        }
+
+        // A value in the glass tuner: only the progressive glass is drawn again, so that a
+        // slider can be dragged without the rest of the chat rebuilding with it.
+        private void OnGlassTuningChanged(object sender, string key)
+        {
+            this.BeginOnUIThread(() =>
+            {
+                if (ViewModel == null)
+                {
+                    return;
+                }
+
+                if (key.StartsWith(GlassTuning.Header))
+                {
+                    _headerFadeTotal = -1;
+                    UpdateClipperBackground();
+                }
+                else
+                {
+                    UpdateInputStyle(ActualTheme != ElementTheme.Light);
+                }
+            });
         }
 
         // The glass tints are baked per theme.
@@ -940,6 +967,8 @@ namespace Telegram.Views
             var footerKind = AppSettings.Appearance.FooterGlass is var footer && footer != Services.Settings.GlassKind.Original ? footer : Services.Settings.GlassKind.Frosted;
 
             SmoothGlass.Detach(HeaderGlass);
+            ProgressiveGlass.Detach(HeaderGlass);
+            _headerFadeTotal = -1;
             HeaderGlass.CornerRadius = default;
             HeaderGlass.Background = null;
             HeaderGlass.BorderThickness = default;
@@ -963,7 +992,6 @@ namespace Telegram.Views
                 case Services.Settings.ChatHeaderStyle.FadingGlass:
                     // Fades out below the bars, so the messages slide into the glass. Sized,
                     // and given its fade point, in UpdateClipperBackground.
-                    HeaderGlass.Background = CreateFadingHeaderBrush(headerKind, theme, 0.7);
                     HeaderGlass.Height = double.NaN;
                     break;
             }
@@ -979,12 +1007,21 @@ namespace Telegram.Views
             UpdateMessagesHeaderPadding();
         }
 
-        private static Brush CreateFadingHeaderBrush(Services.Settings.GlassKind kind, ElementTheme theme, double solidUntil)
-        {
-            var spec = Glass.Resolve(kind, theme != ElementTheme.Light);
-            var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
+        // The height the fading header's glass was last drawn for; it bakes in its fade point.
+        private double _headerFadeTotal = -1;
 
-            return new FadingGlassBrush { TintColor = tint, BlurAmount = Glass.ScaleBlur(spec.Blur), SolidUntil = solidUntil };
+        /// <summary>
+        /// The fading header's glass: weaker as it fades, as the composer's is, from the values
+        /// the glass tuner keeps.
+        /// </summary>
+        private void AttachFadingHeader(double solid, double total)
+        {
+            var kind = AppSettings.Appearance.ChatHeaderGlass is var chosen && chosen != Services.Settings.GlassKind.Original ? chosen : Services.Settings.GlassKind.Frosted;
+            var spec = Glass.Resolve(kind, ActualTheme != ElementTheme.Light);
+            var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
+            var tintFrom = Math.Clamp(solid + GlassTuning.Get(GlassTuning.Header + ".TintOffset"), 0, total);
+
+            ProgressiveGlass.Attach(HeaderGlass, tint, (float)(Glass.ScaleBlur(spec.Blur) * GlassTuning.Get(GlassTuning.Header + ".Blur") / 100), (float)(solid / total), (float)(tintFrom / total), fadesUp: false, GlassTuning.GetShape(GlassTuning.Header));
         }
 
         private void UpdateClipperBackground()
@@ -999,6 +1036,8 @@ namespace Telegram.Views
             {
                 HeaderGlass.Visibility = Visibility.Collapsed;
                 UpdateMessagesClip();
+                UpdateProfileShape();
+                UpdateBarsClip(0);
                 return;
             }
 
@@ -1022,12 +1061,13 @@ namespace Telegram.Views
                     // Solid through the header and the bars, so their text stays readable, and
                     // fading out in the strip below them. The fade point is baked into the
                     // brush, so a change in the bars' height takes a new one.
-                    var solid = _headerInset + Math.Max(0, height);
-                    var total = solid + 32;
+                    var solid = Math.Max(1, _headerInset + Math.Max(0, height) + GlassTuning.Get(GlassTuning.Header + ".SolidOffset"));
+                    var total = solid + GlassTuning.Get(GlassTuning.Header + ".Fade");
 
-                    if (HeaderGlass.Height != total)
+                    if (_headerFadeTotal != total)
                     {
-                        HeaderGlass.Background = CreateFadingHeaderBrush(AppSettings.Appearance.ChatHeaderGlass is var kind && kind != Services.Settings.GlassKind.Original ? kind : Services.Settings.GlassKind.Frosted, ActualTheme, solid / total);
+                        _headerFadeTotal = total;
+                        AttachFadingHeader(solid, total);
                     }
 
                     HeaderGlass.Margin = new Thickness(-width, 0, 0, 0);
@@ -1043,6 +1083,50 @@ namespace Telegram.Views
             }
 
             UpdateMessagesClip();
+            UpdateProfileShape();
+            UpdateBarsClip(height);
+        }
+
+        /// <summary>
+        /// The bars under the capsule header - the pinned message and the rest - end a little
+        /// above the capsule's rounded bottom, and their hover fills are square: their corners
+        /// showed past the capsule's. They are rounded off along the capsule's own curve, inset
+        /// as they are; below them, where the date floats, nothing is cut.
+        /// </summary>
+        private void UpdateBarsClip(double height)
+        {
+            var visual = ElementComposition.GetElementVisual(ClipperOuter);
+
+            var capsule = _headerInset > 0 && AppSettings.Appearance.ChatHeaderStyle == Services.Settings.ChatHeaderStyle.Capsule && HeaderGlass.Visibility == Visibility.Visible;
+            var width = (float)ClipperOuter.ActualWidth;
+            var gap = (float)(HeaderGlass.Margin.Top);
+            var radius = (float)Math.Min(HeaderGlass.CornerRadius.BottomLeft - gap, height / 2);
+
+            if (!capsule || height < 1 || width < 1 || radius <= 0)
+            {
+                visual.Clip = null;
+                return;
+            }
+
+            var bottom = (float)height;
+            var far = bottom + 4096;
+
+            using var builder = new CanvasPathBuilder(Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice());
+            builder.BeginFigure(0, -4096);
+            builder.AddLine(width, -4096);
+            builder.AddLine(width, bottom - radius);
+            builder.AddArc(new Vector2(width - radius, bottom), radius, radius, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            builder.AddLine(width, bottom);
+            builder.AddLine(width, far);
+            builder.AddLine(0, far);
+            builder.AddLine(0, bottom);
+            builder.AddLine(radius, bottom);
+            builder.AddArc(new Vector2(0, bottom - radius), radius, radius, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            builder.EndFigure(CanvasFigureLoop.Closed);
+
+            var compositor = visual.Compositor;
+            var geometry = compositor.CreatePathGeometry(new CompositionPath(Microsoft.Graphics.Canvas.Geometry.CanvasGeometry.CreatePath(builder)));
+            visual.Clip = compositor.CreateGeometricClip(geometry);
         }
 
         private void MessagesRoot_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1169,11 +1253,13 @@ namespace Telegram.Views
                     {
                         // Solid behind the composer, fading - in strength, not only in alpha -
                         // over the height the setting gives above it.
+                        // Every number here can be changed live in the glass tuner.
                         var spec = Glass.Resolve(kind, dark);
                         var tint = spec.Tint ?? Windows.UI.Color.FromArgb(0x80, 0x16, 0x16, 0x16);
-                        var solid = Math.Max(1, Footer.ActualHeight + Footer.Margin.Bottom);
-                        var fade = AppSettings.Appearance.InputFadeHeight;
-                        var total = solid + Math.Max(fade, 1);
+                        var solid = Math.Max(1, Footer.ActualHeight + Footer.Margin.Bottom + GlassTuning.Get(GlassTuning.Input + ".SolidOffset"));
+                        var fade = Math.Max(0, AppSettings.Appearance.InputFadeHeight);
+                        var total = Math.Max(solid + fade, 1);
+                        var tintFrom = Math.Clamp(solid + GlassTuning.Get(GlassTuning.Input + ".TintOffset"), 0, total);
 
                         TextGlass.CornerRadius = TextRoot.CornerRadius;
                         TextGlass.Visibility = Visibility.Visible;
@@ -1182,7 +1268,7 @@ namespace Telegram.Views
                         InputGlassBand.VerticalAlignment = VerticalAlignment.Bottom;
                         InputGlassBand.Height = total;
                         InputGlassBand.Margin = new Thickness(0, -fade, 0, 0);
-                        ProgressiveGlass.Attach(InputGlassBand, tint, (float)(Glass.ScaleBlur(spec.Blur) * AppSettings.Appearance.InputBlur / 100d), (float)(solid / total), fadesUp: true);
+                        ProgressiveGlass.Attach(InputGlassBand, tint, (float)(Glass.ScaleBlur(spec.Blur) * AppSettings.Appearance.InputBlur / 100d), (float)(solid / total), (float)(tintFrom / total), fadesUp: true, GlassTuning.GetShape(GlassTuning.Input));
                         InputGlassBand.Visibility = Visibility.Visible;
                         break;
                     }
@@ -5411,7 +5497,13 @@ namespace Telegram.Views
         {
             _rootVisual.Size = e.NewSize.ToVector2();
 
-            // The fading glass is solid as far as the composer reaches, which it bakes in.
+        }
+
+        // The fading glass is solid as far as the footer reaches, which it bakes in. The footer
+        // rather than the composer: a channel's footer is a button, and the composer, hidden,
+        // keeps the height it had in the last chat that showed it.
+        private void Footer_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
             if (e.NewSize.Height != e.PreviousSize.Height && AppSettings.Appearance.InputStyle == Services.Settings.InputStyle.Fading && ViewModel != null)
             {
                 UpdateInputStyle(ActualTheme != ElementTheme.Light);
@@ -8058,7 +8150,36 @@ namespace Telegram.Views
 
         private void Options_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            Profile.Padding = new Thickness(HeaderLeft.ActualWidth, 0, e.NewSize.Width, 0);
+            UpdateProfileShape();
+        }
+
+        /// <summary>
+        /// The header's button lies under the whole header, and its hover is a fill of its whole
+        /// shape: square and edge to edge, which inside the capsule header showed past its rounded
+        /// sides. There it takes the capsule's own outline instead - square at the bottom when
+        /// the bars carry the capsule on below it.
+        /// </summary>
+        private void UpdateProfileShape()
+        {
+            var capsule = _headerInset > 0 && AppSettings.Appearance.ChatHeaderStyle == Services.Settings.ChatHeaderStyle.Capsule && HeaderGlass.Visibility == Visibility.Visible;
+            var inset = capsule ? HeaderGlass.Margin.Left : 0;
+
+            Profile.Padding = new Thickness(Math.Max(0, HeaderLeft.ActualWidth - inset), 0, Math.Max(0, Options.ActualWidth - inset), 0);
+
+            if (capsule)
+            {
+                var height = Header.Height - HeaderGlass.Margin.Top * 2;
+                var radius = Math.Min(HeaderGlass.CornerRadius.TopLeft, height / 2);
+                var bars = HeaderGlass.Height > height + 0.5;
+
+                Profile.Margin = new Thickness(inset, HeaderGlass.Margin.Top, HeaderGlass.Margin.Right, HeaderGlass.Margin.Top);
+                Profile.CornerRadius = new CornerRadius(radius, radius, bars ? 0 : radius, bars ? 0 : radius);
+            }
+            else
+            {
+                Profile.Margin = new Thickness(0);
+                Profile.CornerRadius = new CornerRadius(0);
+            }
         }
 
         private void EmptyChat_Click(object sender, RoutedEventArgs e)

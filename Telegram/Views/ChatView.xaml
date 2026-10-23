@@ -1253,6 +1253,7 @@
                     Grid.RowSpan="2" />
 
             <Grid x:Name="Footer"
+                  SizeChanged="Footer_SizeChanged"
                   Grid.Row="3">
                 <Rectangle x:Name="ShadowCaster"
                            RadiusX="24"

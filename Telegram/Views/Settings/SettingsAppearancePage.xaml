@@ -767,6 +767,10 @@
                                 Margin="12,6,16,6"
                                 Grid.Column="2" />
                     </Grid>
+                    <controls:SettingsButton Content="Налагодження скла в окремому вікні"
+                                             AutomationProperties.Name="Налагодження скла"
+                                             Click="GlassTuner_Click"
+                                             Glyph="&#xEA89;" />
                     <controls:SettingsButton Content="Інші поля вводу (пошук, форми)"
                                              Glyph="&#xEA89;">
                         <controls:SettingsButton.Badge>

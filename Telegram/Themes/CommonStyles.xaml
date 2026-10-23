@@ -944,7 +944,7 @@
         <Setter Property="FocusVisualMargin"
                 Value="0" />
         <Setter Property="CornerRadius"
-                Value="4" />
+                Value="{ThemeResource ListItemCornerRadius}" />
         <Setter Property="BorderThickness"
                 Value="1" />
         <Setter Property="BorderBrush"
