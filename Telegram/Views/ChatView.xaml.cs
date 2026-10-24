@@ -1133,7 +1133,15 @@ namespace Telegram.Views
 
         private void MessagesRoot_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            UpdateMessagesClip();
+            // Under the composer the column's inset follows the width as well.
+            if (_footerUnderlay && e.NewSize.Width != e.PreviousSize.Width)
+            {
+                UpdateFooterUnderlay();
+            }
+            else
+            {
+                UpdateMessagesClip();
+            }
         }
 
         /// <summary>
@@ -1264,15 +1272,45 @@ namespace Telegram.Views
                 && Footer.Visibility == Visibility.Visible
                 && Footer.ActualHeight >= 1;
 
+            var adaptive = AppSettings.IsAdaptiveWideEnabled;
+
             if (underlay)
             {
+                // The messages pass under the composer's straight top edge only, never round its
+                // corners, where they would be cut along the curve beside the glass: the column
+                // keeps a radius clear of the composer's sides. Where the window has room the
+                // composer grows past the column by its radius; where it has not, the column
+                // draws in by as much.
+                var radius = Math.Max(0, ChatFooter.Visibility == Visibility.Visible ? ChatFooter.CornerRadius.TopLeft : TextRoot.CornerRadius.TopLeft);
+                var width = MessagesRoot.ActualWidth;
+
+                var widest = adaptive ? 1000 + radius * 2 : double.PositiveInfinity;
+                Footer.MaxWidth = InlinePanel.MaxWidth = Separator.MaxWidth = ReplyMarkupPanel.MaxWidth = widest;
+
+                var slot = Math.Max(0, width - Footer.Margin.Left - Footer.Margin.Right);
+                var footerLeft = Footer.Margin.Left + (slot - Math.Min(slot, widest)) / 2;
+
+                // The bubbles keep 12 from the column's edge; the column is centred at 1024.
+                var column = adaptive ? Math.Max(0, (width - 1024) / 2) : 0;
+                var inset = column + 12 >= footerLeft + radius ? 0 : Math.Ceiling(footerLeft + radius - 12);
+
                 Messages.Margin = new Thickness(0, 0, 0, -Footer.ActualHeight);
-                Messages.Padding = new Thickness(0, 0, 0, Footer.ActualHeight + Footer.Margin.Bottom);
+                Messages.Padding = new Thickness(inset, 0, inset, Footer.ActualHeight + Footer.Margin.Bottom);
+
+                // The sticky photos are drawn over the list and follow its column.
+                MessagesStickyPhoto.Padding = new Thickness(12 + inset, 0, 12 + inset, 0);
+                MessagesStickyPhoto.MaxWidth = adaptive ? 1024 + inset * 2 : double.PositiveInfinity;
             }
             else if (_footerUnderlay)
             {
                 Messages.Margin = new Thickness(0, 0, 0, 8);
                 Messages.Padding = new Thickness(0);
+
+                Footer.MaxWidth = InlinePanel.MaxWidth = Separator.MaxWidth = ReplyMarkupPanel.MaxWidth =
+                    adaptive ? (_textAreaRadius > 0 ? 1000 : 1024) : double.PositiveInfinity;
+
+                MessagesStickyPhoto.Padding = new Thickness(12, 0, 12, 0);
+                MessagesStickyPhoto.MaxWidth = adaptive ? 1024 : double.PositiveInfinity;
             }
 
             _footerUnderlay = underlay;
@@ -7378,6 +7416,12 @@ namespace Telegram.Views
             else
             {
                 messages.Clip = messages.Compositor.CreateInsetClip(-72, -44, 0, int.MinValue);
+            }
+
+            // The widths just set are the composer's own; under it they are wider.
+            if (_footerUnderlay)
+            {
+                UpdateFooterUnderlay();
             }
         }
 
