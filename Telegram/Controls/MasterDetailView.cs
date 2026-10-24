@@ -73,6 +73,9 @@ namespace Telegram.Controls
 
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
+
+            // The glass is tinted for the theme it was made in.
+            ActualThemeChanged += (s, e) => UpdateHeaderMaterial();
         }
 
         #region Initialize
@@ -379,6 +382,7 @@ namespace Telegram.Controls
             detailVisual2.Clip = detailVisual.Compositor.CreateInsetClip();
 
             _headerBackground = DetailHeaderBackground.Background;
+            _headerBorderBrush = DetailHeaderBackground.BorderBrush;
             _headerBorder = DetailHeaderBackground.BorderThickness;
             _headerHeight = DetailHeaderBackground.Height;
             UpdateHeaderMaterial();
@@ -615,6 +619,7 @@ namespace Telegram.Controls
 
         // The header as the template has it, which is what turning the glass off puts back.
         private Brush _headerBackground;
+        private Brush _headerBorderBrush;
         private Thickness _headerBorder;
         private double _headerHeight;
 
@@ -631,7 +636,7 @@ namespace Telegram.Controls
             }
 
             var style = AppSettings.Appearance.HeaderStyle;
-            ApplyHeaderStyle(DetailHeaderBackground, style, AppSettings.Appearance.HeaderGlass, ActualTheme, _headerBackground, _headerBorder, _headerHeight);
+            ApplyHeaderStyle(DetailHeaderBackground, style, AppSettings.Appearance.HeaderGlass, ActualTheme, _headerBackground, _headerBorderBrush, _headerBorder, _headerHeight);
 
             if (_properties != null)
             {
@@ -666,8 +671,24 @@ namespace Telegram.Controls
         /// Puts a header shape and its glass on a header background. Shared with the appearance
         /// page's playground, so that it shows exactly what the pages get.
         /// </summary>
-        public static void ApplyHeaderStyle(Border header, HeaderStyle style, GlassKind kind, ElementTheme theme, Brush original, Thickness originalBorder, double height)
+        public static void ApplyHeaderStyle(Border header, HeaderStyle style, GlassKind kind, ElementTheme theme, Brush original, Brush originalBorderBrush, Thickness originalBorder, double height)
         {
+            // The template's own values follow the theme; set from here they would not, so a
+            // header that was never restyled is left as it is.
+            if (style == HeaderStyle.Original && !_restyled.TryGetValue(header, out _))
+            {
+                return;
+            }
+
+            if (style == HeaderStyle.Original)
+            {
+                _restyled.Remove(header);
+            }
+            else
+            {
+                _restyled.AddOrUpdate(header, null);
+            }
+
             // Only the capsule is drawn by SmoothGlass; any other shape takes it off again.
             if (style != HeaderStyle.Capsule)
             {
@@ -700,7 +721,7 @@ namespace Telegram.Controls
 
                 default:
                     header.Background = original;
-                    header.ClearValue(Border.BorderBrushProperty);
+                    header.BorderBrush = originalBorderBrush;
                     header.BorderThickness = originalBorder;
                     header.CornerRadius = default;
                     header.Margin = default;
@@ -708,6 +729,8 @@ namespace Telegram.Controls
                     break;
             }
         }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Border, object> _restyled = new();
 
         /// <summary>
         /// Glass that blurs what scrolls beneath the header, strongly enough to read the title

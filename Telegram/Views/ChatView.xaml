@@ -1249,8 +1249,14 @@
                     Visibility="Collapsed"
                     IsHitTestVisible="False"
                     VerticalAlignment="Bottom"
-                    Grid.Row="3"
-                    Grid.RowSpan="2" />
+                    Grid.Row="3" />
+
+            <!-- Under a capsule composer the messages go on beside it, hidden: this keeps the
+                 pointer off them there. -->
+            <Border x:Name="FooterHitBlock"
+                    Background="Transparent"
+                    Visibility="Collapsed"
+                    Grid.Row="3" />
 
             <Grid x:Name="Footer"
                   SizeChanged="Footer_SizeChanged"

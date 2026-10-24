@@ -79,8 +79,8 @@ namespace Telegram.Services.Settings
         private static List<Parameter> Build()
         {
             var appearance = AppSettings.Appearance;
-            var input = "Скло над полем вводу й кнопкою каналу (стиль «Зникаюче»)";
-            var header = "Скло шапки чату (стиль «Зникаюче скло»)";
+            var input = "Скло над полем вводу й кнопкою каналу (стиль «Скло з переходом»)";
+            var header = "Скло шапки чату (стиль «Скло з переходом»)";
 
             var glass = Glass.Options;
             var glassNames = glass.ConvertAll(x => x.Text).ToArray();
@@ -100,7 +100,7 @@ namespace Telegram.Services.Settings
 
             var all = new List<Parameter>
             {
-                Kind(input, "InputStyle", "Стиль поля вводу", new[] { "Оригінал", "Скляна капсула", "Скляна смуга на всю ширину", "Скло з переходом (зникаюче)" }, () => (int)appearance.InputStyle, x => appearance.InputStyle = (InputStyle)x),
+                Kind(input, "InputStyle", "Стиль поля вводу", new[] { "Оригінал", "Скляна капсула", "Скляна смуга", "Скло з переходом" }, () => (int)appearance.InputStyle, x => appearance.InputStyle = (InputStyle)x),
                 Kind(input, "InputGlass", "Вид скла поля вводу", glassNames, () => IndexOf(appearance.InputGlass), x => appearance.InputGlass = glass[x].Value),
                 new(input, "InputBlur", "Сила розмиття", 0, 200, 5, 100, Percent, () => appearance.InputBlur, x => appearance.InputBlur = (int)x),
                 new(input, "InputFadeHeight", "Висота переходу над полем", 0, 160, 1, 24, Pixels, () => appearance.InputFadeHeight, x => appearance.InputFadeHeight = (int)x),
@@ -108,7 +108,7 @@ namespace Telegram.Services.Settings
             };
             all.AddRange(Shape(Input, input));
 
-            all.Add(Kind(header, "ChatHeaderStyle", "Стиль шапки чату", new[] { "Оригінал", "Скло на всю ширину", "Зникаюче скло", "Капсула" }, () => (int)appearance.ChatHeaderStyle, x => appearance.ChatHeaderStyle = (ChatHeaderStyle)x));
+            all.Add(Kind(header, "ChatHeaderStyle", "Стиль шапки чату", new[] { "Оригінал", "Суцільна", "Скло з переходом", "Капсула" }, () => (int)appearance.ChatHeaderStyle, x => appearance.ChatHeaderStyle = (ChatHeaderStyle)x));
             all.Add(Kind(header, "ChatHeaderGlass", "Вид скла шапки", glassNames, () => IndexOf(appearance.ChatHeaderGlass), x => appearance.ChatHeaderGlass = glass[x].Value));
             all.Add(new(header, Header + ".Blur", "Сила розмиття", 0, 200, 5, 100, Percent));
             all.Add(new(header, Header + ".Fade", "Висота переходу під шапкою", 0, 160, 1, 32, Pixels));
