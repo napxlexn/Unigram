@@ -784,9 +784,9 @@ namespace Telegram.ViewModels.Settings
         public List<SettingsOptionItem<InputStyle>> InputStyleOptions { get; } = new()
         {
             new SettingsOptionItem<InputStyle>(InputStyle.Original, "Оригінал"),
-            new SettingsOptionItem<InputStyle>(InputStyle.Capsule, "Скляна капсула, повідомлення під нею"),
-            new SettingsOptionItem<InputStyle>(InputStyle.Bar, "Скляна смуга на всю ширину"),
-            new SettingsOptionItem<InputStyle>(InputStyle.Fading, "Скло з переходом, як у шапці"),
+            new SettingsOptionItem<InputStyle>(InputStyle.Capsule, "Скляна капсула"),
+            new SettingsOptionItem<InputStyle>(InputStyle.Bar, "Скляна смуга"),
+            new SettingsOptionItem<InputStyle>(InputStyle.Fading, "Скло з переходом"),
         };
 
         public int InputStyleIndex
