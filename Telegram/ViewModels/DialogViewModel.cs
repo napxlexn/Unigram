@@ -2537,7 +2537,13 @@ namespace Telegram.ViewModels
             Chat = chat;
 
             // Taken over from the chat list's "open without reading", and given back on the way
-            // out - see OnNavigatedFrom.
+            // out - see OnNavigatedFrom. Coming back to it from a page opened from it - its
+            // profile, a thread - it is still not read.
+            if (ClientService.ResumeOpenWithoutReading(chat.Id, mode == NavigationMode.Back))
+            {
+                ClientService.OpenWithoutReading(chat.Id);
+            }
+
             _openedWithoutReading = ClientService.IsOpenWithoutReading(chat.Id);
             RaisePropertyChanged(nameof(Subtitle));
 
@@ -2906,7 +2912,7 @@ namespace Telegram.ViewModels
             if (_openedWithoutReading)
             {
                 _openedWithoutReading = false;
-                ClientService.EndOpenWithoutReading(chat.Id);
+                ClientService.EndOpenWithoutReading(chat.Id, resumable: true);
             }
 
             ClearPendingMessages();

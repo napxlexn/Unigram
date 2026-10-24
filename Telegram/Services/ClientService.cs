@@ -73,7 +73,15 @@ namespace Telegram.Services
         /// </summary>
         void OpenWithoutReading(long chatId);
 
-        void EndOpenWithoutReading(long chatId);
+        /// <param name="resumable">Taken up again if the chat is gone back to, see
+        /// <see cref="ResumeOpenWithoutReading"/>.</param>
+        void EndOpenWithoutReading(long chatId, bool resumable = false);
+
+        /// <summary>
+        /// Whether a chat that was open without reading is being gone back to, and so should be
+        /// again. Anything else than going back to it forgets it.
+        /// </summary>
+        bool ResumeOpenWithoutReading(long chatId, bool back);
 
         bool IsOpenWithoutReading(long chatId);
 
@@ -502,10 +510,26 @@ namespace Telegram.Services
             }
         }
 
-        public void EndOpenWithoutReading(long chatId)
+        // Chats left without reading, for going back to.
+        private readonly HashSet<long> _resumeWithoutReading = new();
+
+        public bool ResumeOpenWithoutReading(long chatId, bool back)
         {
             lock (_openWithoutReading)
             {
+                return _resumeWithoutReading.Remove(chatId) && back;
+            }
+        }
+
+        public void EndOpenWithoutReading(long chatId, bool resumable = false)
+        {
+            lock (_openWithoutReading)
+            {
+                if (resumable)
+                {
+                    _resumeWithoutReading.Add(chatId);
+                }
+
                 if (_openWithoutReading.TryGetValue(chatId, out var count) && count > 1)
                 {
                     _openWithoutReading[chatId] = count - 1;

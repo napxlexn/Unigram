@@ -137,6 +137,9 @@ namespace Telegram.Views
         {
             InitializeComponent();
 
+            // A channel's footer has glass of its own, in the same place as the composer's.
+            ChatFooter.RegisterPropertyChangedCallback(VisibilityProperty, (s, e) => UpdateTextGlassVisibility());
+
             // TODO: this might need to change depending on context
             _autocompleteHandler = new AnimatedListHandler(ListAutocomplete, AnimatedListType.Stickers);
 
@@ -388,6 +391,11 @@ namespace Telegram.Views
 
             header.StartAnimation("Translation.Y", translate);
             clipper.StartAnimation("Translation.Y", translate);
+
+            // The header's glass is apart from it, and goes along.
+            var glass = ElementComposition.GetElementVisual(HeaderGlass);
+            ElementCompositionPreview.SetIsTranslationEnabled(HeaderGlass, true);
+            glass.StartAnimation("Translation.Y", translate);
         }
 
         public void CompleteBannerAnimation()
@@ -397,6 +405,7 @@ namespace Telegram.Views
 
             header.Properties.InsertVector3("Translation", Vector3.Zero);
             clipper.Properties.InsertVector3("Translation", Vector3.Zero);
+            ElementComposition.GetElementVisual(HeaderGlass).Properties.InsertVector3("Translation", Vector3.Zero);
         }
 
         private void InitializeStickers()
@@ -1158,7 +1167,9 @@ namespace Telegram.Views
             var capsule = _headerInset != 0 && AppSettings.Appearance.ChatHeaderStyle == Services.Settings.ChatHeaderStyle.Capsule && HeaderGlass.Visibility == Visibility.Visible;
             if (!capsule && !_footerUnderlay)
             {
-                visual.Clip = null;
+                // As the header padding has it: open above by the padding, for the messages it
+                // slides in, and below without end.
+                visual.Clip = visual.Compositor.CreateInsetClip(0, -_messagesHeaderRootPadding, 0, int.MinValue);
                 return;
             }
 
@@ -1176,10 +1187,12 @@ namespace Telegram.Views
 
             if (capsule)
             {
+                // The capsule's margin is from the top of the row; the messages start the header
+                // padding below it.
                 var margin = HeaderGlass.Margin;
                 var left = (float)margin.Left;
                 var right = width - (float)margin.Right;
-                var top = (float)margin.Top;
+                var top = (float)margin.Top - _messagesHeaderRootPadding;
                 var bottom = top + (float)HeaderGlass.Height;
                 var radius = (float)Math.Min(HeaderGlass.CornerRadius.TopLeft, (bottom - top) / 2);
 
@@ -1296,6 +1309,7 @@ namespace Telegram.Views
 
                 Messages.Margin = new Thickness(0, 0, 0, -Footer.ActualHeight);
                 Messages.Padding = new Thickness(inset, 0, inset, Footer.ActualHeight + Footer.Margin.Bottom);
+                FooterHitBlock.Visibility = Visibility.Visible;
 
                 // The sticky photos are drawn over the list and follow its column.
                 MessagesStickyPhoto.Padding = new Thickness(12 + inset, 0, 12 + inset, 0);
@@ -1305,6 +1319,7 @@ namespace Telegram.Views
             {
                 Messages.Margin = new Thickness(0, 0, 0, 8);
                 Messages.Padding = new Thickness(0);
+                FooterHitBlock.Visibility = Visibility.Collapsed;
 
                 Footer.MaxWidth = InlinePanel.MaxWidth = Separator.MaxWidth = ReplyMarkupPanel.MaxWidth =
                     adaptive ? (_textAreaRadius > 0 ? 1000 : 1024) : double.PositiveInfinity;
@@ -1314,7 +1329,31 @@ namespace Telegram.Views
             }
 
             _footerUnderlay = underlay;
+            _footerScrollBarInset = underlay ? Footer.ActualHeight + Footer.Margin.Bottom : 0;
+            UpdateScrollBarPadding();
             UpdateMessagesClip();
+        }
+
+        // How far the scroll bar stops short of the bottom: above a composer the messages pass
+        // under, not hidden beneath it.
+        private double _footerScrollBarInset;
+
+        private void UpdateScrollBarPadding()
+        {
+            var animate = _messagesScrollBarPaddingBottom;
+            var scrollBar = _messagesScrollBarPadding;
+            Messages.ScrollingHost?.SetVerticalPadding(animate ? 0 : scrollBar, (animate ? scrollBar : 0) + _footerScrollBarInset);
+        }
+
+        // Whether the style gives the composer glass of its own; not shown while a channel's
+        // footer, which has its own, is there instead.
+        private bool _textGlass;
+
+        private void UpdateTextGlassVisibility()
+        {
+            TextGlass.Visibility = _textGlass && ChatFooter.Visibility != Visibility.Visible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         // What the template gives the composer, which the original style puts back.
@@ -1338,7 +1377,8 @@ namespace Telegram.Views
             SmoothGlass.Detach(TextGlass);
             SmoothGlass.Detach(InputGlassBand);
             ProgressiveGlass.Detach(InputGlassBand);
-            TextGlass.Visibility = Visibility.Collapsed;
+            _textGlass = false;
+            UpdateTextGlassVisibility();
             InputGlassBand.Visibility = Visibility.Collapsed;
             InputGlassBand.Background = null;
 
@@ -1367,14 +1407,16 @@ namespace Telegram.Views
             {
                 case Services.Settings.InputStyle.Capsule:
                     TextGlass.CornerRadius = TextRoot.CornerRadius;
-                    TextGlass.Visibility = Visibility.Visible;
+                    _textGlass = true;
+                    UpdateTextGlassVisibility();
                     SmoothGlass.Attach(TextGlass, kind, dark, rim: AppSettings.Appearance.RimOnPanels);
                     break;
 
                 case Services.Settings.InputStyle.Bar:
                     // Its outline on the band, without a pane of its own.
                     TextGlass.CornerRadius = TextRoot.CornerRadius;
-                    TextGlass.Visibility = Visibility.Visible;
+                    _textGlass = true;
+                    UpdateTextGlassVisibility();
                     SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: true);
 
                     InputGlassBand.Height = double.NaN;
@@ -1397,7 +1439,8 @@ namespace Telegram.Views
                         var tintFrom = Math.Clamp(solid + GlassTuning.Get(GlassTuning.Input + ".TintOffset"), 0, total);
 
                         TextGlass.CornerRadius = TextRoot.CornerRadius;
-                        TextGlass.Visibility = Visibility.Visible;
+                        _textGlass = true;
+                        UpdateTextGlassVisibility();
                         SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: true);
 
                         InputGlassBand.VerticalAlignment = VerticalAlignment.Bottom;
@@ -3187,7 +3230,7 @@ namespace Telegram.Views
             var value1 = TextArea.ActualSize.Y;
 
             var rect = textArea.Compositor.CreateRoundedRectangleGeometry();
-            rect.CornerRadius = new Vector2(AppSettings.Appearance.CornerRadius);
+            rect.CornerRadius = new Vector2((float)ComposerRadius);
             rect.Size = TextArea.ActualSize;
             rect.Offset = new Vector2(0, value);
 
@@ -7076,7 +7119,7 @@ namespace Telegram.Views
             var width = Math.Max(0, _textAreaRadius > 0 ? ActualSize.X - 24 : ActualSize.X);
 
             var rect = textArea.Compositor.CreateRoundedRectangleGeometry();
-            rect.CornerRadius = new Vector2(AppSettings.Appearance.CornerRadius);
+            rect.CornerRadius = new Vector2((float)ComposerRadius);
             rect.Size = new Vector2(width, 192 + 48);
             rect.Offset = new Vector2(0, value);
 
@@ -7325,6 +7368,11 @@ namespace Telegram.Views
         }
 
         private double _textAreaRadius = double.NaN;
+
+        // The composer's, which the clips of its animations follow; set once the chat is shown.
+        private double ComposerRadius => double.IsNaN(_textAreaRadius)
+            ? AppSettings.Appearance.GetRadius(Services.Settings.RadiusTree.Composer)
+            : _textAreaRadius;
 
         private void UpdateTextAreaRadius(bool force = true)
         {
@@ -8187,7 +8235,7 @@ namespace Telegram.Views
 
         private void InlineBotResults_Loaded(object sender, RoutedEventArgs e)
         {
-            ListInline.UpdateCornerRadius(AppSettings.Appearance.CornerRadius);
+            ListInline.UpdateCornerRadius(ComposerRadius);
             ListInline.MaxHeight = Math.Min(320, Math.Max(ContentPanel.ActualHeight - 48, 0));
 
             if (ViewModel?.Chat is Chat chat)
@@ -8348,13 +8396,22 @@ namespace Telegram.Views
         }
 
         // The bars' rows given a pill's corners in the capsule, with the radius each had before.
-        private readonly Dictionary<Control, CornerRadius> _barCorners = new();
+        private readonly Dictionary<Control, object> _barCorners = new();
 
         private void UpdateBarShapes(bool capsule, double radius)
         {
+            // Given back as they were: the style's, still following it, where it had no value of
+            // its own.
             foreach (var corner in _barCorners)
             {
-                corner.Key.CornerRadius = corner.Value;
+                if (corner.Value is CornerRadius own)
+                {
+                    corner.Key.CornerRadius = own;
+                }
+                else
+                {
+                    corner.Key.ClearValue(Control.CornerRadiusProperty);
+                }
             }
 
             _barCorners.Clear();
@@ -8372,7 +8429,7 @@ namespace Telegram.Views
             {
                 if (row is ButtonBase && row.ActualWidth >= width - 1 && row.ActualHeight > 0)
                 {
-                    _barCorners[row] = row.CornerRadius;
+                    _barCorners[row] = row.ReadLocalValue(Control.CornerRadiusProperty);
                     row.CornerRadius = new CornerRadius(Math.Min(radius, row.ActualHeight / 2));
                 }
             }
@@ -8522,7 +8579,7 @@ namespace Telegram.Views
                 _messagesScrollBarPaddingBottom = animate;
                 _messagesPaddingSet.InsertScalar("TopPadding", scrollBar);
 
-                Messages.ScrollingHost.SetVerticalPadding(animate ? 0 : scrollBar, animate ? scrollBar : 0);
+                UpdateScrollBarPadding();
             }
 
             var changed = _messagesHeaderRootPadding != padding;
@@ -8563,11 +8620,8 @@ namespace Telegram.Views
                     visual.Properties.InsertVector3("Translation", Vector3.Zero);
                 }
 
-                // The composer's outline, which the inset just replaced.
-                if (_footerUnderlay)
-                {
-                    UpdateMessagesClip();
-                }
+                // The capsule's and the composer's outlines, which the inset just replaced.
+                UpdateMessagesClip();
             }
 
             if (_oldestItemAsHeaderNeeded != !animate || scrollBarChanged || (_oldestItemAsHeader == null && _oldestItemAsHeaderNeeded is true))
@@ -9116,7 +9170,7 @@ namespace Telegram.Views
         {
             // The panel can be measured before the chat is activated, when the radius is still
             // unset; NaN is not a radius the compositor takes.
-            var radius = double.IsNaN(_textAreaRadius) ? AppSettings.Appearance.CornerRadius : _textAreaRadius;
+            var radius = ComposerRadius;
 
             var show = e.NewSize.Height > radius;
             var tracker = ++_inlinePanelTracker;

@@ -95,6 +95,15 @@ namespace Telegram.Controls.Messages
         {
             DefaultStyleKey = typeof(MessageBubble);
             Loading += OnLoading;
+
+            // The glass is tinted, and its rim lit, for the theme it was made in.
+            ActualThemeChanged += (s, e) =>
+            {
+                if (GlassHost?.Visibility == Visibility.Visible)
+                {
+                    UpdateContentPanelState();
+                }
+            };
         }
 
         public bool IsOutgoing { get; set; }
