@@ -8,12 +8,15 @@
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Effects;
 using Microsoft.Graphics.Canvas.Geometry;
+using Microsoft.Graphics.Canvas.UI.Composition;
 using System;
 using System.Numerics;
 using Telegram.Common;
 using Telegram.Navigation;
 using Telegram.Services;
 using Telegram.Services.Settings;
+using Windows.Graphics;
+using Windows.Graphics.DirectX;
 using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -32,9 +35,9 @@ namespace Telegram.Controls.Media
     /// A composition brush set as the background of a rounded XAML element is cut to the corners
     /// without antialiasing, and a XAML border drawn over it is antialiased - so the glass showed
     /// in steps outside the rim at every corner. Here everything is Composition: the layers are
-    /// masked by the element's outline drawn as a shape, which is antialiased, rendered once
-    /// into a surface; the rim is the same outline stroked, half a pixel in so that a one pixel
-    /// line lands on whole pixels. Each corner keeps its own radius, so a bubble's shape holds.
+    /// masked by the element's outline filled by Direct2D into a surface of device pixels; the
+    /// rim is the same outline stroked, half a pixel in so that a one pixel line lands on whole
+    /// pixels. Each corner keeps its own radius, so a bubble's shape holds.
     ///
     /// The host is an empty Border behind the content; its CornerRadius is the glass's.
     /// </summary>
@@ -58,6 +61,8 @@ namespace Telegram.Controls.Media
 
             host.Tag = attachment;
             host.SizeChanged += attachment.OnSizeChanged;
+            host.Loaded += attachment.OnLoaded;
+            host.Unloaded += attachment.OnUnloaded;
             attachment.Token = host.RegisterPropertyChangedCallback(Border.CornerRadiusProperty, attachment.OnCornerRadiusChanged);
 
             ElementCompositionPreview.SetElementChildVisual(host, attachment.Root);
@@ -70,10 +75,13 @@ namespace Telegram.Controls.Media
             if (host?.Tag is Attachment attachment)
             {
                 host.SizeChanged -= attachment.OnSizeChanged;
+                host.Loaded -= attachment.OnLoaded;
+                host.Unloaded -= attachment.OnUnloaded;
                 host.UnregisterPropertyChangedCallback(Border.CornerRadiusProperty, attachment.Token);
                 host.Tag = null;
 
                 attachment.Untrack();
+                attachment.Release();
 
                 // Released rather than disposed: the compositor may still be drawing it.
                 ElementCompositionPreview.SetElementChildVisual(host, null);
@@ -85,6 +93,11 @@ namespace Telegram.Controls.Media
         /// </summary>
         private static CompositionPath CreateOutline(Vector2 origin, Vector2 size, CornerRadius radius)
         {
+            return new CompositionPath(CreateOutline(CanvasDevice.GetSharedDevice(), origin, size, radius));
+        }
+
+        private static CanvasGeometry CreateOutline(ICanvasResourceCreator creator, Vector2 origin, Vector2 size, CornerRadius radius)
+        {
             float Clamp(double value) => (float)Math.Max(0, Math.Min(value, Math.Min(size.X, size.Y) / 2));
 
             var tl = Clamp(radius.TopLeft);
@@ -94,7 +107,7 @@ namespace Telegram.Controls.Media
 
             float x = origin.X, y = origin.Y, w = size.X, h = size.Y;
 
-            using var builder = new CanvasPathBuilder(CanvasDevice.GetSharedDevice());
+            using var builder = new CanvasPathBuilder(creator);
             builder.BeginFigure(x + tl, y);
             builder.AddLine(x + w - tr, y);
             if (tr > 0) builder.AddArc(new Vector2(x + w, y + tr), tr, tr, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
@@ -106,7 +119,7 @@ namespace Telegram.Controls.Media
             if (tl > 0) builder.AddArc(new Vector2(x + tl, y), tl, tl, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
             builder.EndFigure(CanvasFigureLoop.Closed);
 
-            return new CompositionPath(CanvasGeometry.CreatePath(builder));
+            return CanvasGeometry.CreatePath(builder);
         }
 
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Compositor, CompositionEffectFactory> _rimGlowFactories = new();
@@ -124,9 +137,10 @@ namespace Telegram.Controls.Media
 
             private readonly Compositor _compositor;
 
-            private readonly CompositionPathGeometry _maskGeometry;
-            private readonly ShapeVisual _maskShape;
-            private readonly CompositionVisualSurface _maskSurface;
+            // The outline every layer is cut to, drawn by Direct2D for edges as smooth as the rim's.
+            private readonly CompositionGraphicsDevice _graphics;
+            private readonly Windows.System.DispatcherQueue _dispatcher;
+            private readonly CompositionDrawingSurface _maskSurface;
             private readonly CompositionSurfaceBrush _mask;
 
             private readonly SpriteVisual[] _layers;
@@ -163,17 +177,12 @@ namespace Telegram.Controls.Media
                 _hover = profile.Hover;
                 _ease = compositor.CreateCubicBezierEasingFunction(new Vector2(0.37f, 0), new Vector2(0.63f, 1));
 
-                _maskGeometry = compositor.CreatePathGeometry();
+                _dark = dark;
+                _graphics = Direct2D.Current.Device;
+                _dispatcher = Windows.System.DispatcherQueue.GetForCurrentThread();
 
-                var maskFill = compositor.CreateSpriteShape(_maskGeometry);
-                maskFill.FillBrush = compositor.CreateColorBrush(Colors.White);
-
-                _maskShape = compositor.CreateShapeVisual();
-                _maskShape.Shapes.Add(maskFill);
-
-                _maskSurface = compositor.CreateVisualSurface();
-                _maskSurface.SourceVisual = _maskShape;
-                _mask = compositor.CreateSurfaceBrush(_maskSurface);
+                _maskSurface = CreateCoverage();
+                _mask = CreateCoverageBrush(_maskSurface);
 
                 var layers = new System.Collections.Generic.List<SpriteVisual>();
                 var verticals = new System.Collections.Generic.List<CompositionLinearGradientBrush>();
@@ -548,6 +557,27 @@ namespace Telegram.Controls.Media
                 }
 
                 _smoothing = profile.Smoothing;
+
+                if (_smoothing is RimSmoothing.Precise or RimSmoothing.Blend or RimSmoothing.Soft)
+                {
+                    _rimPrecise = compositor.CreateContainerVisual();
+                    _rimCoverage = new CompositionDrawingSurface[_rimShapes.Length];
+
+                    for (int i = 0; i < _rimShapes.Length; i++)
+                    {
+                        _rimCoverage[i] = CreateCoverage();
+
+                        var masked = compositor.CreateMaskBrush();
+                        masked.Source = _rimShapes[i].StrokeBrush;
+                        masked.Mask = CreateCoverageBrush(_rimCoverage[i]);
+
+                        var line = compositor.CreateSpriteVisual();
+                        line.Brush = masked;
+                        line.RelativeSizeAdjustment = Vector2.One;
+                        _rimPrecise.Children.InsertAtTop(line);
+                    }
+                }
+
                 _rimDisplay = PresentRim(compositor);
 
                 // The ones that change the rim's brightness: eased between every step, so that
@@ -575,6 +605,13 @@ namespace Telegram.Controls.Media
             private SpriteVisual _rimSprite;
             private ShapeVisual _rimHalo;
 
+            // The rim as Direct2D draws it: each line's coverage of every pixel worked out
+            // exactly, into a surface of device pixels, and the line's own brush shown through
+            // it. Shapes drawn into a visual surface come out without antialiasing at all - every
+            // pixel on or off - so whatever went through one was smoothed after the fact.
+            private ContainerVisual _rimPrecise;
+            private CompositionDrawingSurface[] _rimCoverage;
+
             // How far a softened rim may spread past the edge.
             private const float Feather = 2;
 
@@ -592,10 +629,10 @@ namespace Telegram.Controls.Media
                         {
                             // The crisp line, and under it a blurred copy of it, mirrored from
                             // the live one: the curves get a soft edge, the line stays sharp.
-                            Root.Children.InsertAtTop(_rim);
+                            Root.Children.InsertAtTop(_rimPrecise);
 
                             _rimSurface = compositor.CreateVisualSurface();
-                            _rimSurface.SourceVisual = _rim;
+                            _rimSurface.SourceVisual = _rimPrecise;
                             _rimSurface.SourceOffset = new Vector2(-Feather);
 
                             var brush = CreateFeather(compositor, 1.1f);
@@ -605,19 +642,19 @@ namespace Telegram.Controls.Media
                             _rimSprite.Brush = brush;
                             _rimSprite.Opacity = 0.7f;
                             _rimSprite.Offset = new Vector3(-Feather, -Feather, 0);
-                            Root.Children.InsertBelow(_rimSprite, _rim);
+                            Root.Children.InsertBelow(_rimSprite, _rimPrecise);
 
                             // Both brighten and dim together under the animations.
-                            return _rim;
+                            return _rimPrecise;
                         }
 
                     case RimSmoothing.Soft:
                         {
                             // A blur of under a pixel: the steps along the curves melt, the line
                             // stays a line.
-                            _rim.Offset = new Vector3(Feather, Feather, 0);
+                            _rimPrecise.Offset = new Vector3(Feather, Feather, 0);
                             _rimHolder = compositor.CreateContainerVisual();
-                            _rimHolder.Children.InsertAtTop(_rim);
+                            _rimHolder.Children.InsertAtTop(_rimPrecise);
 
                             _rimSurface = compositor.CreateVisualSurface();
                             _rimSurface.SourceVisual = _rimHolder;
@@ -631,6 +668,10 @@ namespace Telegram.Controls.Media
                             Root.Children.InsertAtTop(_rimSprite);
                             return _rimSprite;
                         }
+
+                    case RimSmoothing.Precise:
+                        Root.Children.InsertAtTop(_rimPrecise);
+                        return _rimPrecise;
 
                     case RimSmoothing.Halo:
                         {
@@ -791,7 +832,16 @@ namespace Telegram.Controls.Media
                 _tracker.AddHandler(UIElement.PointerEnteredEvent, _entered, true);
                 _tracker.AddHandler(UIElement.PointerMovedEvent, _moved, true);
                 _tracker.AddHandler(UIElement.PointerWheelChangedEvent, _exited, true);
-                _tracker.AddHandler(UIElement.PointerExitedEvent, _exited, true);
+                // Its own exit only: leaving a child for another inside it is still being over it.
+                _left = (s, e) =>
+                {
+                    if (ReferenceEquals(e.OriginalSource, _tracker))
+                    {
+                        AnimateHover(false);
+                    }
+                };
+
+                _tracker.AddHandler(UIElement.PointerExitedEvent, _left, true);
                 _tracker.AddHandler(UIElement.PointerCanceledEvent, _exited, true);
                 _tracker.AddHandler(UIElement.PointerCaptureLostEvent, _exited, true);
             }
@@ -803,7 +853,7 @@ namespace Telegram.Controls.Media
                     _tracker.RemoveHandler(UIElement.PointerEnteredEvent, _entered);
                     _tracker.RemoveHandler(UIElement.PointerMovedEvent, _moved);
                     _tracker.RemoveHandler(UIElement.PointerWheelChangedEvent, _exited);
-                    _tracker.RemoveHandler(UIElement.PointerExitedEvent, _exited);
+                    _tracker.RemoveHandler(UIElement.PointerExitedEvent, _left);
                     _tracker.RemoveHandler(UIElement.PointerCanceledEvent, _exited);
                     _tracker.RemoveHandler(UIElement.PointerCaptureLostEvent, _exited);
                     _tracker = null;
@@ -811,6 +861,7 @@ namespace Telegram.Controls.Media
             }
 
             private PointerEventHandler _moved;
+            private PointerEventHandler _left;
             private bool _hovered;
 
             private void AnimateHover(bool over)
@@ -839,6 +890,169 @@ namespace Telegram.Controls.Media
 
             // How far the glowing rim may spill past the edge.
             private const float Spill = 8;
+
+            private readonly bool _dark;
+            private Border _host;
+            private float _scale = 1;
+            private Vector2 _size;
+
+            private CompositionDrawingSurface CreateCoverage()
+            {
+                return _graphics.CreateDrawingSurface2(new SizeInt32 { Width = 1, Height = 1 }, DirectXPixelFormat.B8G8R8A8UIntNormalized, DirectXAlphaMode.Premultiplied);
+            }
+
+            // Device pixels one to one: the surface is drawn at the window's scale and shown
+            // scaled back by it, from the top left corner, never stretched.
+            private CompositionSurfaceBrush CreateCoverageBrush(CompositionDrawingSurface surface)
+            {
+                var brush = _compositor.CreateSurfaceBrush(surface);
+                brush.Stretch = CompositionStretch.None;
+                brush.HorizontalAlignmentRatio = 0;
+                brush.VerticalAlignmentRatio = 0;
+                _coverageBrushes.Add(brush);
+                return brush;
+            }
+
+            private readonly System.Collections.Generic.List<CompositionSurfaceBrush> _coverageBrushes = new();
+
+            /// <summary>
+            /// Redraws a coverage surface for the current size and scale, in DIPs.
+            /// </summary>
+            /// <param name="linear">Coverage as light adds up rather than as the screen's values do.
+            /// A light line half over a dark pixel lights it to half in light, which is well over
+            /// half in value; blended by value, the partly covered pixels along a curve came out
+            /// dimmer than the line and the curve looked beaded. Raised by the screen's gamma, they
+            /// match it. Not for a dark line on a light pane, which goes the other way.</param>
+            private void DrawCoverage(CompositionDrawingSurface surface, Action<CanvasDrawingSession> draw, bool linear = false)
+            {
+                var scale = _scale;
+                var width = Math.Max(1, (int)Math.Ceiling(_size.X * scale));
+                var height = Math.Max(1, (int)Math.Ceiling(_size.Y * scale));
+
+                try
+                {
+                    if (surface.SizeInt32.Width != width || surface.SizeInt32.Height != height)
+                    {
+                        surface.Resize(new SizeInt32 { Width = width, Height = height });
+                    }
+
+                    using var ds = CanvasComposition.CreateDrawingSession(surface);
+                    ds.Clear(Colors.Transparent);
+
+                    if (linear)
+                    {
+                        using var target = new CanvasRenderTarget(ds, width, height, 96);
+                        using (var inner = target.CreateDrawingSession())
+                        {
+                            inner.Clear(Colors.Transparent);
+                            inner.Antialiasing = CanvasAntialiasing.Antialiased;
+                            inner.Transform = Matrix3x2.CreateScale(scale);
+                            draw(inner);
+                        }
+
+                        // White throughout: only the alpha, the coverage, changes.
+                        using var raised = new GammaTransferEffect
+                        {
+                            Source = target,
+                            AlphaExponent = 1 / 2.2f
+                        };
+
+                        ds.DrawImage(raised);
+                    }
+                    else
+                    {
+                        ds.Antialiasing = CanvasAntialiasing.Antialiased;
+                        ds.Transform = Matrix3x2.CreateScale(scale);
+                        draw(ds);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // A lost device is drawn again once it is replaced; anything else leaves the
+                    // last drawing, which beats taking the window down from a layout callback.
+                    Logger.Error(ex);
+                }
+
+                var inverse = new Vector2(1 / scale);
+                foreach (var brush in _coverageBrushes)
+                {
+                    brush.Scale = inverse;
+                }
+            }
+
+            private void OnRenderingDeviceReplaced(CompositionGraphicsDevice sender, RenderingDeviceReplacedEventArgs args)
+            {
+                _dispatcher?.TryEnqueue(() => Update(_host));
+            }
+
+            private XamlRoot _root;
+
+            private void OnXamlRootChanged(XamlRoot sender, XamlRootChangedEventArgs args)
+            {
+                if (_host != null && (float)sender.RasterizationScale != _scale)
+                {
+                    Update(_host);
+                }
+            }
+
+            // The device and the window outlive the element: listened to only while it is
+            // loaded, or every bubble of a closed chat stayed alive through them.
+            private bool _subscribed;
+
+            private void Subscribe(XamlRoot root)
+            {
+                if (!_subscribed)
+                {
+                    _subscribed = true;
+                    _graphics.RenderingDeviceReplaced += OnRenderingDeviceReplaced;
+                }
+
+                // Moved to a screen of another scale: drawn again in its pixels.
+                if (_root != root)
+                {
+                    if (_root != null)
+                    {
+                        _root.Changed -= OnXamlRootChanged;
+                    }
+
+                    _root = root;
+
+                    if (_root != null)
+                    {
+                        _root.Changed += OnXamlRootChanged;
+                    }
+                }
+            }
+
+            public void OnLoaded(object sender, RoutedEventArgs e)
+            {
+                // Drawn again: the scale or the device may have changed while it was away.
+                Update(sender as Border);
+            }
+
+            public void OnUnloaded(object sender, RoutedEventArgs e)
+            {
+                // Moved within the tree, an Unloaded can come after the new Loaded.
+                if (sender is FrameworkElement { IsLoaded: false })
+                {
+                    Release();
+                }
+            }
+
+            public void Release()
+            {
+                if (_subscribed)
+                {
+                    _subscribed = false;
+                    _graphics.RenderingDeviceReplaced -= OnRenderingDeviceReplaced;
+                }
+
+                if (_root != null)
+                {
+                    _root.Changed -= OnXamlRootChanged;
+                    _root = null;
+                }
+            }
 
             private SpriteVisual CreateMasked(CompositionBrush source)
             {
@@ -899,9 +1113,20 @@ namespace Telegram.Controls.Media
                     }
                 }
 
-                _maskGeometry.Path = CreateOutline(Vector2.Zero, size, radius);
-                _maskShape.Size = size;
-                _maskSurface.SourceSize = size;
+                _host = host;
+                _scale = (float)(host.XamlRoot?.RasterizationScale ?? 1);
+
+                if (host.IsLoaded)
+                {
+                    Subscribe(host.XamlRoot);
+                }
+                _size = size;
+
+                DrawCoverage(_maskSurface, ds =>
+                {
+                    using var outline = CreateOutline(ds, Vector2.Zero, size, radius);
+                    ds.FillGeometry(outline, Colors.White);
+                });
 
                 foreach (var layer in _layers)
                 {
@@ -937,7 +1162,25 @@ namespace Telegram.Controls.Media
                         Math.Max(0, radius.TopLeft - inset), Math.Max(0, radius.TopRight - inset),
                         Math.Max(0, radius.BottomRight - inset), Math.Max(0, radius.BottomLeft - inset));
 
-                    _rimGeometries[i].Path = CreateOutline(new Vector2(inset), Vector2.Max(size - new Vector2(inset * 2), Vector2.Zero), inner);
+                    var origin = new Vector2(inset);
+                    var extent = Vector2.Max(size - new Vector2(inset * 2), Vector2.Zero);
+
+                    _rimGeometries[i].Path = CreateOutline(origin, extent, inner);
+
+                    if (_rimCoverage != null)
+                    {
+                        var thickness = _rimShapes[i].StrokeThickness;
+                        DrawCoverage(_rimCoverage[i], ds =>
+                        {
+                            using var outline = CreateOutline(ds, origin, extent, inner);
+                            ds.DrawGeometry(outline, Colors.White, thickness);
+                        }, _dark);
+                    }
+                }
+
+                if (_rimPrecise != null)
+                {
+                    _rimPrecise.Size = size;
                 }
 
                 foreach (var vertical in _verticals)

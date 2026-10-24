@@ -125,6 +125,7 @@ namespace Telegram.Common
 
         public static List<SettingsOptionItem<RimSmoothing>> RimSmoothingOptions => new()
         {
+            new(RimSmoothing.Precise, "Точне (найгладше)"),
             new(RimSmoothing.Standard, "Стандартне"),
             new(RimSmoothing.PixelSnap, "Під пікселі екрана"),
             new(RimSmoothing.Blend, "Чітке з м'яким краєм"),
