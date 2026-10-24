@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-24
+* **update**: Composer style option labels shortened (Скляна капсула / Скляна смуга / Скло з переходом) so the combo no longer overlaps the row title
 * **update**: Власні іконки налаштувань скла; демонстрація пакетів іконок
 * **update**: Колонка повідомлень під прямим краєм капсули поля вводу
 * **update**: Повідомлення під скляною капсулою поля вводу й кнопки сповіщень
