@@ -168,7 +168,9 @@ namespace Telegram.Services.Settings
         // A blur of under a pixel.
         Soft,
         // A wider, faint line under each one.
-        Halo
+        Halo,
+        // Drawn by Direct2D, each pixel lit by how much of it the line covers.
+        Precise
     }
 
     /// <summary>
@@ -737,6 +739,12 @@ namespace Telegram.Services.Settings
                     return WindowMaterial.BlurBehind;
                 }
 
+                // So the UWP picker, which lists None and Mica, shows the one in effect.
+                if (!WindowContext.SupportsWindowMaterials && material != WindowMaterial.None)
+                {
+                    return WindowMaterial.Mica;
+                }
+
                 return material;
             }
             set => AddOrUpdateValue(ref _windowMaterial, "WindowMaterial", (int)value);
@@ -1005,7 +1013,7 @@ namespace Telegram.Services.Settings
         private static int? _rimSmoothing;
         public RimSmoothing RimSmoothing
         {
-            get => (RimSmoothing)(_rimSmoothing ??= GetValueOrDefault("RimSmoothing", (int)RimSmoothing.Standard));
+            get => (RimSmoothing)(_rimSmoothing ??= GetValueOrDefault("RimSmoothing", (int)RimSmoothing.Precise));
             set => AddOrUpdateValue(ref _rimSmoothing, "RimSmoothing", (int)value);
         }
 
