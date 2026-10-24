@@ -94,7 +94,7 @@ namespace Telegram.Services.Settings
         private bool? _enableWebViewDevTools;
         public bool EnableWebViewDevTools
         {
-            get => _enableWebViewDevTools ??= GetValueOrDefault("EnableWebViewDevTools", Constants.DEBUG);
+            get => _enableWebViewDevTools ??= GetValueOrDefault("EnableWebViewDevTools", false);
             set => AddOrUpdateValue(ref _enableWebViewDevTools, "EnableWebViewDevTools", value);
         }
 
