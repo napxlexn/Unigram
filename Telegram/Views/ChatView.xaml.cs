@@ -1140,13 +1140,15 @@ namespace Telegram.Views
         /// Under the capsule header the messages end where the capsule begins: nothing scrolls
         /// past it at the top, nor round its rounded corners, nor down the strips beside it - the
         /// page's edge follows the capsule's outline down to its bottom, and is the full width
-        /// from there on.
+        /// from there on. Under a composer of glass the same at the bottom: the messages go on
+        /// only inside its outline, so that what passes under it is under its glass at once.
         /// </summary>
         private void UpdateMessagesClip()
         {
             var visual = ElementComposition.GetElementVisual(MessagesRoot);
 
-            if (_headerInset == 0 || AppSettings.Appearance.ChatHeaderStyle != Services.Settings.ChatHeaderStyle.Capsule || HeaderGlass.Visibility != Visibility.Visible)
+            var capsule = _headerInset != 0 && AppSettings.Appearance.ChatHeaderStyle == Services.Settings.ChatHeaderStyle.Capsule && HeaderGlass.Visibility == Visibility.Visible;
+            if (!capsule && !_footerUnderlay)
             {
                 visual.Clip = null;
                 return;
@@ -1159,29 +1161,122 @@ namespace Telegram.Views
                 return;
             }
 
-            var margin = HeaderGlass.Margin;
-            var left = (float)margin.Left;
-            var right = width - (float)margin.Right;
-            var top = (float)margin.Top;
-            var bottom = top + (float)HeaderGlass.Height;
-            var radius = (float)Math.Min(HeaderGlass.CornerRadius.TopLeft, (bottom - top) / 2);
+            using var builder = new CanvasPathBuilder(Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice());
 
-            using var builder = new Microsoft.Graphics.Canvas.Geometry.CanvasPathBuilder(Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice());
-            builder.BeginFigure(left, top + radius);
-            builder.AddArc(new Vector2(left + radius, top), radius, radius, 0, Microsoft.Graphics.Canvas.Geometry.CanvasSweepDirection.Clockwise, Microsoft.Graphics.Canvas.Geometry.CanvasArcSize.Small);
-            builder.AddLine(right - radius, top);
-            builder.AddArc(new Vector2(right, top + radius), radius, radius, 0, Microsoft.Graphics.Canvas.Geometry.CanvasSweepDirection.Clockwise, Microsoft.Graphics.Canvas.Geometry.CanvasArcSize.Small);
-            builder.AddLine(right, bottom);
-            builder.AddLine(width, bottom);
-            builder.AddLine(width, height + 64);
-            builder.AddLine(0, height + 64);
-            builder.AddLine(0, bottom);
-            builder.AddLine(left, bottom);
-            builder.EndFigure(Microsoft.Graphics.Canvas.Geometry.CanvasFigureLoop.Closed);
+            // Where the capsule's bottom is, which the outline comes back to on the left.
+            var below = -4096f;
+
+            if (capsule)
+            {
+                var margin = HeaderGlass.Margin;
+                var left = (float)margin.Left;
+                var right = width - (float)margin.Right;
+                var top = (float)margin.Top;
+                var bottom = top + (float)HeaderGlass.Height;
+                var radius = (float)Math.Min(HeaderGlass.CornerRadius.TopLeft, (bottom - top) / 2);
+
+                builder.BeginFigure(left, bottom);
+                builder.AddLine(left, top + radius);
+                AddCorner(builder, left + radius, top, radius);
+                builder.AddLine(right - radius, top);
+                AddCorner(builder, right, top + radius, radius);
+                builder.AddLine(right, bottom);
+                builder.AddLine(width, bottom);
+
+                below = bottom;
+            }
+            else
+            {
+                builder.BeginFigure(0, -4096);
+                builder.AddLine(width, -4096);
+            }
+
+            if (_footerUnderlay && Footer.ActualWidth >= 1 && Footer.ActualHeight >= 1)
+            {
+                // Clockwise round the composer from its top right: the strip above it is the
+                // full width, and the corners of its rounded top are left out of it.
+                var origin = Footer.TransformToVisual(MessagesRoot).TransformPoint(new Point());
+                var shape = ChatFooter.Visibility == Visibility.Visible ? ChatFooter.CornerRadius : TextRoot.CornerRadius;
+
+                var left = (float)origin.X;
+                var top = (float)origin.Y;
+                var right = left + (float)Footer.ActualWidth;
+                var bottom = top + (float)Footer.ActualHeight;
+                var upper = (float)Math.Min(shape.TopLeft, Footer.ActualHeight / 2);
+                var lower = (float)Math.Min(shape.BottomLeft, Footer.ActualHeight / 2);
+
+                builder.AddLine(width, top);
+                builder.AddLine(right - upper, top);
+                AddCorner(builder, right, top + upper, upper);
+                builder.AddLine(right, bottom - lower);
+                AddCorner(builder, right - lower, bottom, lower);
+                builder.AddLine(left + lower, bottom);
+                AddCorner(builder, left, bottom - lower, lower);
+                builder.AddLine(left, top + upper);
+                AddCorner(builder, left + upper, top, upper);
+                builder.AddLine(0, top);
+            }
+            else
+            {
+                builder.AddLine(width, height + 64);
+                builder.AddLine(0, height + 64);
+            }
+
+            builder.AddLine(0, below);
+            builder.EndFigure(CanvasFigureLoop.Closed);
 
             var compositor = visual.Compositor;
             var geometry = compositor.CreatePathGeometry(new CompositionPath(Microsoft.Graphics.Canvas.Geometry.CanvasGeometry.CreatePath(builder)));
             visual.Clip = compositor.CreateGeometricClip(geometry);
+        }
+
+        // A quarter round to the given point, or a corner where there is no radius.
+        private static void AddCorner(CanvasPathBuilder builder, float x, float y, float radius)
+        {
+            if (radius > 0)
+            {
+                builder.AddArc(new Vector2(x, y), radius, radius, 0, CanvasSweepDirection.Clockwise, CanvasArcSize.Small);
+            }
+            else
+            {
+                builder.AddLine(x, y);
+            }
+        }
+
+        // Whether the messages go on under the composer, clipped to its outline.
+        private bool _footerUnderlay;
+
+        /// <summary>
+        /// The composer as a capsule of glass is as the capsule header is at the top: the messages
+        /// go on down under it rather than ending above it, so that its glass blurs and tints them
+        /// the moment they reach it, with no band of fading glass above it. The list reaches down
+        /// to the composer's bottom, keeps a padding the composer's height so that the newest
+        /// message still rests above it, and is cut to the composer's outline below its top. The
+        /// composer and the channel's button span the messages' own column, so nothing passes
+        /// beside them.
+        /// </summary>
+        private void UpdateFooterUnderlay()
+        {
+            var underlay = ViewModel != null
+                && !FromPreview
+                && !ViewModel.IsSavedMessagesTab
+                && AppSettings.Appearance.InputStyle == Services.Settings.InputStyle.Capsule
+                && Footer.Visibility == Visibility.Visible
+                && Footer.ActualHeight >= 1;
+
+            if (underlay)
+            {
+                Messages.Margin = new Thickness(0, 0, 0, -Footer.ActualHeight);
+                Messages.Padding = new Thickness(0, 0, 0, Footer.ActualHeight + Footer.Margin.Bottom);
+            }
+            else if (_footerUnderlay)
+            {
+                Messages.Margin = new Thickness(0, 0, 0, 8);
+                Messages.Padding = new Thickness(0);
+            }
+
+            _footerUnderlay = underlay;
+            UpdateMessagesClip();
         }
 
         // What the template gives the composer, which the original style puts back.
@@ -1275,6 +1370,8 @@ namespace Telegram.Views
                         break;
                     }
             }
+
+            UpdateFooterUnderlay();
         }
 
         #endregion
@@ -5503,12 +5600,22 @@ namespace Telegram.Views
 
         // The fading glass is solid as far as the footer reaches, which it bakes in. The footer
         // rather than the composer: a channel's footer is a button, and the composer, hidden,
-        // keeps the height it had in the last chat that showed it.
+        // keeps the height it had in the last chat that showed it. Under the capsule the
+        // messages keep clear of the footer and are cut to its outline, wherever it now is.
         private void Footer_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (e.NewSize.Height != e.PreviousSize.Height && AppSettings.Appearance.InputStyle == Services.Settings.InputStyle.Fading && ViewModel != null)
+            if (ViewModel == null)
+            {
+                return;
+            }
+
+            if (e.NewSize.Height != e.PreviousSize.Height && AppSettings.Appearance.InputStyle == Services.Settings.InputStyle.Fading)
             {
                 UpdateInputStyle(ActualTheme != ElementTheme.Light);
+            }
+            else if (AppSettings.Appearance.InputStyle == Services.Settings.InputStyle.Capsule || _footerUnderlay)
+            {
+                UpdateFooterUnderlay();
             }
         }
 
@@ -8410,6 +8517,12 @@ namespace Telegram.Views
                     var visual = ElementComposition.GetElementVisual(MessagesRoot);
                     visual.Clip = visual.Compositor.CreateInsetClip(0, -padding, 0, int.MinValue);
                     visual.Properties.InsertVector3("Translation", Vector3.Zero);
+                }
+
+                // The composer's outline, which the inset just replaced.
+                if (_footerUnderlay)
+                {
+                    UpdateMessagesClip();
                 }
             }
 
