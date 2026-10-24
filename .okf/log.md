@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-24
+* **update**: Rim smoothing 'Precise' (Direct2D coverage, gamma-aware) is the new default; found that CompositionVisualSurface renders shapes without AA. Fixed 11 review findings (bot keyboard under glass, double channel-footer glass, capsule header clip, hit-test beside capsule composer, composer clip radius, header/bubble theme refresh, banner glass, bar corners, UWP material picker, open-without-reading on back nav, tuner labels)
 * **update**: WebView DevTools default off (was on in Debug builds, opened DevTools with every video); opt-in via Diagnostics
 * **update**: Composer style option labels shortened (Скляна капсула / Скляна смуга / Скло з переходом) so the combo no longer overlaps the row title
 * **update**: Власні іконки налаштувань скла; демонстрація пакетів іконок
