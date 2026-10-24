@@ -495,6 +495,43 @@ namespace Telegram.Controls.Media
         public const string CircleFilled = "\uF7A5";
         public const string Square = "\uF7A6";
         public const string SquareFilled = "\uF7A7";
+
+        // The glass appearance settings, each its own.
+        public const string PaintBucket = "\uF7A8";
+        public const string TransparencySquare = "\uF7A9";
+        public const string CalendarDate = "\uF7AA";
+        public const string BezierCurveSquare = "\uF7AB";
+        public const string Drop = "\uF7AC";
+        public const string WindowBrush = "\uF7AD";
+        public const string PanelLeft = "\uF7AE";
+        public const string FolderSwap = "\uF7AF";
+        public const string LineHorizontal3 = "\uF7B0";
+        public const string WindowHeaderHorizontal = "\uF7B1";
+        public const string PanelTopGallery = "\uF7B2";
+        public const string PhonePageHeader = "\uF7B3";
+        public const string Layer = "\uF7B4";
+        public const string PanelBottom = "\uF7B5";
+        public const string Textbox = "\uF7B6";
+        public const string LayerDiagonal = "\uF7B7";
+        public const string PanelBottomExpand = "\uF7B8";
+        public const string ArrowAutofitHeight = "\uF7B9";
+        public const string BeakerSettings = "\uF7BA";
+        public const string TextboxSettings = "\uF7BB";
+        public const string ColorBackground = "\uF7BC";
+        public const string SquaresNested = "\uF7BD";
+        public const string SquareShadow = "\uF7BE";
+        public const string DrawShape = "\uF7BF";
+        public const string ColorLine = "\uF7C0";
+        public const string Pulse = "\uF7C1";
+        public const string CursorHover = "\uF7C2";
+        public const string TapSingle = "\uF7C3";
+        public const string BrightnessHigh = "\uF7C4";
+        public const string LineThickness = "\uF7C5";
+        public const string TextEffectsSparkle = "\uF7C6";
+        public const string CircleSparkle = "\uF7C7";
+        public const string LineHorizontal2DashesSolid = "\uF7C8";
+        public const string ChatEmptyMirrored = "\uF7C9";
+        public const string ChatMirrored = "\uF7CA";
         public const string Shapes = "\uE9E8";
         public const string MathFormula = "\uEB07";
 

@@ -153,7 +153,7 @@
                                              Tag="CustomIncomingColor"
                                              Click="CustomColor_Click"
                                              IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xE8BD;">
                         <controls:SettingsButton.Badge>
                             <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
                                     BorderBrush="{ThemeResource SettingsItemBorderBrush}"
@@ -164,7 +164,7 @@
                                              Tag="CustomOutgoingColor"
                                              Click="CustomColor_Click"
                                              IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xF7C9;">
                         <controls:SettingsButton.Badge>
                             <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
                                     BorderBrush="{ThemeResource SettingsItemBorderBrush}"
@@ -175,7 +175,7 @@
                                              Tag="CustomIncomingTextColor"
                                              Click="CustomColor_Click"
                                              IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9EB;">
+                                             Glyph="&#xE9BF;">
                         <controls:SettingsButton.Badge>
                             <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
                                     BorderBrush="{ThemeResource SettingsItemBorderBrush}"
@@ -186,7 +186,7 @@
                                              Tag="CustomOutgoingTextColor"
                                              Click="CustomColor_Click"
                                              IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9EB;">
+                                             Glyph="&#xF7CA;">
                         <controls:SettingsButton.Badge>
                             <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
                                     BorderBrush="{ThemeResource SettingsItemBorderBrush}"
@@ -197,7 +197,7 @@
                                              Tag="CustomReactionColor"
                                              Click="CustomColor_Click"
                                              IsEnabled="{x:Bind ViewModel.UseCustomMessageColors, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xF7A8;">
                         <controls:SettingsButton.Badge>
                             <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
                                     BorderBrush="{ThemeResource SettingsItemBorderBrush}"
@@ -206,7 +206,7 @@
                     </controls:SettingsButton>
 
                     <controls:SettingsButton Content="Бульбашки"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xE992;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Бульбашки"
@@ -231,7 +231,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xF7A9;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -252,7 +252,7 @@
                                 Grid.Column="2" />
                     </Grid>
                     <controls:SettingsButton Content="Капсули реакцій"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xE920;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Капсули реакцій"
@@ -260,7 +260,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Дати й сервісні повідомлення"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xF7AA;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Сервісні капсули"
@@ -268,7 +268,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Текст у повідомленнях"
-                                             Glyph="&#xE9EB;">
+                                             Glyph="&#xEAA9;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.MessageTextStyleOptions}"
                                                        AutomationProperties.Name="Текст у повідомленнях"
@@ -414,7 +414,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7AB;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -527,7 +527,7 @@
                     </ItemsControl>
                     <controls:SettingsButton Content="Повернути все до загального"
                                              Click="{x:Bind ViewModel.ResetRadii}"
-                                             Glyph="&#xE777;" />
+                                             Glyph="&#xE7A7;" />
                 </controls:HeaderedControl>
 
                 <controls:HeaderedControl Header="Прозорість"
@@ -550,7 +550,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7AC;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -569,7 +569,7 @@
                                 Grid.Column="2" />
                     </Grid>
                     <controls:SettingsButton Content="Матеріал вікна"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7AD;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.WindowMaterialOptions}"
                                                        AutomationProperties.Name="Матеріал вікна"
@@ -577,7 +577,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Скло бічної панелі"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7AE;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Скло бічної панелі"
@@ -585,7 +585,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Розташування папок"
-                                             Glyph="&#xEAA9;">
+                                             Glyph="&#xF7AF;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.FoldersPlacementOptions}"
                                                        AutomationProperties.Name="Розташування папок"
@@ -593,7 +593,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Лінії між елементами"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B0;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.SeparatorModeOptions}"
                                                        AutomationProperties.Name="Лінії між елементами"
@@ -601,7 +601,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Шапка сторінок"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B1;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.HeaderStyleOptions}"
                                                        AutomationProperties.Name="Шапка сторінок"
@@ -609,14 +609,14 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Скло шапки сторінок"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B2;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Скло шапки сторінок"
                                                        SelectedIndex="{x:Bind ViewModel.HeaderGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>                    <controls:SettingsButton Content="Шапка чату"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B3;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.ChatHeaderStyleOptions}"
                                                        AutomationProperties.Name="Шапка чату"
@@ -624,14 +624,14 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Скло шапки чату"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B4;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Скло шапки чату"
                                                        SelectedIndex="{x:Bind ViewModel.ChatHeaderGlassIndex, Mode=TwoWay}" />
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>                    <controls:SettingsButton Content="Скло нижньої панелі каналу"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B5;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Скло нижньої панелі каналу"
@@ -639,7 +639,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Поле вводу повідомлення"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B6;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.InputStyleOptions}"
                                                        AutomationProperties.Name="Поле вводу повідомлення"
@@ -648,7 +648,7 @@
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Скло поля вводу повідомлення"
                                              IsEnabled="{x:Bind ViewModel.IsInputGlass, Mode=OneWay}"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7B7;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        IsEnabled="{x:Bind ViewModel.IsInputGlass, Mode=OneWay}"
@@ -674,7 +674,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xE9A7;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -711,7 +711,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7B8;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -748,7 +748,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7B9;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -770,9 +770,9 @@
                     <controls:SettingsButton Content="Налагодження скла в окремому вікні"
                                              AutomationProperties.Name="Налагодження скла"
                                              Click="GlassTuner_Click"
-                                             Glyph="&#xEA89;" />
+                                             Glyph="&#xF7BA;" />
                     <controls:SettingsButton Content="Інші поля вводу (пошук, форми)"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7BB;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.GlassOptions}"
                                                        AutomationProperties.Name="Інші поля вводу"
@@ -796,7 +796,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xF7BC;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -836,7 +836,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9EB;"
+                                       Text="&#xEB9F;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -866,7 +866,7 @@
                               Style="{StaticResource SettingsCheckBoxStyle}" />
                     <controls:SettingsButton Content="Налаштовую обідок для"
                                              IsEnabled="{x:Bind ViewModel.SeparateBubbleRim, Mode=OneWay}"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7BD;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimTargetOptions}"
                                                        IsEnabled="{x:Bind ViewModel.SeparateBubbleRim, Mode=OneWay}"
@@ -875,7 +875,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Стиль обідка"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7BE;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimStyleOptions}"
                                                        AutomationProperties.Name="Обідок скла"
@@ -883,7 +883,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Згладжування обідка"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7BF;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimSmoothingOptions}"
                                                        AutomationProperties.Name="Згладжування обідка"
@@ -891,7 +891,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Колір обідка"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xF7C0;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimColorOptions}"
                                                        AutomationProperties.Name="Колір обідка"
@@ -902,7 +902,7 @@
                                              Tag="RimCustomColor"
                                              Click="CustomColor_Click"
                                              IsEnabled="{x:Bind ViewModel.IsRimCustom, Mode=OneWay}"
-                                             Glyph="&#xE9E8;">
+                                             Glyph="&#xF7A3;">
                         <controls:SettingsButton.Badge>
                             <Border Width="36" Height="22" CornerRadius="6" BorderThickness="1"
                                     BorderBrush="{ThemeResource SettingsItemBorderBrush}"
@@ -910,7 +910,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Світло на обідку"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xE925;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimLightOptions}"
                                                        AutomationProperties.Name="Світло на обідку"
@@ -918,7 +918,7 @@
                         </controls:SettingsButton.Badge>
                     </controls:SettingsButton>
                     <controls:SettingsButton Content="Анімація обідка"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7C1;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimAnimationOptions}"
                                                        AutomationProperties.Name="Анімація обідка"
@@ -943,7 +943,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xE90D;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -964,7 +964,7 @@
                                 Grid.Column="2" />
                     </Grid>
                     <controls:SettingsButton Content="Реакція на курсор"
-                                             Glyph="&#xEA89;">
+                                             Glyph="&#xF7C2;">
                         <controls:SettingsButton.Badge>
                             <controls:SettingsComboBox ItemsSource="{x:Bind ViewModel.RimHoverOptions}"
                                                        AutomationProperties.Name="Реакція на курсор"
@@ -989,7 +989,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7C3;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1027,7 +1027,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7C4;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1063,7 +1063,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7C5;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1115,7 +1115,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xEA80;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1151,7 +1151,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xF7C6;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1187,7 +1187,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xEA6F;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1223,7 +1223,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xF7C7;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1258,7 +1258,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xE9E8;"
+                                       Text="&#xF7C8;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
@@ -1293,7 +1293,7 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        AutomationProperties.AccessibilityView="Raw"
-                                       Text="&#xEA89;"
+                                       Text="&#xF7A2;"
                                        FontFamily="{StaticResource SymbolThemeFontFamily}" />
                         </Border>
 
