@@ -144,7 +144,8 @@ namespace Telegram.Services.Settings
     public enum InputStyle
     {
         Original,
-        // Glass in the composer's own rounded shape.
+        // Glass in the composer's own rounded shape, the messages going on under it and cut to
+        // its outline, as under the capsule header.
         Capsule,
         // A band of glass the whole width, the composer clear on it.
         Bar,
@@ -870,7 +871,7 @@ namespace Telegram.Services.Settings
         private static int? _inputStyle;
         public InputStyle InputStyle
         {
-            get => (InputStyle)(_inputStyle ??= GetValueOrDefault("InputStyle", (int)InputStyle.Original));
+            get => (InputStyle)(_inputStyle ??= GetValueOrDefault("InputStyle", (int)InputStyle.Capsule));
             set => AddOrUpdateValue(ref _inputStyle, "InputStyle", (int)value);
         }
 

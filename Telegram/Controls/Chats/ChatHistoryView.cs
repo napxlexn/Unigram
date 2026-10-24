@@ -619,6 +619,10 @@ namespace Telegram.Controls.Chats
             var transform = selectorItem.TransformToVisual(scrollViewer.ContentTemplateRoot);
             var position = transform.TransformPoint(new Point());
 
+            // The list runs on under a composer of glass, its bottom padding keeping the last
+            // message clear of it: what is under it is not where an item is brought to.
+            var visibleHeight = ActualHeight - Padding.Bottom;
+
             if (alignment == VerticalAlignment.Top)
             {
                 if (pixel is double adjust)
@@ -644,9 +648,9 @@ namespace Telegram.Controls.Chats
                 var occludedHeight = Delegate.AnimatedHeight;
                 var highlightArea = GetHighlightArea();
 
-                if (highlightArea.Height < ActualHeight - occludedHeight)
+                if (highlightArea.Height < visibleHeight - occludedHeight)
                 {
-                    position.Y -= (ActualHeight / 2 - (highlightArea.Bottom - highlightArea.Height / 2)) + occludedHeight / 2;
+                    position.Y -= (visibleHeight / 2 - (highlightArea.Bottom - highlightArea.Height / 2)) + occludedHeight / 2;
 
                     if (Delegate.HasMessagesPadding)
                     {
@@ -660,7 +664,7 @@ namespace Telegram.Controls.Chats
             }
             else if (alignment == VerticalAlignment.Bottom)
             {
-                position.Y -= ActualHeight - selectorItem.ActualHeight;
+                position.Y -= visibleHeight - selectorItem.ActualHeight;
 
                 if (pixel is double adjust)
                 {
