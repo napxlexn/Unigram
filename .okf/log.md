@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-25
+* **update**: Reaction capsules' rim now drawn by SmoothGlass (style, smoothing, light, animation, hover, width apply); composer outline in bar/fading styles follows rim-on-panels; e2e check ? is read-only
 * **update**: Resize drag: content laid out only when the pointer rests (150 ms) or lets go; frame follows the pointer freely
 * **update**: Resize: window frame follows the pointer (island layout throttled while dragging), nine-grid glass coverage, stories strip keeps collapse animations on cached containers; user build switched to Release
 
