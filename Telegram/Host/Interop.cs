@@ -329,7 +329,9 @@ namespace Telegram.Host
         public const uint MONITOR_DEFAULTTONULL = 0;
         public const uint MONITOR_DEFAULTTONEAREST = 2;
 
+        public const uint WM_ENTERSIZEMOVE = 0x0231;
         public const uint WM_EXITSIZEMOVE = 0x0232;
+        public const uint WM_TIMER = 0x0113;
 
         // TRACKMOUSEEVENT flags. NONCLIENT is the one that matters here: the drag bar answers the
         // hit test with caption codes, so its mouse messages are all non-client ones.
@@ -467,6 +469,13 @@ namespace Telegram.Host
         [LibraryImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool IsIconic(IntPtr hWnd);
+
+        [LibraryImport("user32.dll")]
+        public static partial nuint SetTimer(IntPtr hWnd, nuint nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+
+        [LibraryImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool KillTimer(IntPtr hWnd, nuint uIDEvent);
 
         [LibraryImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
