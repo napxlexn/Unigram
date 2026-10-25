@@ -344,7 +344,10 @@ namespace Telegram.Host
                     // The CoreWindow stub never hears about the resize on its own, and a
                     // ContentDialog's smoke layer keeps whatever size it had when it opened -
                     // microsoft/microsoft-ui-xaml#3577. Forwarding it is that issue's workaround.
-                    if (window != null)
+                    // Held back with the layout while an edge is dragged: the CoreWindow lays the
+                    // whole tree out for it just the same.
+                    var deferred = (int)wParam == Win32.SIZE_RESTORED && window?.DeferWhileSizing(wParam, lParam) == true;
+                    if (window != null && !deferred)
                     {
                         CoreWindowBridge.Forward(hWnd, msg, wParam, lParam);
                     }
@@ -356,11 +359,9 @@ namespace Telegram.Host
                     // reports it, and why the size is not published for a 0x0 client rect.
                     window?.UpdateVisibility();
 
-                    if ((int)wParam != Win32.SIZE_MINIMIZED)
+                    if ((int)wParam != Win32.SIZE_MINIMIZED && !deferred)
                     {
-                        window?.Layout();
-                        window?.LayoutDragBar();
-                        window?.Owner?.SizeChanged();
+                        window?.LayoutContent();
 
                         // The maximize button draws a restore glyph while zoomed, and this is the
                         // only place that knows which it is.
@@ -388,7 +389,25 @@ namespace Telegram.Host
 
                     break;
 
+                case Win32.WM_ENTERSIZEMOVE:
+                    if (window != null)
+                    {
+                        window._sizing = true;
+                    }
+
+                    break;
+
+                case Win32.WM_TIMER when window != null && (nuint)wParam == SizingTimer:
+                    window.OnSizingTimer();
+                    return IntPtr.Zero;
+
                 case Win32.WM_EXITSIZEMOVE:
+                    if (window != null)
+                    {
+                        window._sizing = false;
+                        window.FlushSizing();
+                    }
+
                     // The end of a drag or a resize, rather than every position it passed through.
                     WindowLayout.Save(hWnd, window?._persistedId);
                     WindowBackdrop.Refresh(hWnd);
@@ -452,6 +471,102 @@ namespace Telegram.Host
         {
             var value = dark ? 1 : 0;
             return Win32.DwmSetWindowAttribute(_hwnd, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+        }
+
+        private void LayoutContent()
+        {
+            Layout();
+            LayoutDragBar();
+            Owner?.SizeChanged();
+
+            if (_sizing)
+            {
+                // Done once the island has laid the new size out and drawn it: the queue gets to
+                // low priority work only then.
+                var started = Environment.TickCount64;
+                _settling = true;
+
+                _dispatcher ??= global::Windows.System.DispatcherQueue.GetForCurrentThread();
+                _dispatcher?.TryEnqueue(global::Windows.System.DispatcherQueuePriority.Low, () =>
+                {
+                    _settling = false;
+                    _settled = Environment.TickCount64;
+                    _cost = _settled - started;
+                });
+            }
+        }
+
+        // While the user drags an edge, Windows moves the frame only once WM_SIZE returns, and
+        // the island lays the whole tree out for every size it is given: the frame trailed the
+        // pointer by as long as a layout takes. While dragging, the content follows only after
+        // the last size has been laid out and the window has been left free for at least as
+        // long, so the frame keeps up with the pointer half the time or more.
+        private const long SizingInterval = 50;
+        private const nuint SizingTimer = 0x5A17;
+
+        private global::Windows.System.DispatcherQueue _dispatcher;
+
+        private bool _sizing;
+        private bool _sizingPending;
+        private bool _settling;
+        private long _settled;
+        private long _cost;
+
+        private IntPtr _sizingWParam;
+        private IntPtr _sizingLParam;
+
+        private long SizingWait()
+        {
+            return _settling ? SizingInterval : _settled + Math.Max(SizingInterval, _cost) - Environment.TickCount64;
+        }
+
+        private bool DeferWhileSizing(IntPtr wParam, IntPtr lParam)
+        {
+            if (!_sizing)
+            {
+                return false;
+            }
+
+            var wait = SizingWait();
+            if (wait <= 0 && !_sizingPending)
+            {
+                return false;
+            }
+
+            _sizingWParam = wParam;
+            _sizingLParam = lParam;
+
+            if (!_sizingPending)
+            {
+                _sizingPending = true;
+                Win32.SetTimer(_hwnd, SizingTimer, (uint)Math.Max(10, wait), IntPtr.Zero);
+            }
+
+            return true;
+        }
+
+        private void OnSizingTimer()
+        {
+            var wait = SizingWait();
+            if (wait > 0)
+            {
+                Win32.SetTimer(_hwnd, SizingTimer, (uint)Math.Max(10, wait), IntPtr.Zero);
+                return;
+            }
+
+            FlushSizing();
+        }
+
+        private void FlushSizing()
+        {
+            if (_sizingPending)
+            {
+                _sizingPending = false;
+                Win32.KillTimer(_hwnd, SizingTimer);
+
+                CoreWindowBridge.Forward(_hwnd, Win32.WM_SIZE, _sizingWParam, _sizingLParam);
+                LayoutContent();
+            }
         }
 
         private void Layout()
