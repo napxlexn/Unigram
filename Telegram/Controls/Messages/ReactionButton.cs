@@ -52,11 +52,13 @@ namespace Telegram.Controls.Messages
 
             Loaded += OnGlowLoaded;
             Unloaded += OnGlowUnloaded;
+            ActualThemeChanged += OnGlowThemeChanged;
         }
 
         #region Glow
 
         private Border GlowHost;
+        private Border RimHost;
 
         private void OnGlowLoaded(object sender, RoutedEventArgs e)
         {
@@ -75,6 +77,11 @@ namespace Telegram.Controls.Messages
             this.BeginOnUIThread(UpdateGlow);
         }
 
+        private void OnGlowThemeChanged(FrameworkElement sender, object args)
+        {
+            UpdateGlow();
+        }
+
         /// <summary>
         /// Under the phosphor kinds - the terminals, neon, the lamps - the emoji and the count
         /// glow as the text in the bubbles does, not only the capsule behind them.
@@ -88,6 +95,8 @@ namespace Telegram.Controls.Messages
                 return;
             }
 
+            UpdateRim();
+
             var kind = AppSettings.Appearance.ReactionGlass;
             var phosphor = kind != GlassKind.Original
                 ? Glass.Resolve(kind, ActualTheme != ElementTheme.Light).Phosphor
@@ -100,6 +109,38 @@ namespace Telegram.Controls.Messages
             else
             {
                 ContentGlow.Detach(GlowHost);
+            }
+        }
+
+        private int _rimVersion = -1;
+        private ElementTheme _rimTheme;
+
+        /// <summary>
+        /// The capsule's rim, drawn as the bubbles' is - the reactions belong to the messages, so
+        /// theirs is the bubbles' rim profile - over the capsule's own fill. Drawn again only when
+        /// the style or the theme has changed since: a reaction is loaded again with every scroll.
+        /// </summary>
+        private void UpdateRim()
+        {
+            if (RimHost == null || (_rimVersion == MessageStyle.Version && _rimTheme == ActualTheme))
+            {
+                return;
+            }
+
+            _rimVersion = MessageStyle.Version;
+            _rimTheme = ActualTheme;
+
+            var appearance = AppSettings.Appearance;
+            var kind = appearance.ReactionGlass;
+
+            if (kind != GlassKind.Original && appearance.RimOnReactions)
+            {
+                var element = appearance.UseCustomMessageColors ? appearance.CustomReactionColor : (Color?)null;
+                SmoothGlass.Attach(RimHost, kind, ActualTheme != ElementTheme.Light, element, fill: false, rim: true, bubble: true, rimOnly: true);
+            }
+            else
+            {
+                SmoothGlass.Detach(RimHost);
             }
         }
 
@@ -308,6 +349,8 @@ namespace Telegram.Controls.Messages
             Overlay = GetTemplateChild(nameof(Overlay)) as Popup;
             Icon = GetTemplateChild(nameof(Icon)) as CustomEmojiIcon;
             GlowHost = GetTemplateChild(nameof(GlowHost)) as Border;
+            RimHost = GetTemplateChild(nameof(RimHost)) as Border;
+            _rimVersion = -1;
             Icon.Ready += OnReady;
             Icon.Paused += OnPaused;
 
