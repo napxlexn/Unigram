@@ -96,9 +96,9 @@ namespace Telegram.Controls.Media
             return new CompositionPath(CreateOutline(CanvasDevice.GetSharedDevice(), origin, size, radius));
         }
 
-        private static CanvasGeometry CreateOutline(ICanvasResourceCreator creator, Vector2 origin, Vector2 size, CornerRadius radius)
+        private static CanvasGeometry CreateOutline(ICanvasResourceCreator creator, Vector2 origin, Vector2 size, CornerRadius radius, bool clamp = true)
         {
-            float Clamp(double value) => (float)Math.Max(0, Math.Min(value, Math.Min(size.X, size.Y) / 2));
+            float Clamp(double value) => (float)Math.Max(0, clamp ? Math.Min(value, Math.Min(size.X, size.Y) / 2) : value);
 
             var tl = Clamp(radius.TopLeft);
             var tr = Clamp(radius.TopRight);
@@ -141,7 +141,7 @@ namespace Telegram.Controls.Media
             private readonly CompositionGraphicsDevice _graphics;
             private readonly Windows.System.DispatcherQueue _dispatcher;
             private readonly CompositionDrawingSurface _maskSurface;
-            private readonly CompositionSurfaceBrush _mask;
+            private readonly CompositionNineGridBrush _mask;
 
             private readonly SpriteVisual[] _layers;
             private readonly CompositionLinearGradientBrush[] _verticals;
@@ -896,6 +896,10 @@ namespace Telegram.Controls.Media
             private float _scale = 1;
             private Vector2 _size;
 
+            // What the coverage is drawn at, in DIPs: the corners and a little of the straight
+            // edge between them, or the whole element.
+            private Vector2 _extent;
+
             private CompositionDrawingSurface CreateCoverage()
             {
                 return _graphics.CreateDrawingSurface2(new SizeInt32 { Width = 1, Height = 1 }, DirectXPixelFormat.B8G8R8A8UIntNormalized, DirectXAlphaMode.Premultiplied);
@@ -903,17 +907,28 @@ namespace Telegram.Controls.Media
 
             // Device pixels one to one: the surface is drawn at the window's scale and shown
             // scaled back by it, from the top left corner, never stretched.
-            private CompositionSurfaceBrush CreateCoverageBrush(CompositionDrawingSurface surface)
+            // Only the corners are drawn, and the straight middle is stretched to the size: a
+            // resize then changes nothing that has to be drawn again. Drawn whole for every size,
+            // the window lagged behind its edge with a chat full of bubbles.
+            private CompositionNineGridBrush CreateCoverageBrush(CompositionDrawingSurface surface)
             {
-                var brush = _compositor.CreateSurfaceBrush(surface);
-                brush.Stretch = CompositionStretch.None;
-                brush.HorizontalAlignmentRatio = 0;
-                brush.VerticalAlignmentRatio = 0;
+                var source = _compositor.CreateSurfaceBrush(surface);
+                source.Stretch = CompositionStretch.Fill;
+
+                var brush = _compositor.CreateNineGridBrush();
+                brush.Source = source;
                 _coverageBrushes.Add(brush);
                 return brush;
             }
 
-            private readonly System.Collections.Generic.List<CompositionSurfaceBrush> _coverageBrushes = new();
+            private readonly System.Collections.Generic.List<CompositionNineGridBrush> _coverageBrushes = new();
+
+            // What the coverage was last drawn for; the same again needs no drawing.
+            private string _coverageKey;
+
+            // The corners in device pixels, left, top, right, bottom, as drawn; none when the
+            // element is too small for them and is drawn whole.
+            private Vector4 _grid;
 
             /// <summary>
             /// Redraws a coverage surface for the current size and scale, in DIPs.
@@ -926,8 +941,8 @@ namespace Telegram.Controls.Media
             private void DrawCoverage(CompositionDrawingSurface surface, Action<CanvasDrawingSession> draw, bool linear = false)
             {
                 var scale = _scale;
-                var width = Math.Max(1, (int)Math.Ceiling(_size.X * scale));
-                var height = Math.Max(1, (int)Math.Ceiling(_size.Y * scale));
+                var width = Math.Max(1, (int)Math.Ceiling(_extent.X * scale));
+                var height = Math.Max(1, (int)Math.Ceiling(_extent.Y * scale));
 
                 try
                 {
@@ -973,16 +988,27 @@ namespace Telegram.Controls.Media
                     Logger.Error(ex);
                 }
 
-                var inverse = new Vector2(1 / scale);
+            }
+
+            // The surface laid over the element: its corners at one device pixel each, the rest
+            // stretched; drawn whole, as it is.
+            private void ApplyGrid()
+            {
                 foreach (var brush in _coverageBrushes)
                 {
-                    brush.Scale = inverse;
+                    brush.SetInsets(_grid.X, _grid.Y, _grid.Z, _grid.W);
+                    brush.SetInsetScales(1 / _scale);
                 }
             }
 
             private void OnRenderingDeviceReplaced(CompositionGraphicsDevice sender, RenderingDeviceReplacedEventArgs args)
             {
-                _dispatcher?.TryEnqueue(() => Update(_host));
+                // A new device has nothing drawn on it yet.
+                _dispatcher?.TryEnqueue(() =>
+                {
+                    _coverageKey = null;
+                    Update(_host);
+                });
             }
 
             private XamlRoot _root;
@@ -1122,11 +1148,55 @@ namespace Telegram.Controls.Media
                 }
                 _size = size;
 
-                DrawCoverage(_maskSurface, ds =>
+                // The radii as the whole element has them, so the corners drawn alone come out
+                // the same.
+                var limit = Math.Min(size.X, size.Y) / 2;
+                radius = new CornerRadius(
+                    Math.Clamp(radius.TopLeft, 0, limit), Math.Clamp(radius.TopRight, 0, limit),
+                    Math.Clamp(radius.BottomRight, 0, limit), Math.Clamp(radius.BottomLeft, 0, limit));
+
+                // How far into the element a corner reaches, past every rim line on it.
+                var reach = 1f;
+                if (_rimCoverage != null)
                 {
-                    using var outline = CreateOutline(ds, Vector2.Zero, size, radius);
-                    ds.FillGeometry(outline, Colors.White);
-                });
+                    for (int i = 0; i < _rimShapes.Length; i++)
+                    {
+                        reach = Math.Max(reach, _rimInsets[i] + _rimShapes[i].StrokeThickness + 1);
+                    }
+                }
+
+                var scale = _scale;
+                int Pixels(double value) => (int)Math.Ceiling((value + reach) * scale);
+
+                var left = Pixels(Math.Max(radius.TopLeft, radius.BottomLeft));
+                var top = Pixels(Math.Max(radius.TopLeft, radius.TopRight));
+                var right = Pixels(Math.Max(radius.TopRight, radius.BottomRight));
+                var bottom = Pixels(Math.Max(radius.BottomLeft, radius.BottomRight));
+
+                // A couple of pixels of straight edge to stretch.
+                const int Middle = 2;
+
+                var compact = new Vector2((left + Middle + right) / scale, (top + Middle + bottom) / scale);
+                var whole = compact.X >= size.X || compact.Y >= size.Y;
+
+                _grid = whole ? Vector4.Zero : new Vector4(left, top, right, bottom);
+                _extent = whole ? size : compact;
+
+                var key = string.Join(",", scale, radius, reach, whole ? size : Vector2.Zero, _grid);
+                var redraw = key != _coverageKey;
+                _coverageKey = key;
+
+                if (redraw)
+                {
+                    var drawn = _extent;
+                    DrawCoverage(_maskSurface, ds =>
+                    {
+                        using var outline = CreateOutline(ds, Vector2.Zero, drawn, radius, false);
+                        ds.FillGeometry(outline, Colors.White);
+                    });
+                }
+
+                ApplyGrid();
 
                 foreach (var layer in _layers)
                 {
@@ -1167,12 +1237,13 @@ namespace Telegram.Controls.Media
 
                     _rimGeometries[i].Path = CreateOutline(origin, extent, inner);
 
-                    if (_rimCoverage != null)
+                    if (_rimCoverage != null && redraw)
                     {
                         var thickness = _rimShapes[i].StrokeThickness;
+                        var drawn = Vector2.Max(_extent - new Vector2(inset * 2), Vector2.Zero);
                         DrawCoverage(_rimCoverage[i], ds =>
                         {
-                            using var outline = CreateOutline(ds, origin, extent, inner);
+                            using var outline = CreateOutline(ds, origin, drawn, inner, false);
                             ds.DrawGeometry(outline, Colors.White, thickness);
                         }, _dark);
                     }
