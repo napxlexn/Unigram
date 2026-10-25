@@ -398,7 +398,7 @@ namespace Telegram.Host
                     break;
 
                 case Win32.WM_TIMER when window != null && (nuint)wParam == SizingTimer:
-                    window.OnSizingTimer();
+                    window.FlushSizing();
                     return IntPtr.Zero;
 
                 case Win32.WM_EXITSIZEMOVE:
@@ -478,47 +478,20 @@ namespace Telegram.Host
             Layout();
             LayoutDragBar();
             Owner?.SizeChanged();
-
-            if (_sizing)
-            {
-                // Done once the island has laid the new size out and drawn it: the queue gets to
-                // low priority work only then.
-                var started = Environment.TickCount64;
-                _settling = true;
-
-                _dispatcher ??= global::Windows.System.DispatcherQueue.GetForCurrentThread();
-                _dispatcher?.TryEnqueue(global::Windows.System.DispatcherQueuePriority.Low, () =>
-                {
-                    _settling = false;
-                    _settled = Environment.TickCount64;
-                    _cost = _settled - started;
-                });
-            }
         }
 
-        // While the user drags an edge, Windows moves the frame only once WM_SIZE returns, and
-        // the island lays the whole tree out for every size it is given: the frame trailed the
-        // pointer by as long as a layout takes. While dragging, the content follows only after
-        // the last size has been laid out and the window has been left free for at least as
-        // long, so the frame keeps up with the pointer half the time or more.
-        private const long SizingInterval = 50;
+        // While the user drags an edge, Windows moves the frame only once WM_SIZE returns, and a
+        // layout of the whole tree for the new size held the window still for as long as it took:
+        // the frame trailed the pointer, or moved in jerks when laid out only every so often.
+        // While dragging, the content is laid out only once the pointer rests or lets go.
+        private const uint SizingRest = 150;
         private const nuint SizingTimer = 0x5A17;
-
-        private global::Windows.System.DispatcherQueue _dispatcher;
 
         private bool _sizing;
         private bool _sizingPending;
-        private bool _settling;
-        private long _settled;
-        private long _cost;
 
         private IntPtr _sizingWParam;
         private IntPtr _sizingLParam;
-
-        private long SizingWait()
-        {
-            return _settling ? SizingInterval : _settled + Math.Max(SizingInterval, _cost) - Environment.TickCount64;
-        }
 
         private bool DeferWhileSizing(IntPtr wParam, IntPtr lParam)
         {
@@ -527,34 +500,13 @@ namespace Telegram.Host
                 return false;
             }
 
-            var wait = SizingWait();
-            if (wait <= 0 && !_sizingPending)
-            {
-                return false;
-            }
-
             _sizingWParam = wParam;
             _sizingLParam = lParam;
+            _sizingPending = true;
 
-            if (!_sizingPending)
-            {
-                _sizingPending = true;
-                Win32.SetTimer(_hwnd, SizingTimer, (uint)Math.Max(10, wait), IntPtr.Zero);
-            }
-
+            // Replaces the timer if it is running: it fires once the sizes stop coming.
+            Win32.SetTimer(_hwnd, SizingTimer, SizingRest, IntPtr.Zero);
             return true;
-        }
-
-        private void OnSizingTimer()
-        {
-            var wait = SizingWait();
-            if (wait > 0)
-            {
-                Win32.SetTimer(_hwnd, SizingTimer, (uint)Math.Max(10, wait), IntPtr.Zero);
-                return;
-            }
-
-            FlushSizing();
         }
 
         private void FlushSizing()
