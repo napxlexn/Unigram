@@ -274,9 +274,14 @@ namespace Telegram.Host
 
                 case "combo":
                     {
+                        // "?" reads the selection without changing it.
                         var combo = Find<ComboBox>(root, parts[2]);
-                        combo.SelectedIndex = int.Parse(parts[1]);
-                        return "ok " + combo.SelectedIndex;
+                        var was = combo.SelectedIndex;
+                        if (parts[1] != "?")
+                        {
+                            combo.SelectedIndex = int.Parse(parts[1]);
+                        }
+                        return "ok " + combo.SelectedIndex + " was " + was;
                     }
 
                 case "check":
