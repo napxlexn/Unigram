@@ -105,10 +105,6 @@ namespace Telegram.Common
                     color.A = (byte)(color.A * 0.8);
                     break;
 
-                case "MessageReactionBorderBrush":
-                    color = GetReactionRim(appearance, dark);
-                    break;
-
                 case "MessageForegroundBrush" when appearance.MessageTextStyle == MessageTextStyle.Brighter:
                     color = dark ? Colors.White : Colors.Black;
                     break;
@@ -119,34 +115,6 @@ namespace Telegram.Common
             }
 
             return Theme.Saturate(color);
-        }
-
-        /// <summary>
-        /// The reaction capsules' rim: the kind's own where it has one - neon, ice, liquid - and
-        /// otherwise the light rim of the rim style, scaled by its intensity. A XAML border on a
-        /// solid fill, which XAML smooths, unlike a composition fill.
-        /// </summary>
-        private static Color GetReactionRim(AppearanceSettings appearance, bool dark)
-        {
-            var kind = appearance.ReactionGlass;
-            if (kind == GlassKind.Original)
-            {
-                return Color.FromArgb(0, 0, 0, 0);
-            }
-
-            var spec = Glass.Resolve(kind, dark);
-            // The reactions belong to the messages: their rim is the bubbles'.
-            var profile = appearance.RimFor(true);
-            if (!appearance.RimOnReactions || (spec.RimColor == null && profile.Style == RimStyle.None))
-            {
-                return Color.FromArgb(0, 0, 0, 0);
-            }
-
-            var rim = Glass.GetRimColor(appearance.UseCustomMessageColors ? appearance.CustomReactionColor : null, dark, profile)
-                ?? spec.RimColor
-                ?? (dark ? Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF));
-            rim.A = (byte)Math.Clamp(rim.A * profile.Intensity / 60, 0, 255);
-            return rim;
         }
 
         private static Color WithAlpha(Color color, byte alpha)

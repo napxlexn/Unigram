@@ -3069,12 +3069,16 @@
                                                  Margin="0,1,8,2"
                                                  Grid.Column="1" />
 
-                        <!-- The glass rim and the lamp glow, drawn over both columns so they take no room: clear unless the reaction style asks for them.
+                        <!-- The lamp glow, drawn over both columns so it takes no room: clear unless the reaction style asks for it.
                              Also the host of the phosphor glow of the emoji and the count, which it lies over without containing. -->
                         <Border x:Name="GlowHost"
-                                BorderBrush="{ThemeResource MessageReactionBorderBrush}"
                                 Background="{ThemeResource MessageReactionGlowBrush}"
-                                BorderThickness="1"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                IsHitTestVisible="False"
+                                Grid.ColumnSpan="2" />
+
+                        <!-- The glass rim, drawn by SmoothGlass as the bubbles' is: its style, smoothing, light, animation and hover. -->
+                        <Border x:Name="RimHost"
                                 CornerRadius="{TemplateBinding CornerRadius}"
                                 IsHitTestVisible="False"
                                 Grid.ColumnSpan="2" />

@@ -1417,7 +1417,7 @@ namespace Telegram.Views
                     TextGlass.CornerRadius = TextRoot.CornerRadius;
                     _textGlass = true;
                     UpdateTextGlassVisibility();
-                    SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: true);
+                    SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: AppSettings.Appearance.RimOnPanels);
 
                     InputGlassBand.Height = double.NaN;
                     InputGlassBand.Margin = new Thickness(0);
@@ -1441,7 +1441,7 @@ namespace Telegram.Views
                         TextGlass.CornerRadius = TextRoot.CornerRadius;
                         _textGlass = true;
                         UpdateTextGlassVisibility();
-                        SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: true);
+                        SmoothGlass.Attach(TextGlass, kind, dark, fill: false, rim: AppSettings.Appearance.RimOnPanels);
 
                         InputGlassBand.VerticalAlignment = VerticalAlignment.Bottom;
                         InputGlassBand.Height = total;

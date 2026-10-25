@@ -47,7 +47,9 @@ namespace Telegram.Controls.Media
         /// <param name="fill">False to leave the fill to the element - a gradient bubble - and draw
         /// only what goes over it.</param>
         /// <param name="bubble">A message bubble, which may have a rim of its own.</param>
-        public static void Attach(Border host, GlassKind kind, bool dark, Color? tint = null, bool fill = true, bool rim = true, bool bubble = false)
+        /// <param name="rimOnly">Only the rim and what the pointer does to it, over an element that
+        /// draws its own glass - a reaction capsule.</param>
+        public static void Attach(Border host, GlassKind kind, bool dark, Color? tint = null, bool fill = true, bool rim = true, bool bubble = false, bool rimOnly = false)
         {
             Detach(host);
 
@@ -57,7 +59,7 @@ namespace Telegram.Controls.Media
                 return;
             }
 
-            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, tint, fill, rim, AppSettings.Appearance.RimFor(bubble));
+            var attachment = new Attachment(BootStrapper.Current.Compositor, spec, dark, Glass.HasOwnTint(kind) ? spec.Tint : tint ?? spec.Tint, tint, fill && !rimOnly, rim, AppSettings.Appearance.RimFor(bubble), rimOnly);
 
             host.Tag = attachment;
             host.SizeChanged += attachment.OnSizeChanged;
@@ -153,7 +155,7 @@ namespace Telegram.Controls.Media
             private readonly SpriteVisual _rimGlow;
             private readonly CompositionVisualSurface _rimGlowSurface;
 
-            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, Color? element, bool fill, bool rim, RimProfile profile)
+            public Attachment(Compositor compositor, GlassSpec spec, bool dark, Color? tint, Color? element, bool fill, bool rim, RimProfile profile, bool rimOnly)
             {
                 _compositor = compositor;
                 Root = compositor.CreateContainerVisual();
@@ -208,7 +210,7 @@ namespace Telegram.Controls.Media
                 }
 
                 // A wash of colour across it, corner to corner.
-                if (spec.Wash is Color[] wash && wash.Length > 1)
+                if (spec.Wash is Color[] wash && wash.Length > 1 && !rimOnly)
                 {
                     var gradient = compositor.CreateLinearGradientBrush();
                     gradient.StartPoint = Vector2.Zero;
@@ -223,7 +225,7 @@ namespace Telegram.Controls.Media
                 }
 
                 // Light from inside: a lamp behind the glass, brightest in the middle.
-                if (spec.InnerLight is Color light && appearance.GlowIntensity > 0)
+                if (spec.InnerLight is Color light && appearance.GlowIntensity > 0 && !rimOnly)
                 {
                     var radial = compositor.CreateRadialGradientBrush();
                     radial.EllipseCenter = new Vector2(0.5f, 0.55f);
@@ -235,7 +237,7 @@ namespace Telegram.Controls.Media
                 }
 
                 // A CRT's scanlines: a dark line every third pixel.
-                if (spec.Scanlines && appearance.ScanlineIntensity > 0)
+                if (spec.Scanlines && appearance.ScanlineIntensity > 0 && !rimOnly)
                 {
                     var alpha = (byte)(0x40 * appearance.ScanlineIntensity / 100);
 
