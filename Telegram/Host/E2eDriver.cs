@@ -286,8 +286,13 @@ namespace Telegram.Host
 
                 case "check":
                     {
+                        // "?" only reads it.
                         var toggle = Find<ToggleButton>(root, parts[2]);
-                        toggle.IsChecked = parts[1] == "1";
+                        if (parts[1] != "?")
+                        {
+                            toggle.IsChecked = parts[1] == "1";
+                        }
+
                         return "ok " + toggle.IsChecked;
                     }
 
