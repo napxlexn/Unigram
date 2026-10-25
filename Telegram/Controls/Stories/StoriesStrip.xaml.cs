@@ -244,17 +244,13 @@ namespace Telegram.Controls.Stories
                 var container = ScrollingHost.ContainerFromIndex(i) as SelectorItem;
                 if (container != null)
                 {
+                    // The cached ones too: a container past the visible edge comes into view
+                    // as the strip widens without being prepared again, and released from the
+                    // animations it showed full size over the title bar.
                     if (container.ContentTemplateRoot is ActiveStoriesCell cell)
                     {
-                        if (i >= panel.FirstVisibleIndex && i <= panel.LastVisibleIndex)
-                        {
-                            cell.Update(container, i, _first, _last, tracker, expression);
-                            Canvas.SetZIndex(container, i >= _first && i <= _last ? 5 - i : -i);
-                        }
-                        else
-                        {
-                            cell.Disconnect(container);
-                        }
+                        cell.Update(container, i, _first, _last, tracker, expression);
+                        Canvas.SetZIndex(container, i >= _first && i <= _last ? 5 - i : -i);
                     }
                 }
             }
